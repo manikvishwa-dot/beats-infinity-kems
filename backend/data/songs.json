@@ -1,0 +1,43 @@
+[
+  {
+    "id": 1,
+    "title": "Mustafa Mustafa",
+    "movie": "Kadhal Desam",
+    "album": "Kadhal Desam",
+    "musicDirector": "A. R. Rahman",
+    "maleSingers": [
+      "A. R. Rahman"
+    ],
+    "femaleSingers": [],
+    "language": "Tamil",
+    "year": 1996,
+    "themeTags": [
+      "Friendship",
+      "College",
+      "90s"
+    ],
+    "difficulty": "Medium",
+    "karaokeAvailable": true,
+    "provider": "Beats Infinity"
+  },
+  {
+    "id": 2,
+    "title": "Ennavale Adi Ennavale",
+    "movie": "Kadhalan",
+    "album": "Kadhalan",
+    "musicDirector": "A. R. Rahman",
+    "maleSingers": [
+      "Unnikrishnan"
+    ],
+    "femaleSingers": [],
+    "language": "Tamil",
+    "year": 1994,
+    "themeTags": [
+      "Love",
+      "90s"
+    ],
+    "difficulty": "Hard",
+    "karaokeAvailable": true,
+    "provider": "Beats Infinity"
+  }
+]
