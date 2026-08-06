@@ -1,0 +1,27 @@
+/* ==========================================================
+   Logo
+   ========================================================== */
+
+.navbar-logo-section {
+    display: flex;
+    align-items: center;
+    min-width: 260px;
+}
+
+.logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.navbar-logo {
+    height: 95px;
+    width: auto;
+    object-fit: contain;
+    transition: all 0.35s ease;
+    cursor: pointer;
+}
+
+.navbar-logo:hover {
+    transform: scale(1.08);
+}
