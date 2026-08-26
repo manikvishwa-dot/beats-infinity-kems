@@ -1,27 +1,349 @@
 /* ==========================================================
-   Logo
+   BEATS INFINITY NAVBAR
    ========================================================== */
 
-.navbar-logo-section {
-    display: flex;
-    align-items: center;
-    min-width: 260px;
+.navbar {
+
+    position: fixed !important;
+
+    top: 0;
+    left: 0;
+    width: 100%;
+
+    z-index: 999;
+
+    background: rgba(8, 8, 12, 0.72) !important;
+
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+
+    border-bottom: 1px solid rgba(255,255,255,.08);
+
+    transition: all .35s ease;
+
 }
 
-.logo-link {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
+.navbar-scrolled {
+
+    background: rgba(8,8,12,.92) !important;
+
+    box-shadow: 0 12px 35px rgba(0,0,0,.35);
+
 }
 
-.navbar-logo {
-    height: 95px;
-    width: auto;
-    object-fit: contain;
-    transition: all 0.35s ease;
-    cursor: pointer;
+/* ==========================================================
+   TOOLBAR
+   ========================================================== */
+
+.navbar-toolbar{
+
+    max-width:1450px;
+
+    height:86px;
+
+    margin:auto;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    padding:0 28px !important;
+
 }
 
-.navbar-logo:hover {
-    transform: scale(1.08);
+/* ==========================================================
+   LOGO
+   ========================================================== */
+.navbar-logo-section{
+
+    flex:0 0 200px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:flex-start;
+
+    padding-left:55px;
+
+}
+
+.logo-link{
+
+    display:flex;
+
+    align-items:center;
+
+    text-decoration:none;
+
+}
+
+.navbar-logo{
+
+    height:94px;
+
+    width:auto;
+
+    object-fit:contain;
+
+    cursor:pointer;
+
+    transition:all .35s ease;
+
+    filter:drop-shadow(0 0 12px rgba(255,215,0,.15));
+
+}
+
+.navbar-logo:hover{
+
+    transform:scale(1.04);
+
+}
+
+/* ==========================================================
+   MENU
+   ========================================================== */
+
+.navbar-menu{
+
+    flex:1;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    gap:22px;
+
+}
+
+.nav-button{
+
+    color:#ffffff !important;
+
+    font-family:"Poppins",sans-serif !important;
+
+    font-size:15px !important;
+
+    font-weight:600 !important;
+
+    text-transform:none !important;
+
+    min-width:auto !important;
+
+    padding:8px 10px !important;
+
+    position:relative;
+
+    transition:.30s ease;
+
+}
+
+.nav-button:hover{
+
+    color:#1DB954 !important;
+
+}
+
+.nav-button.active{
+
+    color:#1DB954 !important;
+
+}
+
+.nav-button.active::after{
+
+    content:"";
+
+    position:absolute;
+
+    bottom:-8px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    width:32px;
+
+    height:3px;
+
+    border-radius:30px;
+
+    background:#1DB954;
+
+}
+
+/* ==========================================================
+   ACTION BUTTONS
+   ========================================================== */
+
+.navbar-actions{
+
+    flex:0 0 250px;
+
+    display:flex;
+
+    justify-content:flex-end;
+
+    align-items:center;
+
+    gap:10px;
+
+}
+
+/* ==========================================================
+   LOGIN
+   ========================================================== */
+
+.login-button{
+
+    border:2px solid #FFD54A !important;
+
+    color:#FFD54A !important;
+
+    border-radius:50px !important;
+
+    min-width:95px;
+
+    height:40px;
+
+    padding:0 18px !important;
+
+    text-transform:none !important;
+
+    font-family:"Poppins",sans-serif !important;
+
+    font-size:14px !important;
+
+    font-weight:600 !important;
+
+    transition:.3s ease;
+
+}
+
+.login-button:hover{
+
+    background:#FFD54A !important;
+
+    color:#111 !important;
+
+}
+
+/* ==========================================================
+   JOIN BUTTON
+   ========================================================== */
+
+.register-button{
+
+    background:linear-gradient(
+        135deg,
+        #1DB954,
+        #32E86B
+    ) !important;
+
+    color:#ffffff !important;
+
+    border-radius:50px !important;
+
+    min-width:168px;
+
+    height:40px;
+
+    padding:0 16px !important;
+
+    text-transform:none !important;
+
+    font-family:"Poppins",sans-serif !important;
+
+    font-size:13.5px !important;
+
+    font-weight:700 !important;
+
+    white-space:nowrap;
+
+    transition:all .35s ease;
+
+    box-shadow:0 10px 25px rgba(29,185,84,.28);
+
+}
+
+.register-button:hover{
+
+    transform:translateY(-2px);
+
+    box-shadow:0 16px 35px rgba(29,185,84,.40);
+
+}
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+@media (max-width:1200px){
+
+    .navbar-menu{
+
+        gap:20px;
+
+    }
+
+    .navbar-actions{
+
+        flex:0 0 240px;
+
+    }
+
+}
+
+@media (max-width:992px){
+
+    .navbar-menu{
+
+        display:none;
+
+    }
+
+    .navbar-actions{
+
+        margin-left:auto;
+
+    }
+
+}
+
+@media (max-width:768px){
+
+    .navbar-toolbar{
+
+        height:74px;
+
+        padding:0 18px !important;
+
+    }
+
+    .navbar-logo{
+
+        height:66px;
+
+    }
+
+    .login-button{
+
+        display:none !important;
+
+    }
+
+    .register-button{
+
+        min-width:135px;
+
+        height:38px;
+
+        font-size:12px !important;
+
+    }
+
 }

@@ -1,95 +1,277 @@
-import { AppBar, Toolbar, Box, Button } from "@mui/material";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+
+import {
+    AppBar,
+    Toolbar,
+    Box,
+    Button,
+    Container
+} from "@mui/material";
+
+import {
+    Link,
+    useLocation
+} from "react-router-dom";
+
 import ASSETS from "../../config/assets";
 
 import "./Navbar.css";
 
+
 function Navbar() {
-  const location = useLocation();
 
-  const navItems = [
-    { label: "Home", path: "/" },
-    { label: "Events", path: "/events" },
-    { label: "Gallery", path: "/gallery" },
-    { label: "Journey", path: "/journey" },
-    { label: "About", path: "/about" },
-    { label: "Contact", path: "/contact" },
-  ];
+    const location = useLocation();
 
-  return (
-    <AppBar
-      position="sticky"
-      elevation={0}
-      className="navbar"
-    >
-      <Toolbar className="navbar-toolbar">
+    const [scrolled, setScrolled] =
+        useState(false);
 
-        {/* Left Section */}
 
-        <Box className="navbar-logo-section">
+    // ==========================================================
+    // SCROLL EFFECT
+    // ==========================================================
 
-          <Link to="/" className="logo-link">
+    useEffect(() => {
 
-            <img
-              src={ASSETS.logo}
-              alt="Beats Infinity"
-              className="navbar-logo"
-            />
+        const handleScroll = () => {
 
-          </Link>
+            setScrolled(
+                window.scrollY > 40
+            );
 
-        </Box>
+        };
 
-        {/* Center Navigation */}
 
-        <Box className="navbar-menu">
+        window.addEventListener(
+            "scroll",
+            handleScroll
+        );
 
-          {navItems.map((item) => (
 
-            <Button
-              key={item.label}
-              component={Link}
-              to={item.path}
-              className={
-                location.pathname === item.path
-                  ? "nav-button active"
-                  : "nav-button"
-              }
+        return () => {
+
+            window.removeEventListener(
+                "scroll",
+                handleScroll
+            );
+
+        };
+
+    }, []);
+
+
+    // ==========================================================
+    // NAVIGATION ITEMS
+    // ==========================================================
+
+    const navItems = [
+
+        {
+            label: "Home",
+            path: "/"
+        },
+
+        {
+            label: "Events",
+            path: "/events"
+        },
+
+        {
+            label: "Gallery",
+            path: "/gallery"
+        },
+
+        {
+            label: "About",
+            path: "/about"
+        },
+
+        {
+            label: "Contact",
+            path: "/contact"
+        }
+
+    ];
+
+
+    // ==========================================================
+    // RENDER
+    // ==========================================================
+
+    return (
+
+        <AppBar
+
+            elevation={0}
+
+            position="fixed"
+
+            className={
+                scrolled
+                    ? "navbar navbar-scrolled"
+                    : "navbar"
+            }
+
+        >
+
+            <Container
+                maxWidth="xl"
             >
-              {item.label}
-            </Button>
 
-          ))}
+                <Toolbar
+                    className="navbar-toolbar"
+                >
 
-        </Box>
 
-        {/* Right Buttons */}
+                    {/* ==================================================
+                        LOGO
+                    ================================================== */}
 
-        <Box className="navbar-actions">
+                    <Box
+                        className="navbar-logo-section"
+                    >
 
-          <Button
-            component={Link}
-            to="/login"
-            variant="outlined"
-            className="login-button"
-          >
-            Singer Login
-          </Button>
+                        <Link
+                            to="/"
+                            className="logo-link"
+                        >
 
-          <Button
-            component={Link}
-            to="/register"
-            variant="contained"
-            className="register-button"
-          >
-            Register Now
-          </Button>
+                            <img
 
-        </Box>
+                                src={ASSETS.logo}
 
-      </Toolbar>
-    </AppBar>
-  );
+                                alt="Beats Infinity"
+
+                                className="navbar-logo"
+
+                            />
+
+                        </Link>
+
+                    </Box>
+
+
+                    {/* ==================================================
+                        MENU
+                    ================================================== */}
+
+                    <Box
+                        className="navbar-menu"
+                    >
+
+                        {
+
+                            navItems.map(
+                                (item) => (
+
+                                    <Button
+
+                                        key={
+                                            item.label
+                                        }
+
+                                        component={
+                                            Link
+                                        }
+
+                                        to={
+                                            item.path
+                                        }
+
+                                        className={
+
+                                            location.pathname ===
+                                            item.path
+
+                                                ? "nav-button active"
+
+                                                : "nav-button"
+
+                                        }
+
+                                    >
+
+                                        {
+                                            item.label
+                                        }
+
+                                    </Button>
+
+                                )
+
+                            )
+
+                        }
+
+                    </Box>
+
+
+                    {/* ==================================================
+                        ACTION BUTTONS
+                    ================================================== */}
+
+                    <Box
+                        className="navbar-actions"
+                    >
+
+
+                        {/* ==================================================
+                            LOGIN
+                        ================================================== */}
+
+                        <Button
+
+                            component={
+                                Link
+                            }
+
+                            to="/login"
+
+                            className="login-button"
+
+                        >
+
+                            Login
+
+                        </Button>
+
+
+                        {/* ==================================================
+                            JOIN BEATS INFINITY
+
+                            IMPORTANT:
+                            This now goes directly to the
+                            common Singer Registration page.
+                        ================================================== */}
+
+                        <Button
+
+                            component={
+                                Link
+                            }
+
+                            to="/singer-registration"
+
+                            className="register-button"
+
+                        >
+
+                            Join Beats ∞ Infinity
+
+                        </Button>
+
+
+                    </Box>
+
+
+                </Toolbar>
+
+            </Container>
+
+        </AppBar>
+
+    );
+
 }
+
 
 export default Navbar;

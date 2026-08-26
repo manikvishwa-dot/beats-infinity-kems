@@ -1,64 +1,71 @@
 import { Box } from "@mui/material";
 
 import Navbar from "../common/Navbar/Navbar";
+import Hero from "../components/Hero/Hero";
+import Journey from "../components/Journey/Journey";
+import WhyJoin from "../components/WhyJoin/WhyJoin";
+import Statistics from "../components/Statistics/Statistics";
 
 function Home() {
+
     return (
+
         <Box
             sx={{
                 backgroundColor: "#0B0B0B",
                 minHeight: "100vh",
+                overflowX: "hidden",
             }}
         >
+
+            {/* ==========================================
+                NAVIGATION
+            ========================================== */}
+
             <Navbar />
 
-            {/* Hero Placeholder */}
-            <Box
-                sx={{
-                    height: "calc(100vh - 80px)",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    color: "#FFFFFF",
-                    textAlign: "center",
-                    px: 3,
-                }}
-            >
-                <h1
-                    style={{
-                        fontSize: "3.5rem",
-                        marginBottom: "20px",
-                        color: "#FFD700",
-                    }}
-                >
-                    🎤 Welcome to Beats Infinity
-                </h1>
+            {/* ==========================================
+                HERO SECTION
+            ========================================== */}
 
-                <h2
-                    style={{
-                        fontWeight: 400,
-                        marginBottom: "15px",
-                    }}
-                >
-                    Unleash the Harmony in You
-                </h2>
+            <Hero />
 
-                <p
-                    style={{
-                        maxWidth: "700px",
-                        color: "#CCCCCC",
-                        fontSize: "18px",
-                        lineHeight: "32px",
-                    }}
-                >
-                    Chennai's Premium Karaoke Community dedicated to bringing
-                    singers, musicians and music lovers together through
-                    unforgettable musical experiences.
-                </p>
-            </Box>
+            {/* ==========================================
+                OUR MUSICAL JOURNEY
+            ========================================== */}
+
+            <Journey />
+
+            {/* ==========================================
+                WHY JOIN BEATS ∞ INFINITY
+            ========================================== */}
+
+            <WhyJoin />
+
+            {/* ==========================================
+                GROWING TOGETHER THROUGH MUSIC
+            ========================================== */}
+
+            <Statistics />
+
+            {/*
+            ==========================================
+
+            UPCOMING HOMEPAGE SECTIONS
+
+            1. Gallery Highlights
+            2. Testimonials
+            3. Upcoming Events
+            4. Join Beats ∞ Infinity CTA
+            5. Footer
+
+            ==========================================
+            */}
+
         </Box>
+
     );
+
 }
 
 export default Home;

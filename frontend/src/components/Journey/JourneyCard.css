@@ -1,0 +1,241 @@
+/* ==========================================================
+   JOURNEY CARD
+   Beats Infinity Premium Event Tile
+   ========================================================== */
+
+.journey-card{
+
+    flex: 0 0 230px;
+
+    width: 230px;
+
+    border-radius: 22px;
+
+    overflow: hidden;
+
+    background: rgba(22,22,22,.60);
+
+    backdrop-filter: blur(16px);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    cursor: pointer;
+
+    transition: all .35s ease;
+
+    box-shadow:
+        0 12px 30px rgba(0,0,0,.35);
+
+}
+
+.journey-card:hover{
+
+    transform:
+        translateY(-10px)
+        scale(1.04);
+
+    border:1px solid #FFD54A;
+
+    box-shadow:
+        0 25px 60px rgba(0,0,0,.55);
+
+}
+
+/* ==========================================================
+   IMAGE
+   ========================================================== */
+
+.journey-image{
+
+    position: relative;
+
+    overflow: hidden;
+
+}
+
+.journey-image img{
+
+    width:100%;
+
+    height:300px;
+
+    display:block;
+
+    object-fit:cover;
+
+    transition:transform .45s ease;
+
+}
+
+.journey-card:hover .journey-image img{
+
+    transform:scale(1.08);
+
+}
+
+/* ==========================================================
+   MONTH BADGE
+   ========================================================== */
+
+.month-badge{
+
+    position:absolute;
+
+    top:14px;
+
+    left:14px;
+
+    z-index:5;
+
+    padding:7px 14px;
+
+    border-radius:30px;
+
+    background:#1DB954;
+
+    color:#ffffff;
+
+    font-size:12px;
+
+    font-weight:700;
+
+    font-family:"Poppins",sans-serif;
+
+    box-shadow:
+        0 8px 20px rgba(29,185,84,.35);
+
+}
+
+/* ==========================================================
+   POSTER OVERLAY
+   ========================================================== */
+
+.poster-overlay{
+
+    position:absolute;
+
+    inset:0;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    background:linear-gradient(
+
+        to top,
+
+        rgba(0,0,0,.85),
+
+        rgba(0,0,0,.15)
+
+    );
+
+    opacity:0;
+
+    transition:all .35s ease;
+
+}
+
+.journey-card:hover .poster-overlay{
+
+    opacity:1;
+
+}
+
+/* ==========================================================
+   OVERLAY BUTTON
+   ========================================================== */
+
+.overlay-btn{
+
+    padding:12px 24px;
+
+    border:none;
+
+    border-radius:40px;
+
+    background:#FFD54A;
+
+    color:#111111;
+
+    cursor:pointer;
+
+    font-family:"Poppins",sans-serif;
+
+    font-size:14px;
+
+    font-weight:700;
+
+    transition:all .3s ease;
+
+}
+
+.overlay-btn:hover{
+
+    transform:scale(1.05);
+
+}
+
+/* ==========================================================
+   CONTENT
+   ========================================================== */
+
+.journey-content{
+
+    padding:18px;
+
+}
+
+.journey-content h3{
+
+    color:#FFFFFF;
+
+    font-family:"Poppins",sans-serif;
+
+    font-size:18px;
+
+    font-weight:700;
+
+    line-height:1.4;
+
+    margin:0 0 10px;
+
+}
+
+.journey-date{
+
+    color:#FFD54A;
+
+    font-family:"Inter",sans-serif;
+
+    font-size:14px;
+
+    font-weight:600;
+
+    margin:0;
+
+}
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+@media (max-width:768px){
+
+    .journey-card{
+
+        flex:0 0 190px;
+
+        width:190px;
+
+    }
+
+    .journey-image img{
+
+        height:250px;
+
+    }
+
+}

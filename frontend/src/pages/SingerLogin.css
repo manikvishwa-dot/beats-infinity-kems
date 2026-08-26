@@ -1,0 +1,918 @@
+/* ==========================================================
+   BEATS INFINITY - SINGER LOGIN
+   ========================================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+
+.singer-login-page {
+
+    min-height: 100vh;
+
+    width: 100%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 30px 20px;
+
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(121, 45, 170, 0.35),
+            transparent 35%
+        ),
+
+        radial-gradient(
+            circle at 80% 80%,
+            rgba(0, 180, 150, 0.25),
+            transparent 35%
+        ),
+
+        linear-gradient(
+            135deg,
+            #08080d,
+            #151020,
+            #08080d
+        );
+
+    position: relative;
+
+    overflow: hidden;
+
+    font-family:
+        Inter,
+        Arial,
+        sans-serif;
+
+}
+
+
+/* ==========================================================
+   BACKGROUND
+   ========================================================== */
+
+.singer-login-background {
+
+    position: absolute;
+
+    inset: 0;
+
+    pointer-events: none;
+
+}
+
+
+.singer-login-background::before {
+
+    content: "";
+
+    position: absolute;
+
+    width: 500px;
+
+    height: 500px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(255, 193, 7, 0.12),
+            transparent 70%
+        );
+
+    top: -200px;
+
+    left: -150px;
+
+}
+
+
+.singer-login-background::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 600px;
+
+    height: 600px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(156, 39, 176, 0.14),
+            transparent 70%
+        );
+
+    right: -250px;
+
+    bottom: -250px;
+
+}
+
+
+.music-note {
+
+    position: absolute;
+
+    color: rgba(
+        255,
+        193,
+        7,
+        0.15
+    );
+
+    font-size: 80px;
+
+}
+
+
+.note-one {
+
+    top: 12%;
+
+    left: 10%;
+
+}
+
+
+.note-two {
+
+    top: 25%;
+
+    right: 12%;
+
+    font-size: 120px;
+
+}
+
+
+.note-three {
+
+    bottom: 15%;
+
+    left: 15%;
+
+    font-size: 110px;
+
+}
+
+
+.note-four {
+
+    bottom: 20%;
+
+    right: 15%;
+
+    font-size: 70px;
+
+}
+
+
+/* ==========================================================
+   LOGIN CARD
+   ========================================================== */
+
+.singer-login-card {
+
+    position: relative;
+
+    z-index: 2;
+
+    width: 100%;
+
+    max-width: 470px;
+
+    padding: 34px;
+
+    border-radius: 26px;
+
+    background:
+        rgba(
+            17,
+            16,
+            25,
+            0.94
+        );
+
+    border:
+        1px solid
+        rgba(
+            255,
+            193,
+            7,
+            0.25
+        );
+
+    box-shadow:
+        0 30px 80px
+        rgba(
+            0,
+            0,
+            0,
+            0.55
+        );
+
+    backdrop-filter:
+        blur(18px);
+
+}
+
+
+/* ==========================================================
+   BRAND
+   ========================================================== */
+
+.brand-top {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 14px;
+
+    margin-bottom: 26px;
+
+}
+
+
+.brand-infinity {
+
+    width: 54px;
+
+    height: 54px;
+
+    border-radius: 16px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 42px;
+
+    font-weight: 800;
+
+    color: #fff;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffca28,
+            #ff4081,
+            #7c4dff,
+            #00bcd4
+        );
+
+    box-shadow:
+        0 0 25px
+        rgba(
+            255,
+            193,
+            7,
+            0.3
+        );
+
+}
+
+
+.brand-name {
+
+    font-size: 21px;
+
+    font-weight: 800;
+
+    color: #ffffff;
+
+    letter-spacing: 1px;
+
+}
+
+
+.brand-tagline {
+
+    color: #ffc107;
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    letter-spacing: 1.5px;
+
+    margin-top: 3px;
+
+}
+
+
+/* ==========================================================
+   FORM
+   ========================================================== */
+
+.singer-form {
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+
+.welcome-icon {
+
+    text-align: center;
+
+    font-size: 48px;
+
+    margin-bottom: 8px;
+
+}
+
+
+.singer-form h1 {
+
+    text-align: center;
+
+    color: #ffffff;
+
+    margin: 0;
+
+    font-size: 28px;
+
+}
+
+
+.singer-form h2 {
+
+    text-align: center;
+
+    color: #ffffff;
+
+    margin:
+        8px 0 5px;
+
+    font-size: 25px;
+
+}
+
+
+.subtitle {
+
+    text-align: center;
+
+    color: #a7a5b0;
+
+    font-size: 14px;
+
+    margin:
+        0 0 22px;
+
+    line-height: 1.5;
+
+}
+
+
+.tagline {
+
+    text-align: center;
+
+    color: #ffc107;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    letter-spacing: 1px;
+
+    margin:
+        5px 0 22px;
+
+}
+
+
+.singer-form label {
+
+    color: #e8e6ee;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    margin:
+        13px 0 7px;
+
+}
+
+
+.singer-form input,
+.singer-form select {
+
+    width: 100%;
+
+    height: 48px;
+
+    border-radius: 12px;
+
+    border:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.12
+        );
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.06
+        );
+
+    color: #ffffff;
+
+    padding:
+        0 14px;
+
+    outline: none;
+
+    font-size: 15px;
+
+    transition:
+        0.2s ease;
+
+}
+
+
+.singer-form input:focus,
+.singer-form select:focus {
+
+    border-color:
+        #ffc107;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(
+            255,
+            193,
+            7,
+            0.10
+        );
+
+}
+
+
+.singer-form select option {
+
+    color: #111111;
+
+    background: #ffffff;
+
+}
+
+
+/* ==========================================================
+   MOBILE INPUT
+   ========================================================== */
+
+.mobile-input-wrapper {
+
+    height: 50px;
+
+    display: flex;
+
+    align-items: center;
+
+    border:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.12
+        );
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.06
+        );
+
+    border-radius: 12px;
+
+    overflow: hidden;
+
+}
+
+
+.mobile-input-wrapper span {
+
+    color: #ffc107;
+
+    font-weight: 700;
+
+    padding:
+        0 14px;
+
+    border-right:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.1
+        );
+
+}
+
+
+.mobile-input-wrapper input {
+
+    border: none;
+
+    background: transparent;
+
+    box-shadow: none;
+
+    border-radius: 0;
+
+}
+
+
+.mobile-input-wrapper input:focus {
+
+    box-shadow: none;
+
+    border: none;
+
+}
+
+
+/* ==========================================================
+   MOBILE DISPLAY
+   ========================================================== */
+
+.mobile-display {
+
+    text-align: center;
+
+    padding: 12px;
+
+    margin:
+        0 0 5px;
+
+    border-radius: 10px;
+
+    color: #ffc107;
+
+    background:
+        rgba(
+            255,
+            193,
+            7,
+            0.07
+        );
+
+    border:
+        1px solid
+        rgba(
+            255,
+            193,
+            7,
+            0.15
+        );
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+}
+
+
+/* ==========================================================
+   PIN
+   ========================================================== */
+
+.pin-input {
+
+    text-align: center;
+
+    font-size: 26px !important;
+
+    letter-spacing: 12px;
+
+    font-weight: 700;
+
+}
+
+
+/* ==========================================================
+   PRIMARY BUTTON
+   ========================================================== */
+
+.primary-button {
+
+    width: 100%;
+
+    height: 50px;
+
+    margin-top: 22px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffc107,
+            #ff9800
+        );
+
+    color: #16120a;
+
+    font-size: 15px;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        opacity 0.2s ease;
+
+}
+
+
+.primary-button:hover {
+
+    transform:
+        translateY(-1px);
+
+    box-shadow:
+        0 10px 25px
+        rgba(
+            255,
+            193,
+            7,
+            0.20
+        );
+
+}
+
+
+.primary-button:disabled {
+
+    cursor: not-allowed;
+
+    opacity: 0.6;
+
+    transform: none;
+
+}
+
+
+/* ==========================================================
+   SECONDARY BUTTONS
+   ========================================================== */
+
+.text-button {
+
+    border: none;
+
+    background: none;
+
+    color: #ffc107;
+
+    margin-top: 17px;
+
+    cursor: pointer;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+}
+
+
+.text-button:hover {
+
+    text-decoration: underline;
+
+}
+
+
+.back-button {
+
+    border: none;
+
+    background: none;
+
+    color: #aaa7b2;
+
+    margin-top: 16px;
+
+    cursor: pointer;
+
+    font-size: 13px;
+
+}
+
+
+.back-button:hover {
+
+    color: #ffffff;
+
+}
+
+
+/* ==========================================================
+   MESSAGES
+   ========================================================== */
+
+.message {
+
+    padding:
+        12px 14px;
+
+    border-radius: 10px;
+
+    margin-bottom: 16px;
+
+    font-size: 13px;
+
+    line-height: 1.4;
+
+}
+
+
+.error-message {
+
+    color: #ffb4b4;
+
+    background:
+        rgba(
+            244,
+            67,
+            54,
+            0.10
+        );
+
+    border:
+        1px solid
+        rgba(
+            244,
+            67,
+            54,
+            0.25
+        );
+
+}
+
+
+.success-message {
+
+    color: #b9f6ca;
+
+    background:
+        rgba(
+            76,
+            175,
+            80,
+            0.10
+        );
+
+    border:
+        1px solid
+        rgba(
+            76,
+            175,
+            80,
+            0.25
+        );
+
+}
+
+
+/* ==========================================================
+   NOTE
+   ========================================================== */
+
+.login-note {
+
+    text-align: center;
+
+    color: #9996a3;
+
+    font-size: 12px;
+
+    margin-top: 22px;
+
+    line-height: 1.6;
+
+}
+
+
+.login-note strong {
+
+    display: block;
+
+    color: #d9d6df;
+
+    font-weight: 500;
+
+}
+
+
+/* ==========================================================
+   FOOTER
+   ========================================================== */
+
+.footer-text {
+
+    text-align: center;
+
+    margin-top: 26px;
+
+    padding-top: 18px;
+
+    border-top:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.07
+        );
+
+    color: #777480;
+
+    font-size: 11px;
+
+}
+
+
+/* ==========================================================
+   MOBILE
+   ========================================================== */
+
+@media (
+    max-width: 600px
+) {
+
+    .singer-login-page {
+
+        padding:
+            15px;
+
+    }
+
+
+    .singer-login-card {
+
+        padding:
+            25px 20px;
+
+        border-radius:
+            20px;
+
+    }
+
+
+    .brand-name {
+
+        font-size:
+            18px;
+
+    }
+
+
+    .brand-infinity {
+
+        width:
+            48px;
+
+        height:
+            48px;
+
+        font-size:
+            36px;
+
+    }
+
+}

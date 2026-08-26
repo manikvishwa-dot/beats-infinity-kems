@@ -1,0 +1,79 @@
+/* ==========================================================
+   STATISTICS SECTION
+   Growing Together Through Music
+   ========================================================== */
+
+.statistics-section{
+
+    position:relative;
+
+    padding:110px 0;
+
+    overflow:hidden;
+
+    background:
+        radial-gradient(circle at top right,
+        rgba(29,185,84,.08),
+        transparent 28%),
+        radial-gradient(circle at bottom left,
+        rgba(255,213,74,.08),
+        transparent 28%),
+        #090909;
+
+}
+
+.statistics-container{
+
+    width:min(1400px,92%);
+
+    margin:auto;
+
+}
+
+/* ==========================================================
+   HEADER
+   ========================================================== */
+
+.statistics-header{
+
+    text-align:center;
+
+    margin-bottom:70px;
+
+}
+
+.statistics-tag{
+
+    display:inline-block;
+
+    margin-bottom:18px;
+
+    padding:8px 22px;
+
+    border-radius:30px;
+
+    background:rgba(255,213,74,.12);
+
+    color:#FFD54A;
+
+    font-size:13px;
+
+    font-weight:700;
+
+    letter-spacing:2px;
+
+    text-transform:uppercase;
+
+}
+
+.statistics-header h2{
+
+    color:#ffffff;
+
+    font-family:"Poppins",sans-serif;
+
+    font-size:52px;
+
+    font-weight:800;
+
+    margin

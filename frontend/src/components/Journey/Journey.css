@@ -1,0 +1,211 @@
+/* ==========================================================
+   OUR MUSICAL JOURNEY
+   ========================================================== */
+
+.journey-section{
+
+    padding:90px 0;
+
+    background:#0B0B0B;
+
+    overflow:hidden;
+
+}
+
+.journey-container{
+
+    width:min(1450px,94%);
+
+    margin:auto;
+
+}
+
+/* ==========================================================
+   HEADER
+   ========================================================== */
+
+.journey-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:flex-end;
+
+    margin-bottom:40px;
+
+}
+
+.journey-header h2{
+
+    color:#ffffff;
+
+    font-size:42px;
+
+    font-family:"Poppins",sans-serif;
+
+    font-weight:800;
+
+    margin-bottom:10px;
+
+}
+
+.journey-header p{
+
+    color:#BBBBBB;
+
+    font-size:18px;
+
+}
+
+.view-all-btn{
+
+    background:transparent;
+
+    border:2px solid #FFD54A;
+
+    color:#FFD54A;
+
+    padding:12px 28px;
+
+    border-radius:50px;
+
+    cursor:pointer;
+
+    transition:.35s;
+
+    font-weight:600;
+
+}
+
+.view-all-btn:hover{
+
+    background:#FFD54A;
+
+    color:#111;
+
+}
+
+/* ==========================================================
+   CAROUSEL
+   ========================================================== */
+
+.journey-carousel-wrapper{
+
+    position:relative;
+
+    display:flex;
+
+    align-items:center;
+
+}
+
+.journey-carousel{
+
+    display:flex;
+
+    gap:24px;
+
+    overflow-x:auto;
+
+    scroll-behavior:smooth;
+
+    scrollbar-width:none;
+
+    padding:10px 50px;
+
+}
+
+.journey-carousel::-webkit-scrollbar{
+
+    display:none;
+
+}
+
+/* ==========================================================
+   ARROWS
+   ========================================================== */
+
+.carousel-btn{
+
+    position:absolute;
+
+    width:46px;
+
+    height:46px;
+
+    border:none;
+
+    border-radius:50%;
+
+    background:rgba(255,255,255,.10);
+
+    backdrop-filter:blur(12px);
+
+    color:white;
+
+    cursor:pointer;
+
+    font-size:22px;
+
+    z-index:5;
+
+    transition:.35s;
+
+}
+
+.carousel-btn:hover{
+
+    background:#1DB954;
+
+    transform:scale(1.08);
+
+}
+
+.carousel-btn.left{
+
+    left:0;
+
+}
+
+.carousel-btn.right{
+
+    right:0;
+
+}
+
+/* ==========================================================
+   MOBILE
+   ========================================================== */
+
+@media(max-width:768px){
+
+    .journey-header{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+        gap:20px;
+
+    }
+
+    .journey-header h2{
+
+        font-size:34px;
+
+    }
+
+    .journey-carousel{
+
+        padding:10px;
+
+    }
+
+    .carousel-btn{
+
+        display:none;
+
+    }
+
+}

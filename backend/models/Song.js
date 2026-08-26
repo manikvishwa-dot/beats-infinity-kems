@@ -1,52 +1,56 @@
 class Song {
 
-    constructor(data) {
+    constructor({
 
-        this.id = data.id || "";
+        id = null,
 
-        this.title = data.title || "";
+        title = "",
 
-        this.movie = data.movie || "";
+        movie = "",
 
-        this.album = data.album || "";
+        album = "",
 
-        this.musicDirector = data.musicDirector || "";
+        musicDirector = "",
 
-        this.singers = data.singers || [];
+        singers = [],
 
-        this.language = data.language || "";
+        language = "",
 
-        this.duration = data.duration || 0;
+        duration = null,
 
-        this.thumbnail = data.thumbnail || "";
+        thumbnail = "",
 
-        this.provider = data.provider || "";
+        provider = "",
 
-        this.releaseYear = data.releaseYear || "";
+        releaseYear = ""
 
-        // Beats Infinity Information
-        this.beatsInfinity = {
+    } = {}) {
 
-            maleReserved: false,
+        this.id = id;
 
-            femaleReserved: false,
+        this.title = title;
 
-            reservedByMale: null,
+        this.movie = movie;
 
-            reservedByFemale: null,
+        this.album = album;
 
-            suggestedPair: [],
+        this.musicDirector = musicDirector;
 
-            difficulty: null,
+        this.singers = singers;
 
-            performanceCount: 0,
+        this.language = language;
 
-            karaokeAvailable: false
+        this.duration = duration;
 
-        };
+        this.thumbnail = thumbnail;
+
+        this.provider = provider;
+
+        this.releaseYear = releaseYear;
 
     }
 
 }
+
 
 module.exports = Song;

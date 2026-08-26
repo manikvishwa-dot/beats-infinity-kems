@@ -1,9 +1,9 @@
+import LoginForm from "../components/Login/LoginForm";
+
 function Login() {
-  return (
-    <div style={{ padding: "40px" }}>
-      <h1>🔐 Login Page</h1>
-    </div>
-  );
+
+    return <LoginForm />;
+
 }
 
 export default Login;

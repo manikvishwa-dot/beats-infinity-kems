@@ -1,0 +1,178 @@
+/* ==========================================================
+   HERO CONTAINER
+   ========================================================== */
+
+.hero {
+
+    position: relative;
+
+    width: 100%;
+
+    min-height: 100vh;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    overflow: hidden;
+
+    background: url("../../assets/backgrounds/concert-bg.png") center center/cover no-repeat;
+
+}
+
+.hero::before {
+
+    content: "";
+
+    position: absolute;
+
+    inset: 0;
+
+    background: linear-gradient(
+        90deg,
+        rgba(5,5,5,.92) 0%,
+        rgba(5,5,5,.82) 38%,
+        rgba(5,5,5,.55) 100%
+    );
+
+    z-index: 1;
+
+}
+
+.hero-overlay {
+
+    position: absolute;
+
+    inset: 0;
+
+    background:
+        radial-gradient(circle at top right,
+            rgba(29,185,84,.08),
+            transparent 35%),
+        radial-gradient(circle at bottom left,
+            rgba(255,213,74,.05),
+            transparent 30%);
+
+    z-index: 2;
+
+}
+
+/* ==========================================================
+   MAIN GRID
+   ========================================================== */
+
+.hero-container {
+
+    position: relative;
+
+    z-index: 5;
+
+    width: min(1400px, 92%);
+
+    margin: auto;
+
+    min-height: 100vh;
+
+    display: grid;
+
+    grid-template-columns: 58% 42%;
+
+    align-items: center;
+
+    column-gap: 70px;
+
+    padding-top: 70px;
+
+    padding-bottom: 40px;
+
+}
+
+/* ==========================================================
+   LEFT
+   ========================================================== */
+
+.hero-left {
+
+    align-self: center;
+
+}
+
+/* ==========================================================
+   RIGHT
+   ========================================================== */
+
+.hero-right {
+
+    display: flex;
+
+    justify-content: flex-end;
+
+    align-items: flex-start;
+
+    padding-top: 0;
+
+}
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+@media (max-width:1200px){
+
+    .hero-container{
+
+        grid-template-columns:55% 45%;
+
+        column-gap:50px;
+
+    }
+
+}
+
+@media (max-width:992px){
+
+    .hero-container{
+
+        grid-template-columns:1fr;
+
+        row-gap:60px;
+
+        text-align:center;
+
+        padding-top:110px;
+
+    }
+
+    .hero-left{
+
+        justify-self:center;
+
+    }
+
+    .hero-right{
+
+        justify-content:center;
+
+    }
+
+}
+
+@media (max-width:768px){
+
+    .hero{
+
+        min-height:auto;
+
+    }
+
+    .hero-container{
+
+        width:92%;
+
+        padding-bottom:60px;
+
+    }
+
+}

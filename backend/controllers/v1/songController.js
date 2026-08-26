@@ -1,190 +1,908 @@
-const songService = require("../../services/v1/songService");
+const { supabase } =
+    require("../../config/supabase");
 
-/**
- * Create Song
- */
-exports.createSong = async (req, res) => {
 
-    try {
+// ==========================================================
+// GET ALL SONGS
+//
+// GET /api/v1/songs
+// ==========================================================
 
-        const newSong = await songService.createSong(req.body);
+const getSongs =
+    async (
+        req,
+        res
+    ) => {
 
-        return res.status(201).json({
-            success: true,
-            message: "Song created successfully.",
-            data: newSong
-        });
+        try {
 
-    } catch (error) {
+            const {
+                data,
+                error
+            } = await supabase
 
-        console.error(error);
+                .from("songs")
 
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+                .select("*")
 
-    }
+                .order(
+                    "created_at",
+                    {
+                        ascending:
+                            false
+                    }
+                );
 
-};
 
-/**
- * Get All Songs
- */
-exports.getAllSongs = async (req, res) => {
+            if (error) {
 
-    try {
+                console.error(
+                    "GET SONGS:",
+                    error
+                );
 
-        const songs = await songService.getAllSongs();
 
-        return res.status(200).json({
-            success: true,
-            count: songs.length,
-            data: songs
-        });
+                return res.status(
+                    500
+                ).json({
 
-    } catch (error) {
+                    success:
+                        false,
 
-        console.error(error);
+                    message:
+                        "Unable to fetch songs.",
 
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+                    error:
+                        error.message
 
-    }
+                });
 
-};
+            }
 
-/**
- * Get Song By ID
- */
-exports.getSongById = async (req, res) => {
 
-    try {
+            return res.status(
+                200
+            ).json({
 
-        const song = await songService.getSongById(req.params.id);
+                success:
+                    true,
 
-        if (!song) {
+                count:
+                    data?.length ||
+                    0,
 
-            return res.status(404).json({
-                success: false,
-                message: "Song not found."
+                songs:
+                    data ||
+                    []
+
             });
 
         }
 
-        return res.status(200).json({
-            success: true,
-            data: song
-        });
+        catch (error) {
 
-    } catch (error) {
+            console.error(
+                "GET SONGS EXCEPTION:",
+                error
+            );
 
-        console.error(error);
 
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+            return res.status(
+                500
+            ).json({
 
-    }
+                success:
+                    false,
 
-};
+                message:
+                    "Internal server error.",
 
-/**
- * Update Song
- */
-exports.updateSong = async (req, res) => {
+                error:
+                    error.message
 
-    try {
-
-        const updatedSong = await songService.updateSong(
-            req.params.id,
-            req.body
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: "Song updated successfully.",
-            data: updatedSong
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
-
-    }
-
-};
-
-/**
- * Delete Song
- */
-exports.deleteSong = async (req, res) => {
-
-    try {
-
-        await songService.deleteSong(req.params.id);
-
-        return res.status(200).json({
-            success: true,
-            message: "Song deleted successfully."
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
-
-    }
-
-};
-
-/**
- * Search Songs (Local Database)
- */
-exports.searchSongs = async (req, res) => {
-
-    try {
-
-        const searchText = req.query.q;
-
-        if (!searchText) {
-
-            return res.status(400).json({
-                success: false,
-                message: "Please provide a search query using ?q="
             });
 
         }
 
-        const songs = await songService.searchSongs(searchText);
+    };
 
-        return res.status(200).json({
-            success: true,
-            count: songs.length,
-            data: songs
-        });
 
-    } catch (error) {
+// ==========================================================
+// GET SONG BY ID
+//
+// GET /api/v1/songs/:id
+// ==========================================================
 
-        console.error("Search Error:", error);
+const getSongById =
+    async (
+        req,
+        res
+    ) => {
 
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        try {
 
-    }
+            const {
+                id
+            } = req.params;
+
+
+            if (!id) {
+
+                return res.status(
+                    400
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Song ID is required."
+
+                });
+
+            }
+
+
+            const {
+                data,
+                error
+            } = await supabase
+
+                .from("songs")
+
+                .select("*")
+
+                .eq(
+                    "id",
+                    id
+                )
+
+                .maybeSingle();
+
+
+            if (error) {
+
+                console.error(
+                    "GET SONG BY ID:",
+                    error
+                );
+
+
+                return res.status(
+                    500
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Unable to fetch song.",
+
+                    error:
+                        error.message
+
+                });
+
+            }
+
+
+            if (!data) {
+
+                return res.status(
+                    404
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Song not found."
+
+                });
+
+            }
+
+
+            return res.status(
+                200
+            ).json({
+
+                success:
+                    true,
+
+                song:
+                    data
+
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "GET SONG BY ID EXCEPTION:",
+                error
+            );
+
+
+            return res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                message:
+                    "Internal server error.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+    };
+
+
+// ==========================================================
+// CREATE SONG
+//
+// POST /api/v1/songs
+// ==========================================================
+
+const createSong =
+    async (
+        req,
+        res
+    ) => {
+
+        try {
+
+            const {
+
+                title,
+
+                movie,
+
+                album,
+
+                music_director,
+
+                language,
+
+                year,
+
+                duration,
+
+                thumbnail,
+
+                provider,
+
+                karaoke_available,
+
+                difficulty,
+
+                male_singers,
+
+                female_singers,
+
+                theme_tags,
+
+                is_duet
+
+            } = req.body;
+
+
+            // --------------------------------------------------
+            // VALIDATION
+            // --------------------------------------------------
+
+            if (
+                !title ||
+                !String(title).trim()
+            ) {
+
+                return res.status(
+                    400
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Song title is required."
+
+                });
+
+            }
+
+
+            // --------------------------------------------------
+            // PREPARE SONG DATA
+            // --------------------------------------------------
+
+            const songData = {
+
+                title:
+                    String(
+                        title
+                    ).trim(),
+
+                movie:
+                    movie ||
+                    null,
+
+                album:
+                    album ||
+                    null,
+
+                music_director:
+                    music_director ||
+                    null,
+
+                language:
+                    language ||
+                    "Tamil",
+
+                year:
+                    year ||
+                    null,
+
+                duration:
+                    duration ||
+                    null,
+
+                thumbnail:
+                    thumbnail ||
+                    "",
+
+                provider:
+                    provider ||
+                    "Beats Infinity",
+
+                karaoke_available:
+                    karaoke_available !==
+                    undefined
+
+                        ? karaoke_available
+
+                        : true,
+
+                difficulty:
+                    difficulty ||
+                    "Medium",
+
+                male_singers:
+                    Array.isArray(
+                        male_singers
+                    )
+                        ? male_singers
+                        : [],
+
+                female_singers:
+                    Array.isArray(
+                        female_singers
+                    )
+                        ? female_singers
+                        : [],
+
+                theme_tags:
+                    Array.isArray(
+                        theme_tags
+                    )
+                        ? theme_tags
+                        : [],
+
+                is_duet:
+                    is_duet ||
+                    false
+
+            };
+
+
+            // --------------------------------------------------
+            // INSERT SONG
+            // --------------------------------------------------
+
+            const {
+
+                data,
+
+                error
+
+            } =
+                await supabase
+
+                    .from("songs")
+
+                    .insert([
+                        songData
+                    ])
+
+                    .select()
+                    .single();
+
+
+            if (error) {
+
+                console.error(
+                    "CREATE SONG:",
+                    error
+                );
+
+
+                return res.status(
+                    500
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Unable to create song.",
+
+                    error:
+                        error.message
+
+                });
+
+            }
+
+
+            console.log(
+                "✅ Song created:",
+                data
+            );
+
+
+            return res.status(
+                201
+            ).json({
+
+                success:
+                    true,
+
+                message:
+                    "Song created successfully.",
+
+                song:
+                    data
+
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "CREATE SONG EXCEPTION:",
+                error
+            );
+
+
+            return res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                message:
+                    "Internal server error.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+    };
+
+
+// ==========================================================
+// UPDATE SONG
+//
+// PUT /api/v1/songs/:id
+// ==========================================================
+
+const updateSong =
+    async (
+        req,
+        res
+    ) => {
+
+        try {
+
+            const {
+                id
+            } = req.params;
+
+
+            if (!id) {
+
+                return res.status(
+                    400
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Song ID is required."
+
+                });
+
+            }
+
+
+            const allowedFields = [
+
+                "title",
+
+                "movie",
+
+                "album",
+
+                "music_director",
+
+                "language",
+
+                "year",
+
+                "duration",
+
+                "thumbnail",
+
+                "provider",
+
+                "karaoke_available",
+
+                "difficulty",
+
+                "male_singers",
+
+                "female_singers",
+
+                "theme_tags",
+
+                "is_duet",
+
+                "reserved_male",
+
+                "reserved_female"
+
+            ];
+
+
+            const updateData = {};
+
+
+            for (
+                const field
+                of allowedFields
+            ) {
+
+                if (
+                    req.body[field] !==
+                    undefined
+                ) {
+
+                    updateData[field] =
+                        req.body[field];
+
+                }
+
+            }
+
+
+            if (
+                Object.keys(
+                    updateData
+                ).length ===
+                0
+            ) {
+
+                return res.status(
+                    400
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "No fields provided for update."
+
+                });
+
+            }
+
+
+            // --------------------------------------------------
+            // VALIDATE TITLE
+            // --------------------------------------------------
+
+            if (
+                updateData.title !==
+                undefined
+            ) {
+
+                if (
+                    !String(
+                        updateData.title
+                    ).trim()
+                ) {
+
+                    return res.status(
+                        400
+                    ).json({
+
+                        success:
+                            false,
+
+                        message:
+                            "Song title cannot be empty."
+
+                    });
+
+                }
+
+
+                updateData.title =
+                    String(
+                        updateData.title
+                    ).trim();
+
+            }
+
+
+            // --------------------------------------------------
+            // UPDATE
+            // --------------------------------------------------
+
+            const {
+
+                data,
+
+                error
+
+            } =
+                await supabase
+
+                    .from("songs")
+
+                    .update(
+                        updateData
+                    )
+
+                    .eq(
+                        "id",
+                        id
+                    )
+
+                    .select()
+                    .single();
+
+
+            if (error) {
+
+                console.error(
+                    "UPDATE SONG:",
+                    error
+                );
+
+
+                return res.status(
+                    500
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Unable to update song.",
+
+                    error:
+                        error.message
+
+                });
+
+            }
+
+
+            return res.status(
+                200
+            ).json({
+
+                success:
+                    true,
+
+                message:
+                    "Song updated successfully.",
+
+                song:
+                    data
+
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "UPDATE SONG EXCEPTION:",
+                error
+            );
+
+
+            return res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                message:
+                    "Internal server error.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+    };
+
+
+// ==========================================================
+// DELETE SONG
+//
+// DELETE /api/v1/songs/:id
+// ==========================================================
+
+const deleteSong =
+    async (
+        req,
+        res
+    ) => {
+
+        try {
+
+            const {
+                id
+            } = req.params;
+
+
+            if (!id) {
+
+                return res.status(
+                    400
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Song ID is required."
+
+                });
+
+            }
+
+
+            // --------------------------------------------------
+            // DELETE
+            // --------------------------------------------------
+
+            const {
+
+                data,
+
+                error
+
+            } =
+                await supabase
+
+                    .from("songs")
+
+                    .delete()
+
+                    .eq(
+                        "id",
+                        id
+                    )
+
+                    .select()
+                    .single();
+
+
+            if (error) {
+
+                console.error(
+                    "DELETE SONG:",
+                    error
+                );
+
+
+                return res.status(
+                    500
+                ).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Unable to delete song.",
+
+                    error:
+                        error.message
+
+                });
+
+            }
+
+
+            return res.status(
+                200
+            ).json({
+
+                success:
+                    true,
+
+                message:
+                    "Song deleted successfully.",
+
+                deleted:
+                    data
+
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "DELETE SONG EXCEPTION:",
+                error
+            );
+
+
+            return res.status(
+                500
+            ).json({
+
+                success:
+                    false,
+
+                message:
+                    "Internal server error.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+    };
+
+
+// ==========================================================
+// EXPORT
+// ==========================================================
+
+module.exports = {
+
+    getSongs,
+
+    getSongById,
+
+    createSong,
+
+    updateSong,
+
+    deleteSong
 
 };

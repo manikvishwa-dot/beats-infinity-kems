@@ -1,0 +1,715 @@
+/* ==========================================================
+   BEATS ∞ INFINITY
+   MY SONGS
+========================================================== */
+
+.my-songs {
+
+    width: 100%;
+
+    margin-top: 30px;
+
+    padding: 10px 0 50px;
+
+    color: #ffffff;
+
+}
+
+
+/* ==========================================================
+   HEADER
+========================================================== */
+
+.my-songs-header {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 24px;
+
+}
+
+.section-label {
+
+    display: inline-block;
+
+    color: #FFD54A;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    margin-bottom: 7px;
+
+}
+
+.my-songs-header h2 {
+
+    margin: 0;
+
+    color: #ffffff;
+
+    font-size: 30px;
+
+    font-weight: 700;
+
+}
+
+.my-songs-header p {
+
+    margin: 6px 0 0;
+
+    color: #AAAAAA;
+
+    font-size: 14px;
+
+}
+
+
+/* ==========================================================
+   SONG COUNT
+========================================================== */
+
+.song-count {
+
+    min-width: 90px;
+
+    padding: 14px 18px;
+
+    background: #171717;
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    border-radius: 16px;
+
+    text-align: center;
+
+}
+
+.song-count strong {
+
+    display: block;
+
+    color: #39EF79;
+
+    font-size: 24px;
+
+}
+
+.song-count span {
+
+    color: #AAAAAA;
+
+    font-size: 12px;
+
+}
+
+
+/* ==========================================================
+   SEARCH
+========================================================== */
+
+.song-search {
+
+    width: 100%;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    background: #171717;
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    border-radius: 16px;
+
+    padding: 14px 18px;
+
+    margin-bottom: 18px;
+
+    transition: .25s;
+
+}
+
+.song-search:focus-within {
+
+    border-color: #1DB954;
+
+    box-shadow:
+        0 0 18px rgba(29,185,84,.15);
+
+}
+
+.song-search span {
+
+    font-size: 18px;
+
+}
+
+.song-search input {
+
+    flex: 1;
+
+    border: none;
+
+    outline: none;
+
+    background: transparent;
+
+    color: #ffffff;
+
+    font-size: 15px;
+
+}
+
+.song-search input::placeholder {
+
+    color: #777777;
+
+}
+
+.clear-search {
+
+    border: none;
+
+    background: transparent;
+
+    color: #AAAAAA;
+
+    cursor: pointer;
+
+    font-size: 17px;
+
+}
+
+
+/* ==========================================================
+   FILTERS
+========================================================== */
+
+.song-filters {
+
+    display: flex;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+
+    margin-bottom: 25px;
+
+}
+
+.filter-btn {
+
+    border: 1px solid rgba(255,255,255,.10);
+
+    background: #171717;
+
+    color: #BBBBBB;
+
+    padding: 9px 16px;
+
+    border-radius: 30px;
+
+    cursor: pointer;
+
+    font-size: 13px;
+
+    transition: .25s;
+
+}
+
+.filter-btn:hover {
+
+    border-color: #1DB954;
+
+    color: #ffffff;
+
+}
+
+.filter-btn.active {
+
+    background: linear-gradient(
+        135deg,
+        #1DB954,
+        #39EF79
+    );
+
+    color: #ffffff;
+
+    border-color: transparent;
+
+    font-weight: 700;
+
+}
+
+
+/* ==========================================================
+   SONG GRID
+========================================================== */
+
+.songs-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 18px;
+
+}
+
+
+/* ==========================================================
+   SONG CARD
+========================================================== */
+
+.song-card {
+
+    background:
+        linear-gradient(
+            145deg,
+            #1B1B1B,
+            #141414
+        );
+
+    border: 1px solid rgba(255,255,255,.07);
+
+    border-radius: 20px;
+
+    padding: 20px;
+
+    min-height: 245px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    transition: .3s;
+
+}
+
+.song-card:hover {
+
+    transform: translateY(-4px);
+
+    border-color:
+        rgba(29,185,84,.45);
+
+    box-shadow:
+        0 15px 35px rgba(0,0,0,.35);
+
+}
+
+
+/* ==========================================================
+   CARD TOP
+========================================================== */
+
+.song-card-top {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 18px;
+
+}
+
+.song-icon {
+
+    width: 48px;
+
+    height: 48px;
+
+    border-radius: 14px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background:
+        rgba(29,185,84,.12);
+
+    border:
+        1px solid rgba(29,185,84,.20);
+
+    font-size: 22px;
+
+}
+
+.favorite-btn {
+
+    width: 38px;
+
+    height: 38px;
+
+    border-radius: 50%;
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    background: #232323;
+
+    color: #777777;
+
+    cursor: pointer;
+
+    font-size: 20px;
+
+    transition: .25s;
+
+}
+
+.favorite-btn:hover {
+
+    color: #FFD54A;
+
+    transform: scale(1.05);
+
+}
+
+.favorite-btn.favorite {
+
+    color: #FFD54A;
+
+}
+
+
+/* ==========================================================
+   SONG INFORMATION
+========================================================== */
+
+.song-info {
+
+    flex: 1;
+
+}
+
+.song-info h3 {
+
+    margin: 0 0 7px;
+
+    color: #ffffff;
+
+    font-size: 17px;
+
+    font-weight: 700;
+
+    line-height: 1.3;
+
+}
+
+.song-info p {
+
+    margin: 0;
+
+    color: #999999;
+
+    font-size: 13px;
+
+}
+
+
+/* ==========================================================
+   META
+========================================================== */
+
+.song-meta {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 8px;
+
+    margin-top: 18px;
+
+}
+
+.song-type {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    padding: 5px 10px;
+
+    border-radius: 20px;
+
+    background: rgba(255,255,255,.06);
+
+    color: #BBBBBB;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+}
+
+.song-type.duet {
+
+    color: #FFD54A;
+
+    background:
+        rgba(255,213,74,.08);
+
+}
+
+.song-status {
+
+    color: #39EF79;
+
+    font-size: 11px;
+
+}
+
+.song-status.sung {
+
+    color: #8E8E8E;
+
+}
+
+
+/* ==========================================================
+   REQUEST BUTTON
+========================================================== */
+
+.request-btn {
+
+    width: 100%;
+
+    height: 42px;
+
+    margin-top: 17px;
+
+    border: 1px solid
+        rgba(29,185,84,.35);
+
+    border-radius: 12px;
+
+    background:
+        rgba(29,185,84,.08);
+
+    color: #39EF79;
+
+    cursor: pointer;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    transition: .25s;
+
+}
+
+.request-btn:hover {
+
+    background:
+        rgba(29,185,84,.18);
+
+    border-color: #1DB954;
+
+}
+
+.request-btn.requested {
+
+    background:
+        rgba(29,185,84,.15);
+
+    color: #39EF79;
+
+    cursor: default;
+
+}
+
+
+/* ==========================================================
+   NO SONGS
+========================================================== */
+
+.no-songs {
+
+    grid-column: 1 / -1;
+
+    padding: 60px 20px;
+
+    text-align: center;
+
+    background: #171717;
+
+    border-radius: 20px;
+
+    border: 1px solid rgba(255,255,255,.06);
+
+}
+
+.no-songs > div {
+
+    font-size: 40px;
+
+    margin-bottom: 12px;
+
+}
+
+.no-songs h3 {
+
+    color: #ffffff;
+
+    margin-bottom: 8px;
+
+}
+
+.no-songs p {
+
+    color: #888888;
+
+    font-size: 14px;
+
+}
+
+
+/* ==========================================================
+   REQUEST INFORMATION
+========================================================== */
+
+.song-request-info {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 14px;
+
+    margin-top: 25px;
+
+    padding: 18px 20px;
+
+    background:
+        rgba(255,213,74,.05);
+
+    border:
+        1px solid rgba(255,213,74,.12);
+
+    border-radius: 16px;
+
+}
+
+.request-info-icon {
+
+    font-size: 25px;
+
+}
+
+.song-request-info strong {
+
+    color: #FFD54A;
+
+    font-size: 14px;
+
+}
+
+.song-request-info p {
+
+    margin: 4px 0 0;
+
+    color: #999999;
+
+    font-size: 13px;
+
+}
+
+
+/* ==========================================================
+   RESPONSIVE
+========================================================== */
+
+@media (max-width: 1000px) {
+
+    .songs-grid {
+
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
+    }
+
+}
+
+
+@media (max-width: 650px) {
+
+    .my-songs-header {
+
+        align-items: flex-start;
+
+        gap: 15px;
+
+    }
+
+    .my-songs-header h2 {
+
+        font-size: 25px;
+
+    }
+
+    .song-count {
+
+        min-width: 70px;
+
+        padding: 10px;
+
+    }
+
+    .songs-grid {
+
+        grid-template-columns: 1fr;
+
+    }
+
+    .song-filters {
+
+        gap: 7px;
+
+    }
+
+    .filter-btn {
+
+        padding: 8px 12px;
+
+    }
+
+}
+.cancel-request-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 9px 14px;
+    border: 1px solid #dc3545;
+    border-radius: 8px;
+    background: transparent;
+    color: #dc3545;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.cancel-request-btn:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.cancel-request-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

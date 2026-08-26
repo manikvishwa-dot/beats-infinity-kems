@@ -1,9 +1,26 @@
+import "./SingerDashboard.css";
+
+import DashboardWelcome
+    from "../components/Dashboard/DashboardWelcome/DashboardWelcome";
+
+import MySongs
+    from "../components/Dashboard/MySongs/MySongs";
+
+
 function SingerDashboard() {
-  return (
-    <div style={{ padding: "40px" }}>
-      <h1>🎤 Singer Dashboard</h1>
-    </div>
-  );
+
+    return (
+
+        <main className="singer-dashboard">
+
+            <DashboardWelcome />
+
+            <MySongs />
+
+        </main>
+
+    );
+
 }
 
 export default SingerDashboard;

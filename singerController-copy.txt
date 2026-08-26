@@ -1,0 +1,1243 @@
+﻿const { supabase } = require("../../config/supabase");
+const bcrypt = require("bcryptjs");
+
+
+// ==========================================================
+// HELPER - NORMALIZE MOBILE NUMBER
+// ==========================================================
+
+const normalizeMobile = (mobile) => {
+
+    if (!mobile) {
+        return "";
+    }
+
+    return String(mobile)
+        .replace(/\D/g, "")
+        .slice(-10);
+
+};
+
+
+// ==========================================================
+// HELPER - VALIDATE MOBILE
+// ==========================================================
+
+const isValidMobile = (mobile) => {
+
+    return /^\d{10}$/.test(mobile);
+
+};
+
+
+// ==========================================================
+// HELPER - VALIDATE 4 DIGIT PIN
+// ==========================================================
+
+const isValidPin = (pin) => {
+
+    return /^\d{4}$/.test(
+        String(pin || "")
+    );
+
+};
+
+
+// ==========================================================
+// GET SINGER BY MOBILE
+//
+// GET
+// /api/v1/singers/check?mobile=9876543210
+//
+// ==========================================================
+
+const getSingerByMobile = async (req, res) => {
+
+    try {
+
+        const mobile =
+            normalizeMobile(req.query.mobile);
+
+
+        console.log(
+            "ðŸ”Ž Checking singer mobile:",
+            mobile
+        );
+
+
+        // --------------------------------------------------
+        // VALIDATE MOBILE
+        // --------------------------------------------------
+
+        if (!isValidMobile(mobile)) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Valid 10-digit mobile number is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // FIND SINGER
+        // --------------------------------------------------
+
+        const {
+            data,
+            error
+        } = await supabase
+
+            .from("singers")
+
+            .select(
+                "id,mobile_number,date_of_birth,singer_name,gender,created_at,updated_at"
+            )
+
+            .eq(
+                "mobile_number",
+                mobile
+            )
+
+            .maybeSingle();
+
+
+        if (error) {
+
+            console.error(
+                "âŒ Singer Lookup Error:",
+                error
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to check singer.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // RETURN RESULT
+        // --------------------------------------------------
+
+        return res.status(200).json({
+
+            success: true,
+
+            exists:
+                !!data,
+
+            singer:
+                data || null
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "âŒ Get Singer By Mobile Error:",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                "Internal server error.",
+
+            error:
+                error.message
+
+        });
+
+    }
+
+};
+
+
+// ==========================================================
+// CREATE FIRST-TIME SINGER
+//
+// POST
+// /api/v1/singers
+//
+// BODY:
+//
+// {
+//     "mobile": "9876543210",
+//     "singer_name": "Test Singer",
+//     "gender": "Male",
+//     "date_of_birth": "1990-01-15",
+//     "pin": "1234"
+// }
+//
+// ==========================================================
+
+const createSinger = async (req, res) => {
+
+    try {
+
+        const {
+
+            mobile,
+
+            singer_name,
+
+            gender,
+
+            date_of_birth,
+
+            pin
+
+        } = req.body;
+
+
+        // --------------------------------------------------
+        // NORMALIZE MOBILE
+        // --------------------------------------------------
+
+        const mobileNumber =
+            normalizeMobile(mobile);
+
+
+        console.log(
+            "ðŸ“ New Singer Registration:",
+            mobileNumber
+        );
+
+
+        // --------------------------------------------------
+        // VALIDATE MOBILE
+        // --------------------------------------------------
+
+        if (!isValidMobile(mobileNumber)) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Valid 10-digit mobile number is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VALIDATE SINGER NAME
+        // --------------------------------------------------
+
+        if (
+            !singer_name ||
+            !String(singer_name).trim()
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Singer name is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VALIDATE GENDER
+        // --------------------------------------------------
+
+        if (
+            !gender ||
+            !String(gender).trim()
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Gender is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VALIDATE DOB
+        // --------------------------------------------------
+
+        if (!date_of_birth) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Date of birth is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VALIDATE PIN
+        // --------------------------------------------------
+
+        if (!isValidPin(pin)) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "PIN must contain exactly 4 digits."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // CHECK EXISTING SINGER
+        // --------------------------------------------------
+
+        const {
+
+            data: existingSinger,
+
+            error: existingError
+
+        } = await supabase
+
+            .from("singers")
+
+            .select("id,mobile_number")
+
+            .eq(
+                "mobile_number",
+                mobileNumber
+            )
+
+            .maybeSingle();
+
+
+        if (existingError) {
+
+            console.error(
+                "âŒ Existing Singer Check Error:",
+                existingError
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to verify singer registration.",
+
+                error:
+                    existingError.message
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // ALREADY REGISTERED
+        // --------------------------------------------------
+
+        if (existingSinger) {
+
+            return res.status(409).json({
+
+                success: false,
+
+                message:
+                    "Singer is already registered with this mobile number.",
+
+                exists:
+                    true
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // HASH PIN
+        // --------------------------------------------------
+
+        const pinHash =
+            await bcrypt.hash(
+                String(pin),
+                10
+            );
+
+
+        // --------------------------------------------------
+        // INSERT SINGER
+        // --------------------------------------------------
+
+        const singerData = {
+
+            mobile_number:
+                mobileNumber,
+
+            singer_name:
+                String(singer_name).trim(),
+
+            gender:
+                String(gender).trim(),
+
+            date_of_birth:
+                date_of_birth,
+
+            pin_hash:
+                pinHash
+
+        };
+
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabase
+
+            .from("singers")
+
+            .insert([singerData])
+
+            .select(
+                "id,mobile_number,date_of_birth,singer_name,gender,created_at,updated_at"
+            )
+
+            .single();
+
+
+        if (error) {
+
+            console.error(
+                "âŒ Create Singer Error:",
+                error
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to create singer.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // SUCCESS
+        // --------------------------------------------------
+
+        console.log(
+            "âœ… Singer registered successfully:",
+            data.id
+        );
+
+
+        return res.status(201).json({
+
+            success: true,
+
+            message:
+                "Singer registered successfully.",
+
+            singer:
+                data
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "âŒ Create Singer Controller Error:",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                "Internal server error.",
+
+            error:
+                error.message
+
+        });
+
+    }
+
+};
+
+
+// ==========================================================
+// LOGIN WITH PIN
+//
+// POST
+// /api/v1/singers/login
+//
+// BODY:
+//
+// {
+//     "mobile": "9876543210",
+//     "pin": "1234"
+// }
+//
+// ==========================================================
+
+const loginWithPin = async (req, res) => {
+
+    try {
+
+        const {
+
+            mobile,
+
+            pin
+
+        } = req.body;
+
+
+        const mobileNumber =
+            normalizeMobile(mobile);
+
+
+        // --------------------------------------------------
+        // VALIDATE MOBILE
+        // --------------------------------------------------
+
+        if (!isValidMobile(mobileNumber)) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Valid 10-digit mobile number is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VALIDATE PIN
+        // --------------------------------------------------
+
+        if (!isValidPin(pin)) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "PIN must contain exactly 4 digits."
+
+            });
+
+        }
+
+
+        console.log(
+            "ðŸ” Singer PIN login:",
+            mobileNumber
+        );
+
+
+        // --------------------------------------------------
+        // FIND SINGER
+        // --------------------------------------------------
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabase
+
+            .from("singers")
+
+            .select("*")
+
+            .eq(
+                "mobile_number",
+                mobileNumber
+            )
+
+            .maybeSingle();
+
+
+        if (error) {
+
+            console.error(
+                "âŒ Singer Login Lookup Error:",
+                error
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to login.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // SINGER NOT FOUND
+        // --------------------------------------------------
+
+        if (!data) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message:
+                    "Singer not registered. Please complete first-time registration.",
+
+                requiresRegistration:
+                    true
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VERIFY PIN HASH
+        // --------------------------------------------------
+
+        const pinMatches =
+            await bcrypt.compare(
+                String(pin),
+                data.pin_hash
+            );
+
+
+        if (!pinMatches) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "Invalid PIN."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // REMOVE SENSITIVE INFORMATION
+        // --------------------------------------------------
+
+        delete data.pin_hash;
+
+
+        // --------------------------------------------------
+        // LOGIN SUCCESS
+        // --------------------------------------------------
+
+        console.log(
+            "âœ… Singer login successful:",
+            data.singer_name
+        );
+
+
+        return res.status(200).json({
+
+            success: true,
+
+            message:
+                "Login successful.",
+
+            singer:
+                data
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "âŒ Singer Login Controller Error:",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                "Internal server error.",
+
+            error:
+                error.message
+
+        });
+
+    }
+
+};
+
+
+// ==========================================================
+// RESET FORGOTTEN PIN
+//
+// POST
+// /api/v1/singers/reset-pin
+//
+// BODY:
+//
+// {
+//     "mobile": "9876543210",
+//     "date_of_birth": "1990-01-15",
+//     "new_pin": "5678"
+// }
+//
+// ==========================================================
+
+const resetPin = async (req, res) => {
+
+    try {
+
+        const {
+
+            mobile,
+
+            date_of_birth,
+
+            new_pin
+
+        } = req.body;
+
+
+        const mobileNumber =
+            normalizeMobile(mobile);
+
+
+        // --------------------------------------------------
+        // VALIDATE MOBILE
+        // --------------------------------------------------
+
+        if (!isValidMobile(mobileNumber)) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Valid 10-digit mobile number is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VALIDATE DOB
+        // --------------------------------------------------
+
+        if (!date_of_birth) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Date of birth is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VALIDATE NEW PIN
+        // --------------------------------------------------
+
+        if (!isValidPin(new_pin)) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "New PIN must contain exactly 4 digits."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // FIND SINGER
+        // --------------------------------------------------
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabase
+
+            .from("singers")
+
+            .select("*")
+
+            .eq(
+                "mobile_number",
+                mobileNumber
+            )
+
+            .maybeSingle();
+
+
+        if (error) {
+
+            console.error(
+                "âŒ Reset PIN Lookup Error:",
+                error
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to process PIN reset.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // SINGER NOT FOUND
+        // --------------------------------------------------
+
+        if (!data) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message:
+                    "Singer not found."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // VALIDATE DOB
+        // --------------------------------------------------
+
+        const storedDob =
+            String(data.date_of_birth)
+                .substring(0, 10);
+
+        const providedDob =
+            String(date_of_birth)
+                .substring(0, 10);
+
+
+        if (
+            storedDob !==
+            providedDob
+        ) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "Date of birth validation failed."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // HASH NEW PIN
+        // --------------------------------------------------
+
+        const newPinHash =
+            await bcrypt.hash(
+                String(new_pin),
+                10
+            );
+
+
+        // --------------------------------------------------
+        // UPDATE PIN HASH
+        // --------------------------------------------------
+
+        const {
+
+            data: updatedSinger,
+
+            error: updateError
+
+        } = await supabase
+
+            .from("singers")
+
+            .update({
+
+                pin_hash:
+                    newPinHash,
+
+                updated_at:
+                    new Date().toISOString()
+
+            })
+
+            .eq(
+                "id",
+                data.id
+            )
+
+            .select(
+                "id,mobile_number,date_of_birth,singer_name,gender,created_at,updated_at"
+            )
+
+            .single();
+
+
+        if (updateError) {
+
+            console.error(
+                "âŒ Reset PIN Update Error:",
+                updateError
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to reset PIN.",
+
+                error:
+                    updateError.message
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // SUCCESS
+        // --------------------------------------------------
+
+        console.log(
+            "âœ… Singer PIN reset successfully:",
+            data.singer_name
+        );
+
+
+        return res.status(200).json({
+
+            success: true,
+
+            message:
+                "PIN reset successfully.",
+
+            singer:
+                updatedSinger
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "âŒ Reset PIN Controller Error:",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                "Internal server error.",
+
+            error:
+                error.message
+
+        });
+
+    }
+
+};
+
+
+// ==========================================================
+// UPDATE SINGER PROFILE
+//
+// PUT
+// /api/v1/singers/:id
+//
+// Current table supports:
+//
+// singer_name
+// gender
+// date_of_birth
+//
+// ==========================================================
+
+const updateSingerProfile = async (req, res) => {
+
+    try {
+
+        const {
+            id
+        } = req.params;
+
+
+        if (!id) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Singer ID is required."
+
+            });
+
+        }
+
+
+        // --------------------------------------------------
+        // ONLY USE COLUMNS THAT EXIST CURRENTLY
+        // --------------------------------------------------
+
+        const allowedFields = [
+
+            "singer_name",
+
+            "gender",
+
+            "date_of_birth"
+
+        ];
+
+
+        const updateData = {};
+
+
+        allowedFields.forEach(
+            (field) => {
+
+                if (
+                    req.body[field] !== undefined
+                ) {
+
+                    updateData[field] =
+                        req.body[field];
+
+                }
+
+            }
+        );
+
+
+        // --------------------------------------------------
+        // CHECK UPDATE DATA
+        // --------------------------------------------------
+
+        if (
+            Object.keys(updateData).length === 0
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "No valid profile fields were provided."
+
+            });
+
+        }
+
+
+        updateData.updated_at =
+            new Date().toISOString();
+
+
+        // --------------------------------------------------
+        // UPDATE
+        // --------------------------------------------------
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabase
+
+            .from("singers")
+
+            .update(updateData)
+
+            .eq(
+                "id",
+                id
+            )
+
+            .select(
+                "id,mobile_number,date_of_birth,singer_name,gender,created_at,updated_at"
+            )
+
+            .single();
+
+
+        if (error) {
+
+            console.error(
+                "âŒ Update Singer Error:",
+                error
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to update singer profile.",
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+
+        return res.status(200).json({
+
+            success: true,
+
+            message:
+                "Singer profile updated successfully.",
+
+            singer:
+                data
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "âŒ Update Singer Controller Error:",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                "Internal server error.",
+
+            error:
+                error.message
+
+        });
+
+    }
+
+};
+
+
+// ==========================================================
+// EXPORT
+// ==========================================================
+
+module.exports = {
+
+    getSingerByMobile,
+
+    createSinger,
+
+    loginWithPin,
+
+    resetPin,
+
+    updateSingerProfile
+
+};

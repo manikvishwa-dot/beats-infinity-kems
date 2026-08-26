@@ -1,0 +1,223 @@
+/* ==========================================================
+   DASHBOARD WELCOME
+   BEATS ∞ INFINITY
+========================================================== */
+
+.dashboard-welcome {
+
+    position: relative;
+
+    width: 100%;
+
+    min-height: 230px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 45px 55px;
+
+    overflow: hidden;
+
+    border-radius: 28px;
+
+    background:
+        radial-gradient(
+            circle at 85% 50%,
+            rgba(29, 185, 84, 0.20),
+            transparent 35%
+        ),
+
+        radial-gradient(
+            circle at 10% 20%,
+            rgba(255, 213, 74, 0.08),
+            transparent 30%
+        ),
+
+        #171717;
+
+    border: 1px solid rgba(255, 255, 255, 0.07);
+
+    box-shadow:
+        0 20px 45px rgba(0, 0, 0, 0.35);
+
+}
+
+
+/* ==========================================================
+   CONTENT
+========================================================== */
+
+.welcome-content {
+
+    position: relative;
+
+    z-index: 2;
+
+}
+
+
+.welcome-label {
+
+    display: block;
+
+    margin-bottom: 10px;
+
+    color: #FFD54A;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+}
+
+
+.welcome-content h1 {
+
+    margin: 0 0 10px;
+
+    color: #FFFFFF;
+
+    font-size: 36px;
+
+    font-weight: 700;
+
+    line-height: 1.2;
+
+}
+
+
+.welcome-content p {
+
+    margin: 0;
+
+    color: #BDBDBD;
+
+    font-size: 17px;
+
+}
+
+
+/* ==========================================================
+   MUSIC ICON
+========================================================== */
+
+.welcome-music {
+
+    position: relative;
+
+    z-index: 2;
+
+    width: 120px;
+
+    height: 120px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: rgba(29, 185, 84, 0.12);
+
+    border: 1px solid rgba(29, 185, 84, 0.25);
+
+    font-size: 52px;
+
+    box-shadow:
+        0 0 50px rgba(29, 185, 84, 0.15);
+
+}
+
+
+/* ==========================================================
+   DECORATIVE GLOW
+========================================================== */
+
+.dashboard-welcome::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 220px;
+
+    height: 220px;
+
+    right: -80px;
+
+    top: -80px;
+
+    border-radius: 50%;
+
+    background: rgba(29, 185, 84, 0.08);
+
+    filter: blur(10px);
+
+}
+
+
+/* ==========================================================
+   RESPONSIVE
+========================================================== */
+
+@media (max-width: 768px) {
+
+    .dashboard-welcome {
+
+        min-height: 200px;
+
+        padding: 30px;
+
+    }
+
+    .welcome-content h1 {
+
+        font-size: 28px;
+
+    }
+
+    .welcome-content p {
+
+        font-size: 15px;
+
+    }
+
+    .welcome-music {
+
+        width: 80px;
+
+        height: 80px;
+
+        font-size: 35px;
+
+    }
+
+}
+
+
+@media (max-width: 520px) {
+
+    .dashboard-welcome {
+
+        padding: 28px;
+
+    }
+
+    .welcome-music {
+
+        display: none;
+
+    }
+
+    .welcome-content h1 {
+
+        font-size: 25px;
+
+    }
+
+}

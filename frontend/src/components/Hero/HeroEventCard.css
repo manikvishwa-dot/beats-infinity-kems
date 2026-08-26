@@ -1,0 +1,272 @@
+/* ==========================================================
+   Hero Featured Event Card
+   Beats Infinity
+   ========================================================== */
+
+.hero-event-card {
+
+    background: rgba(18, 18, 18, 0.58);
+
+    backdrop-filter: blur(22px);
+
+    -webkit-backdrop-filter: blur(22px);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    border-radius: 26px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 25px 60px rgba(0,0,0,.45);
+
+    transition: all .4s ease;
+
+}
+
+.hero-event-card:hover {
+
+    transform: translateY(-8px);
+
+    box-shadow:
+        0 35px 80px rgba(0,0,0,.55);
+
+}
+
+/* ==========================================================
+   Poster
+   ========================================================== */
+
+.event-poster {
+
+    width: 100%;
+
+    height: auto;
+
+    display: block;
+
+    transition: transform .5s ease;
+
+}
+
+.hero-event-card:hover .event-poster {
+
+    transform: scale(1.05);
+
+}
+
+/* ==========================================================
+   Content
+   ========================================================== */
+
+.event-content {
+
+    padding: 28px;
+
+    color: #FFFFFF;
+
+}
+
+/* ==========================================================
+   Featured Chip
+   ========================================================== */
+
+.featured-chip {
+
+    margin-bottom: 20px !important;
+
+    background: rgba(255,215,0,.15) !important;
+
+    color: #FFD700 !important;
+
+    border: 1px solid rgba(255,215,0,.35);
+
+    font-weight: 700 !important;
+
+}
+
+.featured-chip svg {
+
+    color: #FFD700 !important;
+
+}
+
+/* ==========================================================
+   Title
+   ========================================================== */
+
+.event-title {
+
+    font-size: 2rem !important;
+
+    font-weight: 700 !important;
+
+    color: white;
+
+    margin-bottom: 10px !important;
+
+}
+
+/* ==========================================================
+   Subtitle
+   ========================================================== */
+
+.event-subtitle {
+
+    color: #CFCFCF;
+
+    line-height: 1.7;
+
+    margin-bottom: 10px !important;
+
+}
+
+/* ==========================================================
+   Icons
+   ========================================================== */
+
+.event-icon {
+
+    color: #1DB954 !important;
+
+}
+
+/* ==========================================================
+   Progress
+   ========================================================== */
+
+.registration-text {
+
+    color: #BDBDBD;
+
+    margin-bottom: 10px !important;
+
+    font-size: .9rem;
+
+}
+
+.progress-bar {
+
+    width: 100%;
+
+    height: 10px;
+
+    background: rgba(255,255,255,.08);
+
+    border-radius: 20px;
+
+    overflow: hidden;
+
+}
+
+.progress-fill {
+
+    height: 100%;
+
+    background: linear-gradient(
+        90deg,
+        #1DB954,
+        #33F57A
+    );
+
+    border-radius: 20px;
+
+    transition: width .8s ease;
+
+}
+
+.registration-count {
+
+    margin-top: 10px !important;
+
+    color: #DDDDDD;
+
+    font-size: .9rem;
+
+}
+
+/* ==========================================================
+   Register Button
+   ========================================================== */
+
+.event-register-btn {
+
+    margin-top: 15px !important;
+
+    background: linear-gradient(
+        135deg,
+        #1DB954,
+        #2AE870
+    ) !important;
+
+    color: white !important;
+
+    text-transform: none !important;
+
+    font-weight: 700 !important;
+
+    font-size: 16px !important;
+
+    padding: 14px !important;
+
+    border-radius: 50px !important;
+
+    transition: all .35s ease !important;
+
+}
+
+.event-register-btn:hover {
+
+    transform: translateY(-3px);
+
+    box-shadow: 0 20px 40px rgba(29,185,84,.40);
+
+}
+
+/* ==========================================================
+   Responsive
+   ========================================================== */
+
+@media (max-width:1200px){
+
+.hero-event-card{
+
+max-width:520px;
+
+margin:auto;
+
+}
+
+}
+
+@media (max-width:768px){
+
+.event-content{
+
+padding:22px;
+
+}
+
+.event-title{
+
+font-size:1.7rem !important;
+
+}
+
+}
+
+@media (max-width:480px){
+
+.event-content{
+
+padding:18px;
+
+}
+
+.event-title{
+
+font-size:1.5rem !important;
+
+}
+
+}

@@ -2,7 +2,7 @@ module.exports = {
 
     APPLE: true,
 
-    SPOTIFY: false,
+    SPOTIFY: true,
 
     YOUTUBE: false
 

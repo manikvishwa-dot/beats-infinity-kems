@@ -1,0 +1,401 @@
+/* ==========================================================
+   HERO LEFT
+   ========================================================== */
+
+.hero-left{
+
+    max-width:620px;
+
+    animation:fadeLeft .8s ease;
+
+}
+
+/* ==========================================================
+   COMMUNITY BADGE
+   ========================================================== */
+
+.community-badge{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    padding:10px 22px;
+
+    border-radius:50px;
+
+    background:rgba(255,255,255,.06);
+
+    backdrop-filter:blur(20px);
+
+    border:1px solid rgba(255,213,74,.25);
+
+    color:#FFD54A;
+
+    font-family:"Inter",sans-serif;
+
+    font-size:12px;
+
+    font-weight:600;
+
+    letter-spacing:2px;
+
+    text-transform:uppercase;
+
+    margin-bottom:28px;
+
+}
+
+/* ==========================================================
+   HEADING
+   ========================================================== */
+
+.hero-heading{
+
+    display:flex;
+
+    flex-direction:column;
+
+    font-family:"Poppins",sans-serif;
+
+    font-weight:900;
+
+    font-size:clamp(46px,5vw,62px);
+
+    line-height:1.03;
+
+    letter-spacing:-1.5px;
+
+    color:#ffffff;
+
+    margin:0;
+
+}
+
+.hero-heading .green{
+
+    color:#1DB954;
+
+}
+
+.hero-tagline{
+
+    margin-top:18px;
+
+    color:#FFD54A;
+
+    font-size:24px;
+
+    font-family:"Poppins",sans-serif;
+
+    font-weight:600;
+
+}
+
+.hero-divider{
+
+    width:100px;
+
+    height:4px;
+
+    margin:20px 0;
+
+    border-radius:20px;
+
+    background:linear-gradient(
+
+        90deg,
+
+        #1DB954,
+
+        #FFD54A
+
+    );
+
+}
+
+.hero-description{
+
+    max-width:520px;
+
+    color:#D8D8D8;
+
+    font-family:"Inter",sans-serif;
+
+    font-size:18px;
+
+    line-height:1.8;
+
+}
+
+/* ==========================================================
+   BUTTONS
+   ========================================================== */
+
+.hero-buttons{
+
+    display:flex;
+
+    gap:18px;
+
+    margin-top:36px;
+
+    flex-wrap:wrap;
+
+}
+
+.btn-primary{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    padding:16px 30px;
+
+    border:none;
+
+    border-radius:50px;
+
+    cursor:pointer;
+
+    background:linear-gradient(
+        135deg,
+        #1DB954,
+        #37E977
+    );
+
+    color:white;
+
+    font-family:"Poppins",sans-serif;
+
+    font-size:15px;
+
+    font-weight:700;
+
+    transition:.3s;
+
+    box-shadow:0 15px 35px rgba(29,185,84,.35);
+
+}
+
+.btn-primary:hover{
+
+    transform:translateY(-4px);
+
+}
+
+.btn-secondary{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    padding:16px 30px;
+
+    border-radius:50px;
+
+    border:2px solid rgba(255,213,74,.45);
+
+    background:rgba(255,255,255,.05);
+
+    backdrop-filter:blur(20px);
+
+    color:#FFD54A;
+
+    cursor:pointer;
+
+    font-family:"Poppins",sans-serif;
+
+    font-size:15px;
+
+    font-weight:700;
+
+    transition:.3s;
+
+}
+
+.btn-secondary:hover{
+
+    background:#FFD54A;
+
+    color:#111;
+
+}
+
+/* ==========================================================
+   STATS
+   ========================================================== */
+
+.hero-stats{
+
+    display:flex;
+
+    gap:18px;
+
+    margin-top:46px;
+
+    flex-wrap:wrap;
+
+}
+
+.stat-card{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:16px;
+
+    min-width:170px;
+
+    padding:18px;
+
+    border-radius:20px;
+
+    background:rgba(255,255,255,.05);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    transition:.3s;
+
+}
+
+.stat-card:hover{
+
+    transform:translateY(-6px);
+
+    background:rgba(255,255,255,.08);
+
+}
+
+.stat-icon{
+
+    width:52px;
+
+    height:52px;
+
+    border-radius:16px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-size:22px;
+
+    color:white;
+
+}
+
+.users{
+
+    background:#1DB954;
+
+}
+
+.music{
+
+    background:#FF9800;
+
+}
+
+.mic{
+
+    background:#8E44FF;
+
+}
+
+.stat-card h3{
+
+    margin:0;
+
+    color:#ffffff;
+
+    font-size:24px;
+
+    font-family:"Poppins",sans-serif;
+
+}
+
+.stat-card p{
+
+    margin:3px 0 0;
+
+    color:#BDBDBD;
+
+    font-size:14px;
+
+    font-family:"Inter",sans-serif;
+
+}
+
+/* ==========================================================
+   ANIMATION
+   ========================================================== */
+
+@keyframes fadeLeft{
+
+    from{
+
+        opacity:0;
+
+        transform:translateX(-40px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateX(0);
+
+    }
+
+}
+
+/* ==========================================================
+   MOBILE
+   ========================================================== */
+
+@media(max-width:992px){
+
+    .hero-left{
+
+        max-width:100%;
+
+    }
+
+    .hero-heading{
+
+        align-items:center;
+
+    }
+
+    .hero-description{
+
+        margin:auto;
+
+    }
+
+    .hero-buttons{
+
+        justify-content:center;
+
+    }
+
+    .hero-stats{
+
+        justify-content:center;
+
+    }
+
+}
