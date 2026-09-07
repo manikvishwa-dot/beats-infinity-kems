@@ -2,9 +2,59 @@ import "./DashboardWelcome.css";
 
 import { useEffect, useState } from "react";
 
+// ==========================================================
+// GET CURRENT SINGER'S DISPLAY NAME
+//
+// Reads the same canonical "beatsInfinitySinger" localStorage
+// session written by LoginForm.jsx and SingerRegistration.jsx.
+// ==========================================================
+
+const getSingerName = () => {
+
+    try {
+
+        const raw =
+            localStorage.getItem(
+                "beatsInfinitySinger"
+            );
+
+        if (!raw) {
+
+            return null;
+
+        }
+
+        const singer =
+            JSON.parse(raw);
+
+        return (
+            singer?.singer_name ||
+            singer?.name ||
+            null
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Unable to read singer session:",
+            error
+        );
+
+        return null;
+
+    }
+
+};
+
 function DashboardWelcome() {
 
     const [greeting, setGreeting] = useState("");
+
+    const [singerName, setSingerName] = useState(
+        getSingerName()
+    );
 
     useEffect(() => {
 
@@ -24,6 +74,10 @@ function DashboardWelcome() {
 
         }
 
+        setSingerName(
+            getSingerName()
+        );
+
     }, []);
 
     return (
@@ -40,7 +94,7 @@ function DashboardWelcome() {
 
                 <h1>
 
-                    Manikanda Vishwanathan
+                    {singerName || "Singer"}
 
                 </h1>
 

@@ -1,12 +1,12 @@
 // ==========================================================
-// BEATS INFINITY - SONG CATALOG SERVICE
+// BEATS INFINITY - ADMIN DASHBOARD / PAIRING SERVICE
 // ==========================================================
 
 import { API_V1_URL } from "../config/api";
 import { getAuthHeader } from "./adminService";
 
 const API_BASE_URL =
-    `${API_V1_URL}/songs`;
+    `${API_V1_URL}/admin`;
 
 
 const handleResponse = async response => {
@@ -42,18 +42,21 @@ const handleResponse = async response => {
 
 
 // ==========================================================
-// GET ALL SONGS
+// ALL SINGERS (ROSTER)
 // ==========================================================
 
-const getSongs = async () => {
+const getAllSingers = async () => {
 
     const response = await fetch(
-        API_BASE_URL,
+
+        `${API_BASE_URL}/singers`,
+
         {
             headers: {
                 ...getAuthHeader()
             }
         }
+
     );
 
 
@@ -63,14 +66,74 @@ const getSongs = async () => {
 
 
 // ==========================================================
-// CREATE SONG
+// SINGERS OVERVIEW
 // ==========================================================
 
-const createSong = async songData => {
+const getSingersOverview = async () => {
 
     const response = await fetch(
 
-        API_BASE_URL,
+        `${API_BASE_URL}/singers-overview`,
+
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+
+    );
+
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
+// PAIRING SUGGESTIONS
+// ==========================================================
+
+const getPairingSuggestions = async () => {
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/pairings/suggestions`,
+
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+
+    );
+
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
+// DECIDE PAIRING (approve / reject / manual)
+// ==========================================================
+
+const decidePairing = async (
+
+    songId,
+
+    maleSingerId,
+
+    femaleSingerId,
+
+    decision,
+
+    source = "auto"
+
+) => {
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/pairings/decide`,
 
         {
 
@@ -81,7 +144,19 @@ const createSong = async songData => {
                 ...getAuthHeader()
             },
 
-            body: JSON.stringify(songData)
+            body: JSON.stringify({
+
+                song_id: songId,
+
+                male_singer_id: maleSingerId,
+
+                female_singer_id: femaleSingerId,
+
+                decision,
+
+                source
+
+            })
 
         }
 
@@ -94,85 +169,49 @@ const createSong = async songData => {
 
 
 // ==========================================================
-// UPDATE SONG
+// BULK UPDATE SINGERS (Excel import)
 // ==========================================================
 
-const updateSong = async (songId, songData) => {
+const bulkUpdateSingers = async rows => {
 
     const response = await fetch(
 
-        `${API_BASE_URL}/${songId}`,
+        `${API_BASE_URL}/singers/bulk`,
 
         {
-
             method: "PUT",
-
             headers: {
                 "Content-Type": "application/json",
                 ...getAuthHeader()
             },
-
-            body: JSON.stringify(songData)
-
-        }
-
-    );
-
-
-    return handleResponse(response);
-
-};
-
-
-// ==========================================================
-// DELETE SONG
-// ==========================================================
-
-const deleteSong = async songId => {
-
-    const response = await fetch(
-
-        `${API_BASE_URL}/${songId}`,
-
-        {
-
-            method: "DELETE",
-
-            headers: {
-                ...getAuthHeader()
-            }
-
-        }
-
-    );
-
-
-    return handleResponse(response);
-
-};
-
-
-// ==========================================================
-// BULK UPSERT SONGS (Excel import)
-// ==========================================================
-
-const bulkUpsertSongs = async rows => {
-
-    const response = await fetch(
-
-        `${API_BASE_URL}/bulk`,
-
-        {
-
-            method: "PUT",
-
-            headers: {
-                "Content-Type": "application/json",
-                ...getAuthHeader()
-            },
-
             body: JSON.stringify({ rows })
+        }
 
+    );
+
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
+// BULK DECIDE PAIRINGS (Excel import)
+// ==========================================================
+
+const bulkDecidePairings = async rows => {
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/pairings/bulk-decide`,
+
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ rows })
         }
 
     );
@@ -184,9 +223,10 @@ const bulkUpsertSongs = async rows => {
 
 
 export {
-    getSongs,
-    createSong,
-    updateSong,
-    deleteSong,
-    bulkUpsertSongs
+    getAllSingers,
+    getSingersOverview,
+    getPairingSuggestions,
+    decidePairing,
+    bulkUpdateSingers,
+    bulkDecidePairings
 };

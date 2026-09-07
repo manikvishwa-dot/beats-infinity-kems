@@ -12,9 +12,17 @@ import {
     Button
 } from "@mui/material";
 
+import {
+    useNavigate
+} from "react-router-dom";
+
+import { API_V1_URL } from "../../../config/api";
+
+import "./MySongs.css";
+
 
 const API_URL =
-    "http://localhost:5000/api/v1";
+    API_V1_URL;
 
 
 const MAX_SONGS =
@@ -23,8 +31,11 @@ const MAX_SONGS =
 
 function MySongs() {
 
+    const navigate = useNavigate();
+
+
     // ==========================================================
-    // SEARCH STATE
+    // STATE
     // ==========================================================
 
     const [search, setSearch] =
@@ -41,27 +52,20 @@ function MySongs() {
 
 
     // ==========================================================
-    // FINAL LOCAL SELECTION
+    // SELECTED SONGS
     //
     // IMPORTANT:
     //
-    // Selecting/removing songs does NOT touch the database.
+    // These are LOCAL selections.
     //
-    // Database is updated ONLY after:
-    //
-    //     1. Exactly 5 songs selected
-    //     2. User clicks Submit
-    //     3. User clicks Confirm & Submit
-    //
+    // Nothing is written to song_requests until the user
+    // clicks CONTINUE TO PAYMENT.
     // ==========================================================
 
     const [selectedSongs, setSelectedSongs] =
         useState([]);
 
-
-    // Used only for UI duplicate detection.
-
-    const [selectedSongKeys, setSelectedSongKeys] =
+    const [requestedSongs, setRequestedSongs] =
         useState([]);
 
 
@@ -74,7 +78,7 @@ function MySongs() {
 
 
     // ==========================================================
-    // ACTION STATE
+    // SONG ACTION STATE
     // ==========================================================
 
     const [requestingSongId, setRequestingSongId] =
@@ -82,6 +86,14 @@ function MySongs() {
 
     const [removingRequestId, setRemovingRequestId] =
         useState(null);
+
+
+    // ==========================================================
+    // LOADING
+    // ==========================================================
+
+    const [loadingSelectedSongs, setLoadingSelectedSongs] =
+        useState(false);
 
 
     // ==========================================================
@@ -115,28 +127,21 @@ function MySongs() {
     // ==========================================================
     // GET CURRENT SINGER ID
     //
-    // Supports the storage formats already used by
-    // the Beats Infinity login flow.
+    // Supports the common storage formats used by the
+    // Beats Infinity login flow.
     // ==========================================================
 
     const getSingerId =
         () => {
 
             const directKeys = [
-
-                "singer_id",
-
-                "singerId",
-
-                "singerID",
-
-                "loggedInSingerId",
-
-                "currentSingerId",
-
-                "beatsInfinitySingerId"
-
-            ];
+    "singer_id",
+    "singerId",
+    "singerID",
+    "loggedInSingerId",
+    "currentSingerId",
+    "beatsInfinitySingerId"
+];
 
 
             for (
@@ -153,30 +158,21 @@ function MySongs() {
                     value
                 ) {
 
-                    return String(
-                        value
-                    );
+                    return value;
 
                 }
 
             }
 
 
-            const objectKeys = [
-
-                "singer",
-
-                "currentSinger",
-
-                "loggedInSinger",
-
-                "user",
-
-                "currentUser",
-
-                "beatsInfinitySinger"
-
-            ];
+const objectKeys = [
+    "singer",
+    "currentSinger",
+    "loggedInSinger",
+    "user",
+    "currentUser",
+    "beatsInfinitySinger"
+];
 
 
             for (
@@ -209,9 +205,7 @@ function MySongs() {
                     const id =
                         parsed?.id ||
                         parsed?.singer_id ||
-                        parsed?.singerId ||
-                        parsed?.user_id ||
-                        parsed?.userId;
+                        parsed?.singerId;
 
 
                     if (
@@ -230,7 +224,7 @@ function MySongs() {
                     error
                 ) {
 
-                    // Ignore invalid JSON.
+                    // Ignore invalid localStorage JSON.
 
                 }
 
@@ -243,7 +237,7 @@ function MySongs() {
 
 
     // ==========================================================
-    // NORMALIZE SEARCH SONG
+    // NORMALIZE SONG
     // ==========================================================
 
     const normalizeSong =
@@ -252,29 +246,14 @@ function MySongs() {
             index = 0
         ) => {
 
-            /*
-             * IMPORTANT:
-             *
-             * YouTube search results have videoId,
-             * not a Supabase UUID.
-             *
-             * We therefore keep the provider ID as a
-             * local ID only.
-             */
-
-            const providerId =
-                song?.videoId ||
-                song?.trackId ||
-                song?.providerId ||
-                song?.id ||
-                `temporary-song-${index}`;
-
-
             return {
 
                 id:
                     String(
-                        providerId
+                        song?.id ||
+                        song?.trackId ||
+                        song?.providerId ||
+                        `song-${index}`
                     ),
 
                 title:
@@ -286,7 +265,6 @@ function MySongs() {
                 artist:
                     song?.artist ||
                     song?.artistName ||
-                    song?.channel ||
                     song?.music_director ||
                     song?.musicDirector ||
                     "Unknown Artist",
@@ -304,16 +282,12 @@ function MySongs() {
 
                 provider:
                     song?.provider ||
-                    "YouTube",
+                    "Music Provider",
 
                 thumbnail:
                     song?.thumbnail ||
                     song?.artworkUrl100 ||
                     song?.artworkUrl ||
-                    "",
-
-                videoId:
-                    song?.videoId ||
                     "",
 
                 isDuet:
@@ -331,15 +305,12 @@ function MySongs() {
 
 
     // ==========================================================
-    // LOAD EXISTING FINAL SUBMISSION
+    // LOAD FINAL SUBMITTED SONGS
     //
-    // If this singer already has exactly 5 submitted songs,
-    // display them and lock the selection.
+    // We DO NOT load Requested / Cancelled / old temporary
+    // records.
     //
-    // IMPORTANT:
-    //
-    // Requested / Cancelled / temporary records are NOT loaded.
-    //
+    // Only "Submitted for Pairing" records belong here.
     // ==========================================================
 
     const loadSubmittedSongs =
@@ -349,15 +320,25 @@ function MySongs() {
                 getSingerId();
 
 
+            // --------------------------------------------------
+            // If login information is unavailable, start fresh.
+            //
+            // This prevents another singer's songs appearing.
+            // --------------------------------------------------
+
             if (
                 !singerId
             ) {
 
                 setSelectedSongs([]);
 
-                setSelectedSongKeys([]);
+                setRequestedSongs([]);
 
                 setSubmissionComplete(
+                    false
+                );
+
+                setLoadingSelectedSongs(
                     false
                 );
 
@@ -367,6 +348,11 @@ function MySongs() {
 
 
             try {
+
+                setLoadingSelectedSongs(
+                    true
+                );
+
 
                 const url =
                     `${API_URL}/song-requests?status=${encodeURIComponent(
@@ -407,6 +393,10 @@ function MySongs() {
                         : [];
 
 
+                // ------------------------------------------------
+                // Only the final five are relevant.
+                // ------------------------------------------------
+
                 const finalRequests =
                     requests.slice(
                         0,
@@ -415,12 +405,13 @@ function MySongs() {
 
 
                 if (
-                    finalRequests.length === 0
+                    finalRequests.length ===
+                    0
                 ) {
 
                     setSelectedSongs([]);
 
-                    setSelectedSongKeys([]);
+                    setRequestedSongs([]);
 
                     setSubmissionComplete(
                         false
@@ -431,7 +422,11 @@ function MySongs() {
                 }
 
 
-                const enrichedSongs =
+                // ------------------------------------------------
+                // Load actual song records.
+                // ------------------------------------------------
+
+                const enriched =
                     await Promise.all(
 
                         finalRequests.map(
@@ -439,29 +434,25 @@ function MySongs() {
 
                                 try {
 
-                                    const response =
+                                    const songResponse =
                                         await fetch(
                                             `${API_URL}/songs/${request.song_id}`
                                         );
 
 
-                                    const data =
-                                        await response.json();
+                                    const songData =
+                                        await songResponse.json();
 
 
                                     if (
-                                        !response.ok ||
-                                        !data.success ||
-                                        !data.song
+                                        !songResponse.ok ||
+                                        !songData.success ||
+                                        !songData.song
                                     ) {
 
                                         return null;
 
                                     }
-
-
-                                    const databaseSong =
-                                        data.song;
 
 
                                     return {
@@ -471,7 +462,7 @@ function MySongs() {
 
                                         songId:
                                             String(
-                                                databaseSong.id
+                                                request.song_id
                                             ),
 
                                         status:
@@ -486,7 +477,7 @@ function MySongs() {
 
                                         song:
                                             normalizeSong(
-                                                databaseSong
+                                                songData.song
                                             )
 
                                     };
@@ -502,6 +493,7 @@ function MySongs() {
                                         error
                                     );
 
+
                                     return null;
 
                                 }
@@ -514,7 +506,7 @@ function MySongs() {
 
 
                 const validSongs =
-                    enrichedSongs.filter(
+                    enriched.filter(
                         item =>
                             item !== null
                     );
@@ -525,15 +517,22 @@ function MySongs() {
                 );
 
 
-                setSelectedSongKeys(
+                setRequestedSongs(
+
                     validSongs.map(
                         item =>
                             String(
                                 item.songId
                             )
                     )
+
                 );
 
+
+                // ------------------------------------------------
+                // If five final songs already exist, lock the
+                // selection.
+                // ------------------------------------------------
 
                 if (
                     validSongs.length ===
@@ -569,15 +568,25 @@ function MySongs() {
                     error
                 );
 
-                /*
-                 * Do not display a false submission.
-                 */
 
-                setSelectedSongs([]);
+                const restored =
+                    restorePendingPaymentSelection();
 
-                setSelectedSongKeys([]);
+                if (!restored) {
+                    setSelectedSongs([]);
 
-                setSubmissionComplete(
+                    setRequestedSongs([]);
+
+                    setSubmissionComplete(
+                        false
+                    );
+                }
+
+            }
+
+            finally {
+
+                setLoadingSelectedSongs(
                     false
                 );
 
@@ -587,39 +596,221 @@ function MySongs() {
 
 
     // ==========================================================
+    // RESTORE LOCAL PENDING PAYMENT SELECTION
+    // ==========================================================
+
+    const restorePendingPaymentSelection = () => {
+        try {
+            const raw = sessionStorage.getItem(
+                "beatsInfinityPendingSongSelection"
+            );
+
+            if (!raw) {
+                return false;
+            }
+
+            const pending = JSON.parse(raw);
+
+            if (
+                !Array.isArray(pending?.songs) ||
+                pending.songs.length !== MAX_SONGS
+            ) {
+                return false;
+            }
+
+            const restoredSongs =
+                pending.songs.map(
+                    item => ({
+                        requestId:
+                            item.requestId ||
+                            `pending-${item.songId}`,
+                        songId:
+                            String(item.songId),
+                        databaseSongId:
+                            item.databaseSongId ||
+                            String(item.songId),
+                        status:
+                            "Selected",
+                        requestedAt:
+                            null,
+                        notes:
+                            "Payment pending admin confirmation",
+                        song:
+                            normalizeSong(
+                                item.song ||
+                                item
+                            )
+                    })
+                );
+
+            setSelectedSongs(
+                restoredSongs
+            );
+
+            setRequestedSongs(
+                restoredSongs.map(
+                    item =>
+                        String(item.songId)
+                )
+            );
+
+            setSubmissionComplete(
+                false
+            );
+
+            setSubmissionMessage(
+                "Your payment notification is pending admin confirmation."
+            );
+
+            return true;
+        }
+        catch (error) {
+            console.error(
+                "Unable to restore pending payment selection:",
+                error
+            );
+
+            return false;
+        }
+    };
+
+
+    // ==========================================================
     // INITIAL LOAD
     // ==========================================================
 
-    useEffect(
-        () => {
+    useEffect(() => {
 
-            loadSubmittedSongs();
+        loadSubmittedSongs();
 
 
-            return () => {
+        return () => {
 
-                if (
+            if (
+                searchTimer.current
+            ) {
+
+                clearTimeout(
                     searchTimer.current
-                ) {
+                );
 
-                    clearTimeout(
-                        searchTimer.current
-                    );
+            }
 
-                }
+        };
 
-            };
-
-        },
-        []
-    );
+    }, []);
 
 
     // ==========================================================
     // SEARCH
     // ==========================================================
 
-    useEffect(
+    const performSearch =
+        async searchText => {
+
+            try {
+
+                setSearching(true);
+
+                setSearchError("");
+
+
+                const searchUrl =
+                    `${API_URL}/song-search?q=${encodeURIComponent(
+                        searchText
+                    )}`;
+
+
+                console.log(
+                    "🔎 Searching:",
+                    searchText
+                );
+
+
+                const response =
+                    await fetch(
+                        searchUrl
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                console.log(
+                    "📦 Search response:",
+                    data
+                );
+
+
+                if (
+                    !response.ok ||
+                    !data.success
+                ) {
+
+                    throw new Error(
+                        data.message ||
+                        "Song search failed."
+                    );
+
+                }
+
+
+                const songs =
+                    data.songs ||
+                    data.results ||
+                    data.data ||
+                    [];
+
+
+                const normalized =
+                    songs.map(
+                        normalizeSong
+                    );
+
+
+                setSearchResults(
+                    normalized
+                );
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+                    "❌ Search error:",
+                    error
+                );
+
+
+                setSearchResults([]);
+
+                setSearchError(
+                    error.message ||
+                    "Unable to search songs."
+                );
+
+            }
+
+            finally {
+
+                setSearching(false);
+
+            }
+
+        };
+
+
+    // --------------------------------------------------------
+    // SEARCH BUTTON CLICK
+    //
+    // Cancels any pending debounced search and runs
+    // immediately with the current input value.
+    // --------------------------------------------------------
+
+    const handleSearchClick =
         () => {
 
             const searchText =
@@ -652,135 +843,76 @@ function MySongs() {
             }
 
 
-            searchTimer.current =
-                setTimeout(
-                    async () => {
+            performSearch(
+                searchText
+            );
 
-                        try {
-
-                            setSearching(
-                                true
-                            );
-
-                            setSearchError("");
+        };
 
 
-                            const searchUrl =
-                                `${API_URL}/song-search?q=${encodeURIComponent(
-                                    searchText
-                                )}`;
+    useEffect(() => {
+
+        const searchText =
+            search.trim();
 
 
-                            console.log(
-                                "🔎 Searching:",
-                                searchText
-                            );
+        if (
+            searchTimer.current
+        ) {
+
+            clearTimeout(
+                searchTimer.current
+            );
+
+        }
 
 
-                            const response =
-                                await fetch(
-                                    searchUrl
-                                );
+        if (
+            !searchText
+        ) {
+
+            setSearchResults([]);
+
+            setSearching(false);
+
+            setSearchError("");
+
+            return;
+
+        }
 
 
-                            const data =
-                                await response.json();
+        searchTimer.current =
+            setTimeout(
+                () => {
 
-
-                            console.log(
-                                "📦 Search response:",
-                                data
-                            );
-
-
-                            if (
-                                !response.ok ||
-                                !data.success
-                            ) {
-
-                                throw new Error(
-                                    data.message ||
-                                    "Song search failed."
-                                );
-
-                            }
-
-
-                            const songs =
-                                data.songs ||
-                                data.results ||
-                                data.data ||
-                                [];
-
-
-                            const normalized =
-                                songs.map(
-                                    (
-                                        song,
-                                        index
-                                    ) =>
-                                        normalizeSong(
-                                            song,
-                                            index
-                                        )
-                                );
-
-
-                            setSearchResults(
-                                normalized
-                            );
-
-                        }
-
-                        catch (
-                            error
-                        ) {
-
-                            console.error(
-                                "❌ Search error:",
-                                error
-                            );
-
-
-                            setSearchResults([]);
-
-                            setSearchError(
-                                error.message ||
-                                "Unable to search songs."
-                            );
-
-                        }
-
-                        finally {
-
-                            setSearching(
-                                false
-                            );
-
-                        }
-
-                    },
-                    350
-                );
-
-
-            return () => {
-
-                if (
-                    searchTimer.current
-                ) {
-
-                    clearTimeout(
-                        searchTimer.current
+                    performSearch(
+                        searchText
                     );
 
-                }
+                },
 
-            };
+                350
 
-        },
-        [search]
-    );
+            );
+
+
+        return () => {
+
+            if (
+                searchTimer.current
+            ) {
+
+                clearTimeout(
+                    searchTimer.current
+                );
+
+            }
+
+        };
+
+
+    }, [search]);
 
 
     // ==========================================================
@@ -817,6 +949,7 @@ function MySongs() {
                     ];
 
                 }
+
             );
 
         };
@@ -825,7 +958,11 @@ function MySongs() {
     // ==========================================================
     // SELECT SONG
     //
-    // NO DATABASE WRITE.
+    // IMPORTANT:
+    //
+    // NO DATABASE REQUEST HERE.
+    //
+    // The song is stored only in React state.
     // ==========================================================
 
     const requestSong =
@@ -851,6 +988,40 @@ function MySongs() {
 
 
             if (
+                requestingSongId
+            ) {
+
+                return;
+
+            }
+
+
+            const songId =
+                String(
+                    song.id
+                );
+
+
+            // --------------------------------------------------
+            // DUPLICATE
+            // --------------------------------------------------
+
+            if (
+                requestedSongs.includes(
+                    songId
+                )
+            ) {
+
+                return;
+
+            }
+
+
+            // --------------------------------------------------
+            // MAXIMUM FIVE
+            // --------------------------------------------------
+
+            if (
                 selectedSongs.length >=
                 MAX_SONGS
             ) {
@@ -864,48 +1035,24 @@ function MySongs() {
             }
 
 
-            const songKey =
-                String(
-                    song.id
-                );
-
-
-            // --------------------------------------------------
-            // DUPLICATE CHECK
-            // --------------------------------------------------
-
-            if (
-                selectedSongKeys.includes(
-                    songKey
-                )
-            ) {
-
-                return;
-
-            }
-
-
             setRequestingSongId(
-                songKey
+                song.id
             );
 
 
             try {
 
+                // ------------------------------------------------
+                // LOCAL SELECTION ONLY
+                // ------------------------------------------------
+
                 const newSelectedSong = {
 
-                    /*
-                     * Temporary frontend ID.
-                     *
-                     * This is NEVER sent as song_id
-                     * to Supabase.
-                     */
-
                     requestId:
-                        `local-${Date.now()}-${songKey}`,
+                        `local-${Date.now()}-${songId}`,
 
                     songId:
-                        songKey,
+                        songId,
 
                     status:
                         "Selected",
@@ -933,12 +1080,12 @@ function MySongs() {
                 );
 
 
-                setSelectedSongKeys(
+                setRequestedSongs(
                     current => [
 
                         ...current,
 
-                        songKey
+                        songId
 
                     ]
                 );
@@ -948,6 +1095,7 @@ function MySongs() {
                     "🎵 SONG SELECTED LOCALLY:",
                     song.title
                 );
+
 
             }
 
@@ -982,7 +1130,11 @@ function MySongs() {
     // ==========================================================
     // REMOVE SELECTED SONG
     //
+    // IMPORTANT:
+    //
     // NO DATABASE DELETE.
+    //
+    // The song has not been submitted yet.
     // ==========================================================
 
     const removeSelectedSong =
@@ -1036,14 +1188,9 @@ function MySongs() {
                     );
 
 
-                if (
-                    !removedSong
-                ) {
-
-                    return;
-
-                }
-
+                // ------------------------------------------------
+                // LOCAL REMOVE ONLY
+                // ------------------------------------------------
 
                 setSelectedSongs(
                     current =>
@@ -1055,22 +1202,29 @@ function MySongs() {
                 );
 
 
-                setSelectedSongKeys(
-                    current =>
-                        current.filter(
-                            id =>
-                                id !==
-                                String(
-                                    removedSong.songId
-                                )
-                        )
-                );
+                if (
+                    removedSong
+                ) {
+
+                    setRequestedSongs(
+                        current =>
+                            current.filter(
+                                id =>
+                                    id !==
+                                    String(
+                                        removedSong.songId
+                                    )
+                            )
+                    );
+
+                }
 
 
                 console.log(
                     "🗑️ SONG REMOVED LOCALLY:",
-                    removedSong.song?.title
+                    removedSong?.song?.title
                 );
+
 
             }
 
@@ -1105,7 +1259,7 @@ function MySongs() {
     // ==========================================================
     // OPEN SUBMISSION DIALOG
     //
-    // EXACTLY 5 REQUIRED.
+    // EXACTLY FIVE REQUIRED.
     // ==========================================================
 
     const openSubmitDialog =
@@ -1182,597 +1336,256 @@ function MySongs() {
 
 
     // ==========================================================
-    // BUILD SONG PAYLOAD
+    // PROCEED TO PAYMENT
     //
-    // Converts the YouTube result into the format expected
-    // by POST /songs.
-    // ==========================================================
-
-    const buildSongPayload =
-        song => {
-
-            return {
-
-                title:
-                    song?.title ||
-                    "Unknown Song",
-
-                movie:
-                    song?.movie ||
-                    null,
-
-                album:
-                    song?.album ||
-                    song?.movie ||
-                    null,
-
-                music_director:
-                    song?.artist ||
-                    null,
-
-                language:
-                    "Tamil",
-
-                year:
-                    null,
-
-                duration:
-                    null,
-
-                thumbnail:
-                    song?.thumbnail ||
-                    "",
-
-                provider:
-                    song?.provider ||
-                    "YouTube",
-
-                karaoke_available:
-                    true,
-
-                difficulty:
-                    "Medium",
-
-                male_singers:
-                    [],
-
-                female_singers:
-                    [],
-
-                theme_tags:
-                    [],
-
-                is_duet:
-                    Boolean(
-                        song?.isDuet ||
-                        song?.is_duet
-                    )
-
-            };
-
-        };
-
-
-    // ==========================================================
-    // SAVE ONE SONG AND RETURN REAL DATABASE UUID
-    // ==========================================================
-
-    const saveSongAndGetDatabaseId =
-        async song => {
-
-            const payload =
-                buildSongPayload(
-                    song
-                );
-
-
-            console.log(
-                "💾 Saving final song:",
-                payload
-            );
-
-
-            const response =
-                await fetch(
-                    `${API_URL}/songs`,
-                    {
-
-                        method:
-                            "POST",
-
-                        headers: {
-
-                            "Content-Type":
-                                "application/json"
-
-                        },
-
-                        body:
-                            JSON.stringify(
-                                payload
-                            )
-
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            console.log(
-                "💾 Song save response:",
-                data
-            );
-
-
-            if (
-                !response.ok ||
-                !data.success ||
-                !data.song ||
-                !data.song.id
-            ) {
-
-                throw new Error(
-                    data.message ||
-                    `Unable to save song "${song?.title || "Unknown Song"}".`
-                );
-
-            }
-
-
-            /*
-             * THIS IS THE IMPORTANT PART.
-             *
-             * The frontend YouTube ID is NOT used as song_id.
-             *
-             * Supabase returns the actual UUID here.
-             */
-
-            return data.song;
-
-        };
-
-
-    // ==========================================================
-    // CREATE ONE SONG REQUEST
-    // ==========================================================
-
-    const createFinalSongRequest =
-        async (
-            databaseSongId,
-            singerId
-        ) => {
-
-            const response =
-                await fetch(
-                    `${API_URL}/song-requests`,
-                    {
-
-                        method:
-                            "POST",
-
-                        headers: {
-
-                            "Content-Type":
-                                "application/json"
-
-                        },
-
-                        body:
-                            JSON.stringify({
-
-                                song_id:
-                                    databaseSongId,
-
-                                singer_id:
-                                    singerId,
-
-                                notes:
-                                    "Final 5-song selection submitted for pairing"
-
-                            })
-
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            console.log(
-                "🎤 Song request response:",
-                data
-            );
-
-
-            if (
-                !response.ok ||
-                !data.success ||
-                !data.request
-            ) {
-
-                throw new Error(
-                    data.message ||
-                    "Unable to create final song request."
-                );
-
-            }
-
-
-            return data.request;
-
-        };
-
-
-    // ==========================================================
-    // SUBMIT FINAL FIVE
+    // IMPORTANT:
     //
-    // THIS IS THE ONLY DATABASE SUBMISSION PATH.
+    // Selecting songs does NOT create song_requests.
+    //
+    // Here we only make sure the five songs exist in `songs`,
+    // save their real database UUIDs locally, and open the
+    // payment page.
+    //
+    // song_requests are created ONLY after admin confirms payment.
     // ==========================================================
 
     const submitSongsForPairing =
-        async () => {
+    async () => {
 
-            // --------------------------------------------------
-            // HARD VALIDATION
-            // --------------------------------------------------
-
-            if (
-                selectedSongs.length !==
-                MAX_SONGS
-            ) {
-
-                setSubmissionError(
-                    `Please select all 5 songs before submitting. You currently have ${selectedSongs.length}/5.`
-                );
-
-                return;
-
-            }
-
-
-            const singerId =
-                getSingerId();
-
-
-            console.log(
-                "🎤 FINAL SUBMISSION SINGER ID:",
-                singerId
+        if (
+            selectedSongs.length !== MAX_SONGS
+        ) {
+            setSubmissionError(
+                `Please select all 5 songs before continuing. You currently have ${selectedSongs.length}/${MAX_SONGS}.`
             );
 
-
-            if (
-                !singerId
-            ) {
-
-                setSubmissionError(
-                    "Unable to identify the logged-in singer. Please log in again."
-                );
-
-                return;
-
-            }
+            return;
+        }
 
 
-            setSubmittingSongs(
-                true
+        const singerId =
+            getSingerId();
+
+
+        if (!singerId) {
+            setSubmissionError(
+                "Unable to identify the logged-in singer. Please log in again."
             );
 
-            setSubmissionError("");
+            return;
+        }
 
 
-            try {
-
-                // --------------------------------------------------
-                // STEP 1
-                // SAVE ALL FIVE SONGS
-                //
-                // This converts temporary YouTube IDs into
-                // REAL Supabase UUIDs.
-                // --------------------------------------------------
-
-                const databaseSongs =
-                    [];
+        setSubmittingSongs(true);
+        setSubmissionError("");
 
 
-                for (
-                    const selectedItem
-                    of selectedSongs
-                ) {
-
-                    const song =
-                        selectedItem.song ||
-                        {};
+        try {
+            const databaseSongs = [];
 
 
-                    const databaseSong =
-                        await saveSongAndGetDatabaseId(
-                            song
-                        );
+            // --------------------------------------------------
+            // SAVE / VALIDATE THE FIVE SONGS
+            // --------------------------------------------------
 
+            for (
+                const selectedItem
+                of selectedSongs
+            ) {
+                const song =
+                    selectedItem.song ||
+                    {};
 
-                    if (
-                        !databaseSong.id
-                    ) {
-
-                        throw new Error(
-                            `Unable to validate song "${song.title}".`
-                        );
-
-                    }
-
-
-                    databaseSongs.push(
-                        databaseSong
-                    );
-
-                }
-
-
-                // --------------------------------------------------
-                // HARD CHECK
-                // --------------------------------------------------
-
+                // If this item already has a real database UUID,
+                // do not create another songs row.
                 if (
-                    databaseSongs.length !==
-                    MAX_SONGS
+                    selectedItem.databaseSongId
                 ) {
+                    databaseSongs.push({
+                        localItem:
+                            selectedItem,
+                        databaseSong:
+                            song,
+                        databaseSongId:
+                            String(
+                                selectedItem.databaseSongId
+                            )
+                    });
 
-                    throw new Error(
-                        "Unable to validate selected songs."
-                    );
-
+                    continue;
                 }
 
 
-                // --------------------------------------------------
-                // STEP 2
-                // CREATE EXACTLY FIVE REQUESTS
-                // --------------------------------------------------
-
-                const createdRequests =
-                    [];
-
-
-                for (
-                    let index = 0;
-                    index < MAX_SONGS;
-                    index++
-                ) {
-
-                    const databaseSong =
-                        databaseSongs[index];
-
-
-                    const request =
-                        await createFinalSongRequest(
-                            databaseSong.id,
-                            singerId
-                        );
-
-
-                    createdRequests.push(
-                        request
-                    );
-
-                }
-
-
-                // --------------------------------------------------
-                // HARD CHECK
-                // --------------------------------------------------
-
-                if (
-                    createdRequests.length !==
-                    MAX_SONGS
-                ) {
-
-                    throw new Error(
-                        "Unable to create all 5 final song requests."
-                    );
-
-                }
+                const songPayload = {
+                    title:
+                        song.title ||
+                        "Unknown Song",
+                    movie:
+                        song.movie ||
+                        null,
+                    album:
+                        song.album ||
+                        song.movie ||
+                        null,
+                    music_director:
+                        song.artist ||
+                        null,
+                    language:
+                        "Tamil",
+                    year:
+                        null,
+                    duration:
+                        null,
+                    thumbnail:
+                        song.thumbnail ||
+                        "",
+                    provider:
+                        song.provider ||
+                        "Music Provider",
+                    karaoke_available:
+                        true,
+                    difficulty:
+                        "Medium",
+                    male_singers:
+                        [],
+                    female_singers:
+                        [],
+                    theme_tags:
+                        [],
+                    is_duet:
+                        Boolean(
+                            song.isDuet
+                        )
+                };
 
 
-                // --------------------------------------------------
-                // STEP 3
-                // MARK EXACTLY THESE FIVE FOR PAIRING
-                // --------------------------------------------------
-
-                const requestIds =
-                    createdRequests.map(
-                        request =>
-                            request.id
-                    );
-
-
-                console.log(
-                    "========================================"
-                );
-
-                console.log(
-                    "🎵 FINAL 5 SONG SUBMISSION"
-                );
-
-                console.log(
-                    "Singer:",
-                    singerId
-                );
-
-                console.log(
-                    "Request IDs:",
-                    requestIds
-                );
-
-                console.log(
-                    "========================================"
-                );
-
-
-                const pairingResponse =
+                const songResponse =
                     await fetch(
-                        `${API_URL}/song-requests/submit-for-pairing`,
+                        `${API_URL}/songs`,
                         {
-
                             method:
-                                "PUT",
-
+                                "POST",
                             headers: {
-
                                 "Content-Type":
                                     "application/json"
-
                             },
-
                             body:
-                                JSON.stringify({
-
-                                    request_ids:
-                                        requestIds
-
-                                })
-
+                                JSON.stringify(
+                                    songPayload
+                                )
                         }
                     );
 
 
-                const pairingData =
-                    await pairingResponse.json();
-
-
-                console.log(
-                    "📦 Pairing response:",
-                    pairingData
-                );
+                const songData =
+                    await songResponse.json();
 
 
                 if (
-                    !pairingResponse.ok ||
-                    !pairingData.success
+                    !songResponse.ok ||
+                    !songData.success ||
+                    !songData.song?.id
                 ) {
-
                     throw new Error(
-                        pairingData.message ||
-                        "Unable to submit songs for pairing."
+                        songData.message ||
+                        `Unable to save song "${song.title}".`
                     );
-
                 }
 
 
-                // --------------------------------------------------
-                // STEP 4
-                // UPDATE LOCAL UI
-                // --------------------------------------------------
-
-                setSelectedSongs(
-                    currentSongs =>
-                        currentSongs.map(
-                            (
-                                item,
-                                index
-                            ) => {
-
-                                const databaseSong =
-                                    databaseSongs[index];
-
-                                const request =
-                                    createdRequests[index];
-
-
-                                return {
-
-                                    ...item,
-
-                                    requestId:
-                                        request.id,
-
-                                    songId:
-                                        databaseSong.id,
-
-                                    status:
-                                        "Submitted for Pairing",
-
-                                    requestedAt:
-                                        request.requested_at ||
-                                        new Date().toISOString(),
-
-                                    notes:
-                                        request.notes ||
-                                        "Final 5-song selection submitted for pairing",
-
-                                    song:
-                                        normalizeSong(
-                                            databaseSong
-                                        )
-
-                                };
-
-                            }
-
+                databaseSongs.push({
+                    localItem:
+                        selectedItem,
+                    databaseSong:
+                        songData.song,
+                    databaseSongId:
+                        String(
+                            songData.song.id
                         )
-                );
-
-
-                setSelectedSongKeys(
-                    databaseSongs.map(
-                        song =>
-                            String(
-                                song.id
-                            )
-                    )
-                );
-
-
-                setSubmissionComplete(
-                    true
-                );
-
-
-                setSubmissionMessage(
-                    pairingData.message ||
-                    "Your 5 selected songs have been submitted successfully for pairing."
-                );
-
-
-                setSubmitDialogOpen(
-                    false
-                );
-
-
-                console.log(
-                    "✅ FINAL 5 SONGS SUBMITTED SUCCESSFULLY"
-                );
-
+                });
             }
 
-            catch (
-                error
+
+            if (
+                databaseSongs.length !==
+                MAX_SONGS
             ) {
-
-                console.error(
-                    "❌ FINAL SUBMISSION ERROR:",
-                    error
+                throw new Error(
+                    "Unable to validate the 5 selected songs."
                 );
-
-
-                setSubmissionError(
-                    error.message ||
-                    "Unable to submit songs for pairing."
-                );
-
             }
 
-            finally {
 
-                setSubmittingSongs(
-                    false
-                );
+            // --------------------------------------------------
+            // SAVE PAYMENT-PENDING SELECTION
+            // --------------------------------------------------
 
-            }
+            const pendingSelection = {
+                singerId,
+                createdAt:
+                    new Date().toISOString(),
+                songs:
+                    databaseSongs.map(
+                        (item, index) => ({
+                            requestId:
+                                `payment-${Date.now()}-${index}`,
+                            songId:
+                                item.databaseSongId,
+                            databaseSongId:
+                                item.databaseSongId,
+                            title:
+                                item.databaseSong?.title ||
+                                item.localItem?.song?.title ||
+                                "Selected Song",
+                            movie:
+                                item.databaseSong?.movie ||
+                                item.localItem?.song?.movie ||
+                                "",
+                            song:
+                                item.databaseSong ||
+                                item.localItem?.song ||
+                                {}
+                        })
+                    )
+            };
 
-        };
+
+            sessionStorage.setItem(
+                "beatsInfinityPendingSongSelection",
+                JSON.stringify(
+                    pendingSelection
+                )
+            );
+
+
+            console.log(
+                "💳 Five songs prepared for payment:",
+                pendingSelection
+            );
+
+
+            setSubmitDialogOpen(false);
+
+
+            navigate(
+                "/singer-payment"
+            );
+        }
+        catch (error) {
+            console.error(
+                "❌ PAYMENT PREPARATION ERROR:",
+                error
+            );
+
+            setSubmissionError(
+                error.message ||
+                "Unable to continue to payment."
+            );
+        }
+        finally {
+            setSubmittingSongs(false);
+        }
+    };
 
 
     // ==========================================================
@@ -1784,6 +1597,7 @@ function MySongs() {
         <section
             className="my-songs-section"
         >
+
 
             {/* ==================================================
                 SELECTED SONGS
@@ -1828,27 +1642,22 @@ function MySongs() {
 
 
                 {/* ==================================================
-                    EMPTY
+                    LOADING
                 ================================================== */}
 
-                {selectedSongs.length === 0 && (
+                {loadingSelectedSongs && (
 
                     <div
                         className="no-songs"
                     >
 
                         <div>
-                            🎤
+                            ⏳
                         </div>
 
                         <h3>
-                            No songs selected yet
+                            Loading selected songs...
                         </h3>
-
-                        <p>
-                            Search for a song below and click
-                            Request Song.
-                        </p>
 
                     </div>
 
@@ -1856,493 +1665,542 @@ function MySongs() {
 
 
                 {/* ==================================================
-                    SELECTED SONG CARDS
+                    EMPTY
                 ================================================== */}
 
-                {selectedSongs.length > 0 && (
-
-                    <>
+                {!loadingSelectedSongs &&
+                    selectedSongs.length === 0 && (
 
                         <div
-                            className="songs-grid"
+                            className="no-songs"
                         >
 
-                            {selectedSongs.map(
-                                item => {
+                            <div>
+                                🎤
+                            </div>
 
-                                    const song =
-                                        item.song ||
-                                        {};
+                            <h3>
+                                No songs selected yet
+                            </h3>
 
-                                    const isRemoving =
-                                        removingRequestId ===
-                                        item.requestId;
-
-                                    const isSubmitted =
-                                        item.status ===
-                                        "Submitted for Pairing";
-
-
-                                    return (
-
-                                        <article
-                                            className="song-card selected-card"
-                                            key={
-                                                item.requestId
-                                            }
-                                        >
-
-                                            <div
-                                                className="song-card-top"
-                                            >
-
-                                                {song.thumbnail ? (
-
-                                                    <img
-                                                        src={
-                                                            song.thumbnail
-                                                        }
-                                                        alt={
-                                                            song.title
-                                                        }
-                                                        className="song-thumbnail"
-                                                    />
-
-                                                ) : (
-
-                                                    <div
-                                                        className="song-icon"
-                                                    >
-                                                        🎵
-                                                    </div>
-
-                                                )}
-
-                                            </div>
-
-
-                                            <div
-                                                className="song-info"
-                                            >
-
-                                                <h3>
-                                                    {
-                                                        song.title ||
-                                                        "Unknown Song"
-                                                    }
-                                                </h3>
-
-
-                                                <p>
-                                                    {
-                                                        song.artist ||
-                                                        song.music_director ||
-                                                        "Unknown Artist"
-                                                    }
-                                                </p>
-
-
-                                                {song.movie && (
-
-                                                    <small>
-                                                        🎬{" "}
-                                                        {
-                                                            song.movie
-                                                        }
-                                                    </small>
-
-                                                )}
-
-                                            </div>
-
-
-                                            <div
-                                                className="song-meta"
-                                            >
-
-                                                <span
-                                                    className="song-type"
-                                                >
-
-                                                    {
-                                                        song.isDuet ||
-                                                        song.is_duet
-                                                            ? "Duet"
-                                                            : "Song"
-                                                    }
-
-                                                </span>
-
-
-                                                <span
-                                                    className="song-status"
-                                                >
-
-                                                    {
-                                                        isSubmitted
-                                                            ? "🟢 Submitted for Pairing"
-                                                            : "🟡 Selected"
-                                                    }
-
-                                                </span>
-
-                                            </div>
-
-
-                                            {!submissionComplete && (
-
-                                                <button
-                                                    type="button"
-                                                    className="request-btn remove-btn"
-                                                    onClick={() =>
-                                                        removeSelectedSong(
-                                                            item.requestId
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        isRemoving
-                                                    }
-                                                >
-
-                                                    {
-                                                        isRemoving
-                                                            ? "⏳ Removing..."
-                                                            : "🗑️ Remove"
-                                                    }
-
-                                                </button>
-
-                                            )}
-
-                                        </article>
-
-                                    );
-
-                                }
-
-                            )}
+                            <p>
+                                Search for a song below
+                                and click Request Song.
+                            </p>
 
                         </div>
 
-
-                        {/* ==================================================
-                            SUBMISSION AREA
-                        ================================================== */}
-
-                        <div
-                            style={{
-
-                                marginTop:
-                                    "30px",
-
-                                padding:
-                                    "24px",
-
-                                borderRadius:
-                                    "16px",
-
-                                background:
-                                    "rgba(255,255,255,0.04)",
-
-                                border:
-                                    "1px solid rgba(255,255,255,0.12)",
-
-                                textAlign:
-                                    "center"
-
-                            }}
-                        >
-
-                            {!submissionComplete ? (
-
-                                <>
-
-                                    <h3
-                                        style={{
-                                            margin:
-                                                "0 0 8px",
-                                            color:
-                                                "#FFFFFF"
-                                        }}
-                                    >
-                                        Ready to submit your songs?
-                                    </h3>
+                    )}
 
 
-                                    <p
-                                        style={{
-                                            margin:
-                                                "0 0 18px",
-                                            color:
-                                                "#BBBBBB"
-                                        }}
-                                    >
+                {/* ==================================================
+                    SELECTED SONG CARDS
+                ================================================== */}
 
-                                        You have selected{" "}
+                {!loadingSelectedSongs &&
+                    selectedSongs.length > 0 && (
 
-                                        <strong>
-                                            {selectedSongs.length}
-                                        </strong>
+                        <>
 
-                                        {" "}of{" "}
+                            <div
+                                className="songs-grid"
+                            >
 
-                                        <strong>
-                                            {MAX_SONGS}
-                                        </strong>
+                                {selectedSongs.map(
+                                    item => {
 
-                                        {" "}songs.
-
-                                    </p>
+                                        const song =
+                                            item.song ||
+                                            {};
 
 
-                                    {/* ======================================
-                                        LESS THAN FIVE
-                                    ====================================== */}
+                                        const isRemoving =
+                                            removingRequestId ===
+                                            item.requestId;
 
-                                    {selectedSongs.length < MAX_SONGS && (
 
-                                        <div
+                                        const isSubmitted =
+                                            item.status ===
+                                            "Submitted for Pairing";
+
+
+                                        return (
+
+                                            <article
+                                                className="song-card selected-card"
+                                                key={
+                                                    item.requestId
+                                                }
+                                            >
+
+                                                {/* ----------------------------
+                                                    IMAGE
+                                                ---------------------------- */}
+
+                                                <div
+                                                    className="song-card-top"
+                                                >
+
+                                                    {song.thumbnail ? (
+
+                                                        <img
+                                                            src={
+                                                                song.thumbnail
+                                                            }
+                                                            alt={
+                                                                song.title
+                                                            }
+                                                            className="song-thumbnail"
+                                                        />
+
+                                                    ) : (
+
+                                                        <div
+                                                            className="song-icon"
+                                                        >
+
+                                                            🎵
+
+                                                        </div>
+
+                                                    )}
+
+                                                </div>
+
+
+                                                {/* ----------------------------
+                                                    INFORMATION
+                                                ---------------------------- */}
+
+                                                <div
+                                                    className="song-info"
+                                                >
+
+                                                    <h3>
+
+                                                        {
+                                                            song.title ||
+                                                            "Unknown Song"
+                                                        }
+
+                                                    </h3>
+
+
+                                                    <p>
+
+                                                        {
+                                                            song.music_director ||
+                                                            song.artist ||
+                                                            "Unknown Artist"
+                                                        }
+
+                                                    </p>
+
+
+                                                    {song.movie && (
+
+                                                        <small>
+
+                                                            🎬{" "}
+
+                                                            {
+                                                                song.movie
+                                                            }
+
+                                                        </small>
+
+                                                    )}
+
+                                                </div>
+
+
+                                                {/* ----------------------------
+                                                    META
+                                                ---------------------------- */}
+
+                                                <div
+                                                    className="song-meta"
+                                                >
+
+                                                    <span
+                                                        className="song-type"
+                                                    >
+
+                                                        {
+                                                            song.is_duet ||
+                                                            song.isDuet
+
+                                                                ? "Duet"
+
+                                                                : "Song"
+                                                        }
+
+                                                    </span>
+
+
+                                                    <span
+                                                        className="song-status"
+                                                    >
+
+                                                        {
+                                                            isSubmitted
+
+                                                                ? "🟢 Submitted for Pairing"
+
+                                                                : "🟡 Selected"
+                                                        }
+
+                                                    </span>
+
+                                                </div>
+
+
+                                                {/* ----------------------------
+                                                    REMOVE
+                                                ---------------------------- */}
+
+                                                {!submissionComplete && (
+
+                                                    <button
+                                                        type="button"
+                                                        className="request-btn remove-btn"
+                                                        onClick={() =>
+                                                            removeSelectedSong(
+                                                                item.requestId
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            isRemoving
+                                                        }
+                                                    >
+
+                                                        {
+                                                            isRemoving
+
+                                                                ? "⏳ Removing..."
+
+                                                                : "🗑️ Remove"
+                                                        }
+
+                                                    </button>
+
+                                                )}
+
+                                            </article>
+
+                                        );
+
+                                    }
+
+                                )}
+
+                            </div>
+
+
+                            {/* ==================================================
+                                SUBMISSION AREA
+                            ================================================== */}
+
+                            <div
+                                style={{
+                                    marginTop:
+                                        "30px",
+
+                                    padding:
+                                        "24px",
+
+                                    borderRadius:
+                                        "16px",
+
+                                    background:
+                                        "rgba(255,255,255,0.04)",
+
+                                    border:
+                                        "1px solid rgba(255,255,255,0.12)",
+
+                                    textAlign:
+                                        "center"
+                                }}
+                            >
+
+                                {!submissionComplete ? (
+
+                                    <>
+
+                                        <h3
                                             style={{
-
-                                                marginBottom:
-                                                    "18px",
-
-                                                padding:
-                                                    "14px 18px",
-
-                                                borderRadius:
-                                                    "10px",
-
-                                                background:
-                                                    "rgba(255,183,77,0.10)",
-
-                                                border:
-                                                    "1px solid rgba(255,183,77,0.30)",
+                                                margin:
+                                                    "0 0 8px",
 
                                                 color:
-                                                    "#FFB74D",
-
-                                                fontWeight:
-                                                    600
-
+                                                    "#FFFFFF"
                                             }}
                                         >
 
-                                            ⚠️ Please add{" "}
+                                            Ready to submit your songs?
+
+                                        </h3>
+
+
+                                        <p
+                                            style={{
+                                                margin:
+                                                    "0 0 18px",
+
+                                                color:
+                                                    "#BBBBBB"
+                                            }}
+                                        >
+
+                                            You have selected{" "}
 
                                             <strong>
                                                 {
-                                                    MAX_SONGS -
                                                     selectedSongs.length
                                                 }
                                             </strong>
 
-                                            {" "}
+                                            {" "}of{" "}
 
-                                            {
-                                                MAX_SONGS -
-                                                selectedSongs.length ===
-                                                1
-                                                    ? "more song"
-                                                    : "more songs"
+                                            <strong>
+                                                {MAX_SONGS}
+                                            </strong>
+
+                                            {" "}songs.
+
+                                        </p>
+
+
+                                        {/* ==================================================
+                                            LESS THAN FIVE
+                                        ================================================== */}
+
+                                        {selectedSongs.length < MAX_SONGS && (
+
+                                            <div
+                                                style={{
+                                                    marginBottom:
+                                                        "18px",
+
+                                                    padding:
+                                                        "12px 16px",
+
+                                                    borderRadius:
+                                                        "10px",
+
+                                                    background:
+                                                        "rgba(255,183,77,0.10)",
+
+                                                    border:
+                                                        "1px solid rgba(255,183,77,0.30)",
+
+                                                    color:
+                                                        "#FFB74D",
+
+                                                    fontWeight:
+                                                        600
+                                                }}
+                                            >
+
+                                                ⚠️ Please add{" "}
+
+                                                <strong>
+                                                    {
+                                                        MAX_SONGS -
+                                                        selectedSongs.length
+                                                    }
+                                                </strong>
+
+                                                {" "}
+
+                                                {
+                                                    MAX_SONGS -
+                                                    selectedSongs.length ===
+                                                    1
+
+                                                        ? "more song"
+
+                                                        : "more songs"
+                                                }
+
+                                                {" "}before submitting.
+
+                                            </div>
+
+                                        )}
+
+
+                                        {/* ==================================================
+                                            EXACTLY FIVE
+                                        ================================================== */}
+
+                                        {selectedSongs.length === MAX_SONGS && (
+
+                                            <div
+                                                style={{
+                                                    marginBottom:
+                                                        "18px",
+
+                                                    padding:
+                                                        "12px 16px",
+
+                                                    borderRadius:
+                                                        "10px",
+
+                                                    background:
+                                                        "rgba(76,175,80,0.10)",
+
+                                                    border:
+                                                        "1px solid rgba(76,175,80,0.30)",
+
+                                                    color:
+                                                        "#4CAF50",
+
+                                                    fontWeight:
+                                                        600
+                                                }}
+                                            >
+
+                                                ✅ All 5 songs selected.
+
+                                                <br />
+
+                                                You can now proceed to payment.
+
+                                            </div>
+
+                                        )}
+
+
+                                        {/* ==================================================
+                                            ERROR
+                                        ================================================== */}
+
+                                        {submissionError && (
+
+                                            <div
+                                                style={{
+                                                    marginBottom:
+                                                        "16px",
+
+                                                    color:
+                                                        "#ff6b6b",
+
+                                                    fontWeight:
+                                                        600
+                                                }}
+                                            >
+
+                                                ⚠️{" "}
+
+                                                {
+                                                    submissionError
+                                                }
+
+                                            </div>
+
+                                        )}
+
+
+                                        {/* ==================================================
+                                            SUBMIT BUTTON
+                                        ================================================== */}
+
+                                        <button
+                                            type="button"
+                                            className="request-btn"
+                                            onClick={
+                                                openSubmitDialog
                                             }
-
-                                            {" "}before submitting.
-
-                                        </div>
-
-                                    )}
-
-
-                                    {/* ======================================
-                                        EXACTLY FIVE
-                                    ====================================== */}
-
-                                    {selectedSongs.length === MAX_SONGS && (
-
-                                        <div
+                                            disabled={
+                                                submittingSongs ||
+                                                selectedSongs.length !==
+                                                MAX_SONGS ||
+                                                submissionComplete
+                                            }
                                             style={{
+                                                minWidth:
+                                                    "240px",
 
-                                                marginBottom:
-                                                    "18px",
+                                                opacity:
+                                                    selectedSongs.length ===
+                                                    MAX_SONGS
+                                                        ? 1
+                                                        : 0.45,
 
-                                                padding:
-                                                    "14px 18px",
-
-                                                borderRadius:
-                                                    "10px",
-
-                                                background:
-                                                    "rgba(76,175,80,0.10)",
-
-                                                border:
-                                                    "1px solid rgba(76,175,80,0.30)",
-
-                                                color:
-                                                    "#4CAF50",
-
-                                                fontWeight:
-                                                    600
-
+                                                cursor:
+                                                    selectedSongs.length ===
+                                                    MAX_SONGS
+                                                        ? "pointer"
+                                                        : "not-allowed"
                                             }}
                                         >
 
-                                            ✅ All 5 songs selected.
+                                            💳 PROCEED TO PAYMENT
 
-                                            <br />
+                                        </button>
 
-                                            You can now submit them
-                                            for pairing.
+                                    </>
 
-                                        </div>
+                                ) : (
 
-                                    )}
-
-
-                                    {/* ======================================
-                                        ERROR
-                                    ====================================== */}
-
-                                    {submissionError && (
+                                    <>
 
                                         <div
                                             style={{
+                                                fontSize:
+                                                    "38px",
 
                                                 marginBottom:
-                                                    "16px",
-
-                                                color:
-                                                    "#ff6b6b",
-
-                                                fontWeight:
-                                                    600
-
+                                                    "10px"
                                             }}
                                         >
 
-                                            ⚠️{" "}
-                                            {
-                                                submissionError
-                                            }
+                                            ✅
 
                                         </div>
 
-                                    )}
+
+                                        <h3
+                                            style={{
+                                                margin:
+                                                    "0 0 8px",
+
+                                                color:
+                                                    "#FFFFFF"
+                                            }}
+                                        >
+
+                                            Songs Submitted Successfully
+
+                                        </h3>
 
 
-                                    {/* ======================================
-                                        SUBMIT BUTTON
-                                    ====================================== */}
+                                        <p
+                                            style={{
+                                                margin:
+                                                    0,
 
-                                    <button
-                                        type="button"
-                                        className="request-btn"
-                                        onClick={
-                                            openSubmitDialog
-                                        }
-                                        disabled={
-                                            submittingSongs ||
-                                            selectedSongs.length !==
-                                            MAX_SONGS
-                                        }
-                                        style={{
+                                                color:
+                                                    "#BBBBBB"
+                                            }}
+                                        >
 
-                                            minWidth:
-                                                "280px",
+                                            {
+                                                submissionMessage
+                                            }
 
-                                            minHeight:
-                                                "48px",
+                                        </p>
 
-                                            fontSize:
-                                                "16px",
+                                    </>
 
-                                            fontWeight:
-                                                700,
+                                )}
 
-                                            opacity:
-                                                selectedSongs.length ===
-                                                MAX_SONGS
-                                                    ? 1
-                                                    : 0.45,
+                            </div>
 
-                                            cursor:
-                                                selectedSongs.length ===
-                                                MAX_SONGS
-                                                    ? "pointer"
-                                                    : "not-allowed"
+                        </>
 
-                                        }}
-                                    >
-
-                                        📤 SUBMIT SONGS FOR PAIRING
-
-                                    </button>
-
-                                </>
-
-                            ) : (
-
-                                <>
-
-                                    <div
-                                        style={{
-
-                                            fontSize:
-                                                "38px",
-
-                                            marginBottom:
-                                                "10px"
-
-                                        }}
-                                    >
-                                        ✅
-                                    </div>
-
-
-                                    <h3
-                                        style={{
-
-                                            margin:
-                                                "0 0 8px",
-
-                                            color:
-                                                "#FFFFFF"
-
-                                        }}
-                                    >
-
-                                        Songs Submitted Successfully
-
-                                    </h3>
-
-
-                                    <p
-                                        style={{
-
-                                            margin:
-                                                0,
-
-                                            color:
-                                                "#BBBBBB"
-
-                                        }}
-                                    >
-
-                                        {
-                                            submissionMessage
-                                        }
-
-                                    </p>
-
-                                </>
-
-                            )}
-
-                        </div>
-
-                    </>
-
-                )}
+                    )}
 
             </div>
 
@@ -2380,51 +2238,148 @@ function MySongs() {
 
 
                 {/* ==================================================
-                    LARGE SEARCH INPUT
+                    SEARCH INPUT + SEARCH BUTTON
                 ================================================== */}
 
-                <input
-                    type="text"
-                    value={search}
-                    onChange={
-                        event =>
-                            setSearch(
-                                event.target.value
-                            )
-                    }
-                    placeholder="Search any song, singer or movie..."
-                    className="song-search-input"
-                    disabled={
-                        submissionComplete
-                    }
+                <div
                     style={{
 
-                        width:
-                            "100%",
+                        display:
+                            "flex",
 
-                        minHeight:
-                            "58px",
-
-                        padding:
-                            "0 20px",
-
-                        fontSize:
-                            "18px",
-
-                        lineHeight:
-                            "1.4",
-
-                        borderRadius:
+                        gap:
                             "12px",
-
-                        boxSizing:
-                            "border-box",
 
                         marginBottom:
                             "20px"
 
                     }}
-                />
+                >
+
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={
+                            event =>
+                                setSearch(
+                                    event.target.value
+                                )
+                        }
+                        onKeyDown={
+                            event => {
+
+                                if (
+                                    event.key ===
+                                    "Enter"
+                                ) {
+
+                                    handleSearchClick();
+
+                                }
+
+                            }
+                        }
+                        placeholder="Search any song, singer or movie..."
+                        className="song-search-input"
+                        disabled={
+                            submissionComplete
+                        }
+                        style={{
+
+                            flex:
+                                1,
+
+                            minHeight:
+                                "58px",
+
+                            padding:
+                                "0 20px",
+
+                            fontSize:
+                                "18px",
+
+                            lineHeight:
+                                "1.4",
+
+                            borderRadius:
+                                "12px",
+
+                            boxSizing:
+                                "border-box"
+
+                        }}
+                    />
+
+                    <button
+                        type="button"
+                        onClick={
+                            openSubmitDialog
+                        }
+                        disabled={
+                            submittingSongs ||
+                            submissionComplete ||
+                            selectedSongs.length !==
+                            MAX_SONGS
+                        }
+                        title={
+                            selectedSongs.length !==
+                            MAX_SONGS
+                                ? `Select all 5 songs to proceed (${selectedSongs.length}/${MAX_SONGS})`
+                                : "Proceed to payment"
+                        }
+                        style={{
+
+                            minHeight:
+                                "58px",
+
+                            padding:
+                                "0 28px",
+
+                            fontSize:
+                                "16px",
+
+                            fontWeight:
+                                700,
+
+                            whiteSpace:
+                                "nowrap",
+
+                            border:
+                                "none",
+
+                            borderRadius:
+                                "12px",
+
+                            cursor:
+                                submissionComplete ||
+                                selectedSongs.length !==
+                                MAX_SONGS
+                                    ? "not-allowed"
+                                    : "pointer",
+
+                            opacity:
+                                selectedSongs.length ===
+                                MAX_SONGS &&
+                                !submissionComplete
+                                    ? 1
+                                    : 0.45,
+
+                            color:
+                                "#FFFFFF",
+
+                            background:
+                                "linear-gradient(135deg, #1DB954, #37E977)"
+
+                        }}
+                    >
+
+                        💳 Proceed to Payment
+                        {" "}
+                        ({selectedSongs.length}/{MAX_SONGS})
+
+                    </button>
+
+                </div>
 
 
                 {/* ==================================================
@@ -2434,21 +2389,21 @@ function MySongs() {
                 {search &&
                     searching && (
 
-                    <div
-                        className="no-songs"
-                    >
+                        <div
+                            className="no-songs"
+                        >
 
-                        <div>
-                            🔎
+                            <div>
+                                🔎
+                            </div>
+
+                            <h3>
+                                Searching...
+                            </h3>
+
                         </div>
 
-                        <h3>
-                            Searching...
-                        </h3>
-
-                    </div>
-
-                )}
+                    )}
 
 
                 {/* ==================================================
@@ -2459,27 +2414,27 @@ function MySongs() {
                     !searching &&
                     searchError && (
 
-                    <div
-                        className="no-songs"
-                    >
+                        <div
+                            className="no-songs"
+                        >
 
-                        <div>
-                            ⚠️
+                            <div>
+                                ⚠️
+                            </div>
+
+                            <h3>
+                                Search failed
+                            </h3>
+
+                            <p>
+                                {
+                                    searchError
+                                }
+                            </p>
+
                         </div>
 
-                        <h3>
-                            Search failed
-                        </h3>
-
-                        <p>
-                            {
-                                searchError
-                            }
-                        </p>
-
-                    </div>
-
-                )}
+                    )}
 
 
                 {/* ==================================================
@@ -2491,227 +2446,248 @@ function MySongs() {
                     !searchError &&
                     searchResults.length > 0 && (
 
-                    <div>
+                        <div>
 
-                        <div
-                            className="songs-grid"
-                        >
+                            <div
+                                className="songs-grid"
+                            >
 
-                            {searchResults.map(
-                                song => {
+                                {searchResults.map(
+                                    song => {
 
-                                    const songKey =
-                                        String(
-                                            song.id
-                                        );
-
-
-                                    const isRequesting =
-                                        requestingSongId ===
-                                        songKey;
+                                        const isRequesting =
+                                            requestingSongId ===
+                                            song.id;
 
 
-                                    const isRequested =
-                                        selectedSongKeys.includes(
-                                            songKey
-                                        );
+                                        const isRequested =
+                                            requestedSongs.includes(
+                                                String(
+                                                    song.id
+                                                )
+                                            );
 
 
-                                    const isFavorite =
-                                        favorites.includes(
-                                            songKey
-                                        );
+                                        const isFavorite =
+                                            favorites.includes(
+                                                song.id
+                                            );
 
 
-                                    return (
+                                        return (
 
-                                        <article
-                                            className="song-card"
-                                            key={
-                                                songKey
-                                            }
-                                        >
-
-                                            {/* IMAGE */}
-
-                                            <div
-                                                className="song-card-top"
+                                            <article
+                                                className="song-card"
+                                                key={
+                                                    song.id
+                                                }
                                             >
 
-                                                {song.thumbnail ? (
+                                                {/* ----------------------------
+                                                    IMAGE
+                                                ---------------------------- */}
 
-                                                    <img
-                                                        src={
-                                                            song.thumbnail
+                                                <div
+                                                    className="song-card-top"
+                                                >
+
+                                                    {song.thumbnail ? (
+
+                                                        <img
+                                                            src={
+                                                                song.thumbnail
+                                                            }
+                                                            alt={
+                                                                song.title
+                                                            }
+                                                            className="song-thumbnail"
+                                                        />
+
+                                                    ) : (
+
+                                                        <div
+                                                            className="song-icon"
+                                                        >
+
+                                                            🎵
+
+                                                        </div>
+
+                                                    )}
+
+
+                                                    {/* ----------------------------
+                                                        FAVORITE
+                                                    ---------------------------- */}
+
+                                                    <button
+                                                        type="button"
+                                                        className={
+                                                            isFavorite
+
+                                                                ? "favorite-btn favorite"
+
+                                                                : "favorite-btn"
                                                         }
-                                                        alt={
+                                                        onClick={() =>
+                                                            toggleFavorite(
+                                                                song.id
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            submissionComplete
+                                                        }
+                                                    >
+
+                                                        {
+                                                            isFavorite
+                                                                ? "★"
+                                                                : "☆"
+                                                        }
+
+                                                    </button>
+
+                                                </div>
+
+
+                                                {/* ----------------------------
+                                                    SONG INFO
+                                                ---------------------------- */}
+
+                                                <div
+                                                    className="song-info"
+                                                >
+
+                                                    <h3>
+
+                                                        {
                                                             song.title
                                                         }
-                                                        className="song-thumbnail"
-                                                    />
 
-                                                ) : (
+                                                    </h3>
 
-                                                    <div
-                                                        className="song-icon"
+
+                                                    <p>
+
+                                                        {
+                                                            song.artist
+                                                        }
+
+                                                    </p>
+
+
+                                                    {song.movie && (
+
+                                                        <small>
+
+                                                            🎬{" "}
+
+                                                            {
+                                                                song.movie
+                                                            }
+
+                                                        </small>
+
+                                                    )}
+
+                                                </div>
+
+
+                                                {/* ----------------------------
+                                                    META
+                                                ---------------------------- */}
+
+                                                <div
+                                                    className="song-meta"
+                                                >
+
+                                                    <span
+                                                        className="song-type"
                                                     >
-                                                        🎵
-                                                    </div>
 
-                                                )}
+                                                        {
+                                                            song.isDuet
+
+                                                                ? "Duet"
+
+                                                                : "Song"
+                                                        }
+
+                                                    </span>
 
 
-                                                {/* FAVORITE */}
+                                                    <span
+                                                        className="song-status"
+                                                    >
+
+                                                        {
+                                                            song.provider
+                                                        }
+
+                                                    </span>
+
+                                                </div>
+
+
+                                                {/* ----------------------------
+                                                    SELECT SONG
+                                                ---------------------------- */}
 
                                                 <button
                                                     type="button"
                                                     className={
-                                                        isFavorite
-                                                            ? "favorite-btn favorite"
-                                                            : "favorite-btn"
+                                                        isRequested
+
+                                                            ? "request-btn requested"
+
+                                                            : "request-btn"
                                                     }
                                                     onClick={() =>
-                                                        toggleFavorite(
-                                                            songKey
+                                                        requestSong(
+                                                            song
                                                         )
                                                     }
                                                     disabled={
-                                                        submissionComplete
+                                                        submissionComplete ||
+                                                        isRequesting ||
+                                                        isRequested ||
+                                                        selectedSongs.length >=
+                                                        MAX_SONGS
                                                     }
                                                 >
 
                                                     {
-                                                        isFavorite
-                                                            ? "★"
-                                                            : "☆"
+                                                        isRequesting
+
+                                                            ? "⏳ Selecting..."
+
+                                                            : isRequested
+
+                                                                ? "✓ Selected"
+
+                                                                : selectedSongs.length >=
+                                                                    MAX_SONGS
+
+                                                                    ? "5 Songs Selected"
+
+                                                                    : "🎤 Request Song"
                                                     }
 
                                                 </button>
 
-                                            </div>
+                                            </article>
 
+                                        );
 
-                                            {/* SONG INFO */}
+                                    }
 
-                                            <div
-                                                className="song-info"
-                                            >
+                                )}
 
-                                                <h3>
-                                                    {
-                                                        song.title
-                                                    }
-                                                </h3>
-
-
-                                                <p>
-                                                    {
-                                                        song.artist
-                                                    }
-                                                </p>
-
-
-                                                {song.movie && (
-
-                                                    <small>
-                                                        🎬{" "}
-                                                        {
-                                                            song.movie
-                                                        }
-                                                    </small>
-
-                                                )}
-
-                                            </div>
-
-
-                                            {/* META */}
-
-                                            <div
-                                                className="song-meta"
-                                            >
-
-                                                <span
-                                                    className="song-type"
-                                                >
-
-                                                    {
-                                                        song.isDuet
-                                                            ? "Duet"
-                                                            : "Song"
-                                                    }
-
-                                                </span>
-
-
-                                                <span
-                                                    className="song-status"
-                                                >
-
-                                                    {
-                                                        song.provider
-                                                    }
-
-                                                </span>
-
-                                            </div>
-
-
-                                            {/* SELECT */}
-
-                                            <button
-                                                type="button"
-                                                className={
-                                                    isRequested
-                                                        ? "request-btn requested"
-                                                        : "request-btn"
-                                                }
-                                                onClick={() =>
-                                                    requestSong(
-                                                        song
-                                                    )
-                                                }
-                                                disabled={
-                                                    submissionComplete ||
-                                                    isRequesting ||
-                                                    isRequested ||
-                                                    selectedSongs.length >=
-                                                    MAX_SONGS
-                                                }
-                                            >
-
-                                                {
-                                                    isRequesting
-
-                                                        ? "⏳ Selecting..."
-
-                                                        : isRequested
-
-                                                            ? "✓ Selected"
-
-                                                            : selectedSongs.length >=
-                                                              MAX_SONGS
-
-                                                                ? "5 Songs Selected"
-
-                                                                : "🎤 Request Song"
-                                                }
-
-                                            </button>
-
-                                        </article>
-
-                                    );
-
-                                }
-
-                            )}
+                            </div>
 
                         </div>
 
-                    </div>
-
-                )}
+                    )}
 
 
                 {/* ==================================================
@@ -2723,25 +2699,26 @@ function MySongs() {
                     !searchError &&
                     searchResults.length === 0 && (
 
-                    <div
-                        className="no-songs"
-                    >
+                        <div
+                            className="no-songs"
+                        >
 
-                        <div>
-                            🎵
+                            <div>
+                                🎵
+                            </div>
+
+                            <h3>
+                                No songs found
+                            </h3>
+
+                            <p>
+                                Try another song,
+                                artist or movie.
+                            </p>
+
                         </div>
 
-                        <h3>
-                            No songs found
-                        </h3>
-
-                        <p>
-                            Try another song, artist or movie.
-                        </p>
-
-                    </div>
-
-                )}
+                    )}
 
 
                 {/* ==================================================
@@ -2755,7 +2732,9 @@ function MySongs() {
                     <span
                         className="request-info-icon"
                     >
+
                         💡
+
                     </span>
 
 
@@ -2767,8 +2746,10 @@ function MySongs() {
 
 
                         <p>
+
                             Search by song name,
                             singer, movie or artist.
+
                         </p>
 
                     </div>
@@ -2779,7 +2760,7 @@ function MySongs() {
 
 
             {/* ==================================================
-                CONFIRMATION DIALOG
+                SUBMISSION CONFIRMATION DIALOG
             ================================================== */}
 
             <Dialog
@@ -2794,7 +2775,9 @@ function MySongs() {
             >
 
                 <DialogTitle>
-                    Submit Songs for Pairing?
+
+                    Beats Infinity Says
+
                 </DialogTitle>
 
 
@@ -2822,25 +2805,21 @@ function MySongs() {
 
                         <p>
 
-                            These 5 songs will be submitted
-                            for the pairing process.
+                            These 5 songs are ready for payment and pairing.
 
                         </p>
 
 
                         <p>
 
-                            Once submitted, your selection
-                            cannot be changed.
+                            Once you continue, your 5-song selection will be locked for payment.
 
                         </p>
 
 
                         <p>
 
-                            Please make sure your song
-                            selection is correct before
-                            confirming.
+                            Please make sure your song selection is correct before continuing.
 
                         </p>
 
@@ -2849,17 +2828,16 @@ function MySongs() {
 
                             <p
                                 style={{
-
                                     color:
                                         "#d32f2f",
 
                                     fontWeight:
                                         600
-
                                 }}
                             >
 
                                 ⚠️{" "}
+
                                 {
                                     submissionError
                                 }
@@ -2883,7 +2861,9 @@ function MySongs() {
                             submittingSongs
                         }
                     >
+
                         CANCEL
+
                     </Button>
 
 
@@ -2901,8 +2881,10 @@ function MySongs() {
 
                         {
                             submittingSongs
+
                                 ? "SUBMITTING..."
-                                : "CONFIRM & SUBMIT"
+
+                                : "PROCEED TO PAYMENT"
                         }
 
                     </Button>
@@ -2910,6 +2892,7 @@ function MySongs() {
                 </DialogActions>
 
             </Dialog>
+
 
         </section>
 

@@ -76,4 +76,196 @@
 
     font-weight:800;
 
-    margin
+    margin-bottom:18px;
+
+}
+
+.statistics-header p{
+
+    color:#BBBBBB;
+
+    font-family:"Inter",sans-serif;
+
+    font-size:20px;
+
+    font-weight:400;
+
+}
+
+/* ==========================================================
+   GRID
+   ========================================================== */
+
+.statistics-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(4,1fr);
+
+    gap:28px;
+
+}
+
+/* ==========================================================
+   CARD
+   ========================================================== */
+
+.statistics-card{
+
+    position:relative;
+
+    padding:42px 30px;
+
+    border-radius:28px;
+
+    background:rgba(255,255,255,.04);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    text-align:center;
+
+    transition:all .35s ease;
+
+    overflow:hidden;
+
+}
+
+.statistics-card:hover{
+
+    transform:
+        translateY(-10px);
+
+    border-color:#FFD54A;
+
+    box-shadow:
+        0 25px 60px rgba(0,0,0,.45);
+
+}
+
+/* ==========================================================
+   ICON
+   ========================================================== */
+
+.statistics-icon{
+
+    width:82px;
+
+    height:82px;
+
+    margin:auto;
+
+    margin-bottom:28px;
+
+    border-radius:22px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:linear-gradient(
+        135deg,
+        #1DB954,
+        #39EF79
+    );
+
+    color:white;
+
+    font-size:34px;
+
+    transition:.35s;
+
+    box-shadow:
+        0 18px 40px rgba(29,185,84,.30);
+
+}
+
+.statistics-card:hover .statistics-icon{
+
+    transform:
+        rotate(-8deg)
+        scale(1.12);
+
+    box-shadow:
+        0 28px 55px rgba(29,185,84,.45);
+
+}
+
+/* ==========================================================
+   NUMBER
+   ========================================================== */
+
+.statistics-card h3{
+
+    color:#FFFFFF;
+
+    font-family:"Poppins",sans-serif;
+
+    font-size:36px;
+
+    font-weight:800;
+
+    margin-bottom:10px;
+
+}
+
+/* ==========================================================
+   LABEL
+   ========================================================== */
+
+.statistics-card p{
+
+    color:#BDBDBD;
+
+    font-family:"Inter",sans-serif;
+
+    font-size:16px;
+
+    line-height:1.6;
+
+}
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+@media(max-width:1200px){
+
+    .statistics-grid{
+
+        grid-template-columns:repeat(2,1fr);
+
+    }
+
+}
+
+@media(max-width:768px){
+
+    .statistics-section{
+
+        padding:80px 0;
+
+    }
+
+    .statistics-header h2{
+
+        font-size:34px;
+
+    }
+
+    .statistics-header p{
+
+        font-size:17px;
+
+    }
+
+    .statistics-grid{
+
+        grid-template-columns:1fr;
+
+    }
+
+}

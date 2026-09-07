@@ -18,6 +18,7 @@ import Welcome from "../pages/Welcome";
 import SingerRegistration from "../pages/SingerRegistration";
 import SingerDashboard from "../pages/SingerDashboard";
 import SingerLogin from "../pages/SingerLogin";
+import SingerPayment from "../pages/SingerPayment";
 
 
 /* ==========================================================
@@ -35,10 +36,14 @@ import RegistrationWizard from "../components/Auth/RegistrationWizard";
 ========================================================== */
 
 import AdminDashboard from "../pages/AdminDashboard";
+import AdminLogin from "../pages/AdminLogin";
 import EventManagement from "../pages/EventManagement";
 import SongManagement from "../pages/SongManagement";
 import SingerManagement from "../pages/SingerManagement";
 import PairingManagement from "../pages/PairingManagement";
+import AdminPaymentManagement from "../pages/AdminPaymentManagement";
+import SuperAdminDashboard from "../pages/SuperAdminDashboard";
+import RequireAdminAuth from "../components/admin/RequireAdminAuth";
 
 
 /* ==========================================================
@@ -108,6 +113,16 @@ function AppRoutes() {
 
 
             {/* ==================================================
+                SINGER PAYMENT
+            ================================================== */}
+
+            <Route
+                path="/singer-payment"
+                element={<SingerPayment />}
+            />
+
+
+            {/* ==================================================
                 AUTHENTICATION
             ================================================== */}
 
@@ -160,32 +175,92 @@ function AppRoutes() {
 
 
             {/* ==================================================
-                ADMIN
+                ADMIN LOGIN / SUPER ADMIN LOGIN
+                -----------------------------------------------
+                Public - not behind the auth guard.
+            ================================================== */}
+
+            <Route
+                path="/admin/login"
+                element={<AdminLogin />}
+            />
+
+            <Route
+                path="/superadmin/login"
+                element={<AdminLogin />}
+            />
+
+
+            {/* ==================================================
+                ADMIN - PROTECTED
             ================================================== */}
 
             <Route
                 path="/admin"
-                element={<AdminDashboard />}
+                element={
+                    <RequireAdminAuth>
+                        <AdminDashboard />
+                    </RequireAdminAuth>
+                }
             />
 
             <Route
                 path="/admin/events"
-                element={<EventManagement />}
+                element={
+                    <RequireAdminAuth>
+                        <EventManagement />
+                    </RequireAdminAuth>
+                }
             />
 
             <Route
                 path="/admin/songs"
-                element={<SongManagement />}
+                element={
+                    <RequireAdminAuth>
+                        <SongManagement />
+                    </RequireAdminAuth>
+                }
             />
 
             <Route
                 path="/admin/singers"
-                element={<SingerManagement />}
+                element={
+                    <RequireAdminAuth>
+                        <SingerManagement />
+                    </RequireAdminAuth>
+                }
             />
 
             <Route
                 path="/admin/pairing"
-                element={<PairingManagement />}
+                element={
+                    <RequireAdminAuth>
+                        <PairingManagement />
+                    </RequireAdminAuth>
+                }
+            />
+
+            <Route
+                path="/admin/payments"
+                element={
+                    <RequireAdminAuth>
+                        <AdminPaymentManagement />
+                    </RequireAdminAuth>
+                }
+            />
+
+
+            {/* ==================================================
+                SUPER ADMIN - PROTECTED (super_admin role only)
+            ================================================== */}
+
+            <Route
+                path="/superadmin"
+                element={
+                    <RequireAdminAuth role="super_admin">
+                        <SuperAdminDashboard />
+                    </RequireAdminAuth>
+                }
             />
 
 

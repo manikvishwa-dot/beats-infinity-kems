@@ -32,6 +32,18 @@ const songRequestRoutes =
 const singerRoutes =
     require("./routes/v1/singerRoutes");
 
+const paymentRoutes =
+    require("./routes/v1/paymentRoutes");
+
+const adminAuthRoutes =
+    require("./routes/v1/adminAuthRoutes");
+
+const adminDashboardRoutes =
+    require("./routes/v1/adminDashboardRoutes");
+
+const pairingRoutes =
+    require("./routes/v1/pairingRoutes");
+
 
 // ==========================================================
 // EXPRESS APP
@@ -122,6 +134,71 @@ app.use(
 app.use(
     "/api/v1/song-requests",
     songRequestRoutes
+);
+
+
+// ----------------------------------------------------------
+// PAYMENTS
+// ----------------------------------------------------------
+//
+// POST
+//    /api/v1/payments
+//
+// GET
+//    /api/v1/payments/my?singer_id=UUID
+//
+// GET
+//    /api/v1/payments
+//
+// PUT
+//    /api/v1/payments/:id/mark-paid
+//
+// PUT
+//    /api/v1/payments/:id/reject
+//
+// ----------------------------------------------------------
+
+app.use(
+    "/api/v1/payments",
+    paymentRoutes
+);
+
+
+// ----------------------------------------------------------
+// ADMIN AUTH
+// ----------------------------------------------------------
+
+app.use(
+    "/api/v1/admin",
+    adminAuthRoutes
+);
+
+app.use(
+    "/api/v1/admin",
+    adminDashboardRoutes
+);
+
+
+// ----------------------------------------------------------
+// PAIRING (SINGER-FACING)
+// ----------------------------------------------------------
+
+app.use(
+    "/api/v1/pairings",
+    pairingRoutes
+);
+
+
+console.log(
+    "========================================"
+);
+
+console.log(
+    "💳 Payment routes registered"
+);
+
+console.log(
+    "========================================"
 );
 
 
@@ -249,11 +326,20 @@ const startServer = () => {
         "========================================"
     );
 
-    console.log("🔍 About to call app.listen()");
-    console.log("🔍 PORT =", PORT);
+    console.log(
+        "🔍 About to call app.listen()"
+    );
+
+    console.log(
+        "🔍 PORT =",
+        PORT
+    );
+
 
     app.listen(
-                PORT,
+
+        PORT,
+
         () => {
 
             console.log(
@@ -276,6 +362,10 @@ const startServer = () => {
                 "========================================"
             );
 
+
+            // ==================================================
+            // AVAILABLE APIS
+            // ==================================================
 
             console.log(
                 "Available APIs:"
@@ -308,6 +398,11 @@ const startServer = () => {
 
 
             console.log(
+                `➡️  http://localhost:${PORT}/api/v1/payments`
+            );
+
+
+            console.log(
                 `➡️  http://localhost:${PORT}/api/v1/singers`
             );
 
@@ -316,6 +411,49 @@ const startServer = () => {
                 "========================================"
             );
 
+
+            // ==================================================
+            // PAYMENT ENDPOINTS
+            // ==================================================
+
+            console.log(
+                "💳 Payment endpoints:"
+            );
+
+
+            console.log(
+                `POST   http://localhost:${PORT}/api/v1/payments`
+            );
+
+
+            console.log(
+                `GET    http://localhost:${PORT}/api/v1/payments/my?singer_id=UUID`
+            );
+
+
+            console.log(
+                `GET    http://localhost:${PORT}/api/v1/payments`
+            );
+
+
+            console.log(
+                `PUT    http://localhost:${PORT}/api/v1/payments/:id/mark-paid`
+            );
+
+
+            console.log(
+                `PUT    http://localhost:${PORT}/api/v1/payments/:id/reject`
+            );
+
+
+            console.log(
+                "========================================"
+            );
+
+
+            // ==================================================
+            // SINGER ENDPOINTS
+            // ==================================================
 
             console.log(
                 "🎤 Singer endpoints:"
@@ -362,6 +500,10 @@ const startServer = () => {
             );
 
 
+            // ==================================================
+            // SONG REQUEST DELETE ENDPOINT
+            // ==================================================
+
             console.log(
                 "🗑️ DELETE request endpoint:"
             );
@@ -377,6 +519,7 @@ const startServer = () => {
             );
 
         }
+
     );
 
 };

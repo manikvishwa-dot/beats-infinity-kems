@@ -1,6 +1,4 @@
 import {
-    FaMicrophone,
-    FaCalendarAlt,
     FaUsers,
     FaMusic
 } from "react-icons/fa";
@@ -25,111 +23,95 @@ function HeroLeft() {
 
             </div>
 
-            {/* Heading */}
+            {/* Boxed content panel */}
 
-            <h1 className="hero-heading">
+            <div className="hero-left-box">
 
-                <span>Where Every</span>
+                {/* Heading */}
 
-                <span className="green">Voice Finds</span>
+                <h1 className="hero-heading">
 
-                <span>A Stage</span>
+                    <span>Where Every</span>
 
-            </h1>
+                    <span className="green">Voice Finds</span>
 
-            {/* Tagline */}
+                    <span>A Stage</span>
 
-            <h2 className="hero-tagline">
+                </h1>
 
-                {homepage.tagline}
+                {/* Tagline */}
 
-            </h2>
+                <h2 className="hero-tagline">
 
-            <div className="hero-divider"></div>
+                    {homepage.tagline}
 
-            {/* Description */}
+                </h2>
 
-            <p className="hero-description">
+                <div className="hero-divider"></div>
 
-                {homepage.description}
+                {/* Description */}
 
-            </p>
+                <p className="hero-description">
 
-            {/* Buttons */}
+                    {homepage.description}
 
-            <div className="hero-buttons">
+                </p>
 
-                <button className="btn-primary">
+                {/* Statistics */}
 
-                    <FaMicrophone />
+                <div className="hero-stats">
 
-                    Register Now
+                    <div className="stat-card">
 
-                </button>
+                        <div className="stat-icon users">
 
-                <button className="btn-secondary">
+                            <FaUsers />
 
-                    <FaCalendarAlt />
+                        </div>
 
-                    Upcoming Events
+                        <div>
 
-                </button>
+                            <h3>117+</h3>
 
-            </div>
+                            <p>Members</p>
 
-            {/* Statistics */}
-
-            <div className="hero-stats">
-
-                <div className="stat-card">
-
-                    <div className="stat-icon users">
-
-                        <FaUsers />
+                        </div>
 
                     </div>
 
-                    <div>
+                    <div className="stat-card">
 
-                        <h3>117+</h3>
+                        <div className="stat-icon music">
 
-                        <p>Members</p>
+                            <FaMusic />
 
-                    </div>
+                        </div>
 
-                </div>
+                        <div>
 
-                <div className="stat-card">
+                            <h3>36</h3>
 
-                    <div className="stat-icon music">
+                            <p>Events</p>
 
-                        <FaMusic />
-
-                    </div>
-
-                    <div>
-
-                        <h3>36</h3>
-
-                        <p>Events</p>
+                        </div>
 
                     </div>
 
-                </div>
+                    <div className="stat-card">
 
-                <div className="stat-card">
+                        <div className="stat-icon mic">
 
-                    <div className="stat-icon mic">
+                            <GiMicrophone />
 
-                        <GiMicrophone />
+                        </div>
 
-                    </div>
+                        <div>
 
-                    <div>
+                            <h3>200+</h3>
 
-                        <h3>200+</h3>
+                            <p>Performances</p>
 
-                        <p>Performances</p>
+                        </div>
 
                     </div>
 

@@ -1,0 +1,198 @@
+.singer-mgmt-toolbar {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 16px;
+
+    margin-bottom: 20px;
+
+}
+
+.singer-mgmt-count {
+
+    color: #BBBBBB;
+
+    font-size: 14px;
+
+}
+
+.singer-mgmt-count strong {
+
+    color: #FFD54A;
+
+}
+
+.singer-mgmt-search {
+
+    min-width: 260px;
+
+    min-height: 42px;
+
+    padding: 0 18px;
+
+    border-radius: 999px;
+
+    border: 1px solid rgba(255,255,255,0.12);
+
+    background: rgba(255,255,255,0.04);
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+    transition: border-color .2s ease;
+
+}
+
+.singer-mgmt-search:focus {
+
+    outline: none;
+
+    border-color: #1DB954;
+
+}
+
+.singer-mgmt-table-wrapper {
+
+    overflow-x: auto;
+
+    border-radius: 16px;
+
+    border: 1px solid rgba(255,255,255,0.09);
+
+    background: rgba(255,255,255,0.04);
+
+    backdrop-filter: blur(14px);
+
+    box-shadow: 0 20px 45px rgba(0,0,0,0.45);
+
+}
+
+.singer-mgmt-table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    min-width: 700px;
+
+}
+
+.singer-mgmt-table th,
+.singer-mgmt-table td {
+
+    padding: 14px 18px;
+
+    text-align: left;
+
+    font-size: 14px;
+
+}
+
+.singer-mgmt-table th {
+
+    background: rgba(255,255,255,0.05);
+
+    color: #BBBBBB;
+
+    font-weight: 600;
+
+    font-size: 12.5px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.6px;
+
+}
+
+.singer-mgmt-table tbody tr {
+
+    border-top: 1px solid rgba(255,255,255,0.06);
+
+}
+
+.singer-mgmt-table tbody tr:hover {
+
+    background: rgba(255,255,255,0.03);
+
+}
+
+.singer-mgmt-table td.name-cell {
+
+    font-weight: 600;
+
+}
+
+.gender-pill {
+
+    display: inline-block;
+
+    padding: 4px 12px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+}
+
+.gender-pill.male {
+
+    background: rgba(66,165,245,0.15);
+
+    color: #42A5F5;
+
+}
+
+.gender-pill.female {
+
+    background: rgba(240,98,146,0.15);
+
+    color: #F06292;
+
+}
+
+.gender-pill.other {
+
+    background: rgba(189,189,189,0.15);
+
+    color: #BDBDBD;
+
+}
+
+.singer-mgmt-empty {
+
+    padding: 50px 20px;
+
+    text-align: center;
+
+    color: #888888;
+
+    border: 1px dashed rgba(255,255,255,0.12);
+
+    border-radius: 14px;
+
+}
+
+.singer-mgmt-error {
+
+    padding: 14px 16px;
+
+    border-radius: 10px;
+
+    background: rgba(255,107,107,0.1);
+
+    border: 1px solid rgba(255,107,107,0.3);
+
+    color: #ff6b6b;
+
+    margin-bottom: 20px;
+
+}

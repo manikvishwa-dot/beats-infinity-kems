@@ -5,17 +5,21 @@ import {
     FaCheckCircle
 } from "react-icons/fa";
 
+import { useNavigate } from "react-router-dom";
+
 import journey from "../Journey/journeyData";
 
 import "./HeroRight.css";
 
 function HeroRight() {
 
+    const navigate = useNavigate();
+
     // Featured Event (Latest Event)
     const featuredEvent = journey[0];
 
-    const progress = 64;
-    const totalSeats = 120;
+    const progress = 50;
+    const totalSeats = 55;
 
     return (
 
@@ -51,7 +55,7 @@ function HeroRight() {
 
                             <FaClock />
 
-                            <span>05:00 PM</span>
+                            <span>09:00 AM</span>
 
                         </div>
 
@@ -96,7 +100,11 @@ function HeroRight() {
 
                         </div>
 
-                        <button className="register-event-btn">
+                        <button
+                            type="button"
+                            className="register-event-btn"
+                            onClick={() => navigate("/login")}
+                        >
 
                             Register for Event
 

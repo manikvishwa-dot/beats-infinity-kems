@@ -2,8 +2,10 @@
 // BEATS INFINITY - SINGER API SERVICE
 // ==========================================================
 
+import { API_V1_URL } from "../config/api";
+
 const API_BASE_URL =
-    "http://localhost:5000/api/v1/singers";
+    `${API_V1_URL}/singers`;
 
 
 // ==========================================================

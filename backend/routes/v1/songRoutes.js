@@ -10,6 +10,10 @@ const router = express.Router();
 const songController =
     require("../../controllers/v1/songController");
 
+const {
+    requireAdmin
+} = require("../../middleware/requireAdminAuth");
+
 
 // ==========================================================
 // DEBUG CONTROLLER
@@ -138,6 +142,19 @@ router.post(
 
 
 // ==========================================================
+// BULK UPSERT SONGS (Excel import)
+//
+// PUT /api/v1/songs/bulk
+// ==========================================================
+
+router.put(
+    "/bulk",
+    requireAdmin,
+    songController.bulkUpsertSongs
+);
+
+
+// ==========================================================
 // UPDATE SONG
 //
 // PUT /api/v1/songs/:id
@@ -145,6 +162,7 @@ router.post(
 
 router.put(
     "/:id",
+    requireAdmin,
     songController.updateSong
 );
 
@@ -163,6 +181,7 @@ router.put(
 
 router.delete(
     "/:id",
+    requireAdmin,
     songController.deleteSong
 );
 
@@ -187,6 +206,10 @@ console.log(
 
 console.log(
     "PUT    /api/v1/songs/:id"
+);
+
+console.log(
+    "PUT    /api/v1/songs/bulk"
 );
 
 console.log(

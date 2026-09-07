@@ -1,0 +1,57 @@
+.excel-toolbar {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    margin-bottom: 20px;
+
+}
+
+.excel-toolbar-buttons {
+
+    display: flex;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+
+}
+
+.excel-toolbar-hint {
+
+    margin: 0;
+
+    color: #888888;
+
+    font-size: 12.5px;
+
+}
+
+.excel-toolbar-result {
+
+    padding: 10px 14px;
+
+    border-radius: 10px;
+
+    background: rgba(76,175,80,0.1);
+
+    border: 1px solid rgba(76,175,80,0.3);
+
+    color: #4CAF50;
+
+    font-size: 13px;
+
+}
+
+.excel-toolbar-result.error {
+
+    background: rgba(255,107,107,0.1);
+
+    border: 1px solid rgba(255,107,107,0.3);
+
+    color: #ff6b6b;
+
+}

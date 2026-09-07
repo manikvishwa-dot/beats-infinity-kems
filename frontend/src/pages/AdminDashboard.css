@@ -1,0 +1,298 @@
+.singer-group {
+
+    margin-bottom: 40px;
+
+}
+
+.singer-group h2 {
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 20px;
+
+    margin-bottom: 14px;
+
+    color: #FFD54A;
+
+}
+
+.singer-table-wrapper {
+
+    overflow-x: auto;
+
+    border-radius: 16px;
+
+    border: 1px solid rgba(255,255,255,0.09);
+
+    background: rgba(255,255,255,0.04);
+
+    backdrop-filter: blur(14px);
+
+    box-shadow: 0 20px 45px rgba(0,0,0,0.45);
+
+}
+
+.singer-table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    min-width: 900px;
+
+    table-layout: fixed;
+
+}
+
+.singer-table th,
+.singer-table td {
+
+    padding: 12px 14px;
+
+    text-align: left;
+
+    font-size: 14px;
+
+    word-wrap: break-word;
+
+}
+
+.singer-table th:first-child,
+.singer-table td:first-child {
+
+    width: 12%;
+
+}
+
+.singer-table th:last-child,
+.singer-table td:last-child {
+
+    width: 16%;
+
+}
+
+.singer-table th {
+
+    background: rgba(255,255,255,0.05);
+
+    color: #BBBBBB;
+
+    font-weight: 600;
+
+    font-size: 13px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+}
+
+.singer-table tbody tr {
+
+    border-top: 1px solid rgba(255,255,255,0.06);
+
+}
+
+.singer-table tbody tr:hover {
+
+    background: rgba(255,255,255,0.03);
+
+}
+
+.singer-table td.singer-name-cell {
+
+    font-weight: 600;
+
+    color: #ffffff;
+
+}
+
+.singer-table td.song-cell-editable {
+
+    cursor: pointer;
+
+    border-radius: 6px;
+
+    transition: background .15s;
+
+}
+
+.singer-table td.song-cell-editable:hover {
+
+    background: rgba(255,213,74,0.08);
+
+    outline: 1px dashed rgba(255,213,74,0.3);
+
+    outline-offset: -3px;
+
+}
+
+.song-cell-input {
+
+    width: 100%;
+
+    min-height: 32px;
+
+    padding: 4px 8px;
+
+    border-radius: 6px;
+
+    border: 1px solid #1DB954;
+
+    background: rgba(255,255,255,0.06);
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+}
+
+.song-cell-input:focus {
+
+    outline: none;
+
+}
+
+.payment-status-pill {
+
+    display: inline-block;
+
+    padding: 4px 12px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+}
+
+.payment-status-pill.pending {
+
+    background: rgba(255,183,77,0.15);
+
+    color: #FFB74D;
+
+}
+
+.payment-status-pill.paid {
+
+    background: rgba(76,175,80,0.15);
+
+    color: #4CAF50;
+
+}
+
+.payment-status-pill.rejected {
+
+    background: rgba(255,107,107,0.15);
+
+    color: #ff6b6b;
+
+}
+
+.payment-action-row {
+
+    display: flex;
+
+    gap: 8px;
+
+    margin-top: 6px;
+
+}
+
+.payment-action-btn {
+
+    border: none;
+
+    border-radius: 999px;
+
+    padding: 5px 14px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+
+}
+
+.payment-action-btn.mark-paid {
+
+    background: rgba(76,175,80,0.15);
+
+    color: #4CAF50;
+
+}
+
+.payment-action-btn.mark-paid:hover:not(:disabled) {
+
+    background: #4CAF50;
+
+    color: #ffffff;
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 10px 22px rgba(76,175,80,.35);
+
+}
+
+.payment-action-btn.mark-not-paid {
+
+    background: rgba(255,107,107,0.15);
+
+    color: #ff6b6b;
+
+}
+
+.payment-action-btn.mark-not-paid:hover:not(:disabled) {
+
+    background: #ff6b6b;
+
+    color: #ffffff;
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 10px 22px rgba(255,107,107,.35);
+
+}
+
+.payment-action-btn:disabled {
+
+    opacity: 0.5;
+
+    cursor: not-allowed;
+
+}
+
+.admin-dashboard-empty {
+
+    padding: 60px 20px;
+
+    text-align: center;
+
+    color: #888888;
+
+    border: 1px dashed rgba(255,255,255,0.12);
+
+    border-radius: 14px;
+
+}
+
+.admin-dashboard-error {
+
+    padding: 14px 16px;
+
+    border-radius: 10px;
+
+    background: rgba(255,107,107,0.1);
+
+    border: 1px solid rgba(255,107,107,0.3);
+
+    color: #ff6b6b;
+
+    margin-bottom: 20px;
+
+}

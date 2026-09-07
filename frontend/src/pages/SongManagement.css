@@ -60,6 +60,8 @@
 
     font-size: 32px;
 
+    color: #ffffff;
+
 }
 
 .song-management-header p {
@@ -433,6 +435,34 @@
 
 }
 
+.table-badge.male-duet {
+
+    background: rgba(66,165,245,.14);
+
+    color: #42A5F5;
+
+}
+
+.table-badge.female-duet {
+
+    background: rgba(240,98,146,.14);
+
+    color: #F06292;
+
+}
+
+.song-type-hint {
+
+    margin: -6px 0 14px;
+
+    color: #888888;
+
+    font-size: 12.5px;
+
+    line-height: 1.6;
+
+}
+
 .status-badge {
 
     display: inline-block;
@@ -625,6 +655,8 @@
 .modal-header h2 {
 
     font-size: 22px;
+
+    color: #ffffff;
 
 }
 

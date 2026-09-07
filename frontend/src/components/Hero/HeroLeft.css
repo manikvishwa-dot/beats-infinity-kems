@@ -131,100 +131,20 @@
 }
 
 /* ==========================================================
-   BUTTONS
+   BOXED CONTENT PANEL
    ========================================================== */
 
-.hero-buttons{
+.hero-left-box{
 
-    display:flex;
+    padding:32px;
 
-    gap:18px;
+    border-radius:24px;
 
-    margin-top:36px;
-
-    flex-wrap:wrap;
-
-}
-
-.btn-primary{
-
-    display:flex;
-
-    align-items:center;
-
-    gap:10px;
-
-    padding:16px 30px;
-
-    border:none;
-
-    border-radius:50px;
-
-    cursor:pointer;
-
-    background:linear-gradient(
-        135deg,
-        #1DB954,
-        #37E977
-    );
-
-    color:white;
-
-    font-family:"Poppins",sans-serif;
-
-    font-size:15px;
-
-    font-weight:700;
-
-    transition:.3s;
-
-    box-shadow:0 15px 35px rgba(29,185,84,.35);
-
-}
-
-.btn-primary:hover{
-
-    transform:translateY(-4px);
-
-}
-
-.btn-secondary{
-
-    display:flex;
-
-    align-items:center;
-
-    gap:10px;
-
-    padding:16px 30px;
-
-    border-radius:50px;
-
-    border:2px solid rgba(255,213,74,.45);
-
-    background:rgba(255,255,255,.05);
+    background:rgba(255,255,255,.03);
 
     backdrop-filter:blur(20px);
 
-    color:#FFD54A;
-
-    cursor:pointer;
-
-    font-family:"Poppins",sans-serif;
-
-    font-size:15px;
-
-    font-weight:700;
-
-    transition:.3s;
-
-}
-
-.btn-secondary:hover{
-
-    background:#FFD54A;
-
-    color:#111;
+    border:1px solid rgba(255,255,255,.08);
 
 }
 
@@ -236,11 +156,11 @@
 
     display:flex;
 
-    gap:18px;
+    gap:14px;
 
-    margin-top:46px;
+    margin-top:32px;
 
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
 
 }
 
@@ -250,11 +170,13 @@
 
     align-items:center;
 
-    gap:16px;
+    gap:12px;
 
-    min-width:170px;
+    flex:1 1 0;
 
-    padding:18px;
+    min-width:0;
+
+    padding:16px 14px;
 
     border-radius:20px;
 
@@ -386,15 +308,33 @@
 
     }
 
-    .hero-buttons{
-
-        justify-content:center;
-
-    }
-
     .hero-stats{
 
         justify-content:center;
+
+        flex-wrap:wrap;
+
+    }
+
+    .stat-card{
+
+        flex:1 1 150px;
+
+    }
+
+}
+
+@media(max-width:520px){
+
+    .hero-stats{
+
+        flex-wrap:wrap;
+
+    }
+
+    .stat-card{
+
+        flex:1 1 100%;
 
     }
 

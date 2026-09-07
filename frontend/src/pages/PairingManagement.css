@@ -1,0 +1,396 @@
+.pairing-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 16px;
+
+    margin-bottom: 24px;
+
+}
+
+.pairing-header h1 {
+
+    margin: 0;
+
+    font-family: "Poppins", sans-serif;
+
+}
+
+.pairing-back-link {
+
+    color: #FFD54A;
+
+    text-decoration: none;
+
+    font-size: 14px;
+
+}
+
+.pairing-section {
+
+    margin-bottom: 40px;
+
+}
+
+.pairing-section-hint {
+
+    margin: -6px 0 18px;
+
+    color: #888888;
+
+    font-size: 13px;
+
+    line-height: 1.6;
+
+}
+
+.pairing-singer-group {
+
+    margin-bottom: 24px;
+
+}
+
+.pairing-singer-group-title {
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 15px;
+
+    font-weight: 700;
+
+    margin-bottom: 10px;
+
+    color: #ffffff;
+
+}
+
+.pairing-section h2 {
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 19px;
+
+    margin-bottom: 14px;
+
+    color: #FFD54A;
+
+}
+
+.pairing-table-wrapper {
+
+    overflow-x: auto;
+
+    border-radius: 16px;
+
+    border: 1px solid rgba(255,255,255,0.09);
+
+    background: rgba(255,255,255,0.04);
+
+    backdrop-filter: blur(14px);
+
+    box-shadow: 0 20px 45px rgba(0,0,0,0.45);
+
+}
+
+.pairing-table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    min-width: 700px;
+
+}
+
+.pairing-table th,
+.pairing-table td {
+
+    padding: 12px 16px;
+
+    text-align: left;
+
+    font-size: 14px;
+
+}
+
+.pairing-table th {
+
+    background: rgba(255,255,255,0.05);
+
+    color: #BBBBBB;
+
+    font-weight: 600;
+
+    font-size: 13px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+}
+
+.pairing-table tbody tr {
+
+    border-top: 1px solid rgba(255,255,255,0.06);
+
+}
+
+.pairing-status-pill {
+
+    display: inline-block;
+
+    padding: 4px 12px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+}
+
+.pairing-status-pill.potential {
+
+    background: rgba(255,213,74,0.15);
+
+    color: #FFD54A;
+
+}
+
+.pairing-status-pill.approved {
+
+    background: rgba(76,175,80,0.15);
+
+    color: #4CAF50;
+
+}
+
+.pairing-status-pill.rejected {
+
+    background: rgba(255,107,107,0.15);
+
+    color: #ff6b6b;
+
+}
+
+.pairing-action-btn {
+
+    border: none;
+
+    border-radius: 999px;
+
+    padding: 6px 14px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    margin-right: 8px;
+
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+
+}
+
+.pairing-action-btn.approve {
+
+    background: rgba(76,175,80,0.15);
+
+    color: #4CAF50;
+
+}
+
+.pairing-action-btn.approve:hover:not(:disabled) {
+
+    background: #4CAF50;
+
+    color: #ffffff;
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 10px 22px rgba(76,175,80,.35);
+
+}
+
+.pairing-action-btn.reject {
+
+    background: rgba(255,107,107,0.15);
+
+    color: #ff6b6b;
+
+}
+
+.pairing-action-btn.reject:hover:not(:disabled) {
+
+    background: #ff6b6b;
+
+    color: #ffffff;
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 10px 22px rgba(255,107,107,.35);
+
+}
+
+.pairing-action-btn:disabled {
+
+    opacity: 0.5;
+
+    cursor: not-allowed;
+
+}
+
+.pairing-empty {
+
+    padding: 40px 20px;
+
+    text-align: center;
+
+    color: #888888;
+
+    border: 1px dashed rgba(255,255,255,0.12);
+
+    border-radius: 14px;
+
+}
+
+.pairing-error {
+
+    padding: 14px 16px;
+
+    border-radius: 10px;
+
+    background: rgba(255,107,107,0.1);
+
+    border: 1px solid rgba(255,107,107,0.3);
+
+    color: #ff6b6b;
+
+    margin-bottom: 20px;
+
+}
+
+.pairing-success {
+
+    padding: 14px 16px;
+
+    border-radius: 10px;
+
+    background: rgba(76,175,80,0.1);
+
+    border: 1px solid rgba(76,175,80,0.3);
+
+    color: #4CAF50;
+
+    margin-bottom: 20px;
+
+}
+
+.manual-pairing-form {
+
+    display: flex;
+
+    gap: 16px;
+
+    flex-wrap: wrap;
+
+    align-items: flex-end;
+
+    padding: 20px;
+
+    border-radius: 14px;
+
+    background: rgba(255,255,255,0.03);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+}
+
+.manual-pairing-field {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+    min-width: 200px;
+
+}
+
+.manual-pairing-field label {
+
+    font-size: 13px;
+
+    color: #BBBBBB;
+
+    font-weight: 600;
+
+}
+
+.manual-pairing-field select {
+
+    min-height: 42px;
+
+    padding: 0 12px;
+
+    border-radius: 8px;
+
+    border: 1px solid rgba(255,255,255,0.12);
+
+    background: rgba(255,255,255,0.04);
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+}
+
+.manual-pairing-submit {
+
+    min-height: 42px;
+
+    padding: 0 26px;
+
+    border: none;
+
+    border-radius: 999px;
+
+    background: linear-gradient(135deg, #1DB954, #37E977);
+
+    color: #ffffff;
+
+    box-shadow: 0 12px 26px rgba(29,185,84,.28);
+
+    transition: transform .2s ease, box-shadow .2s ease;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+}
+
+.manual-pairing-submit:hover:not(:disabled) {
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 16px 34px rgba(29,185,84,.4);
+
+}
+
+.manual-pairing-submit:disabled {
+
+    opacity: 0.5;
+
+    cursor: not-allowed;
+
+    transform: none;
+
+}
