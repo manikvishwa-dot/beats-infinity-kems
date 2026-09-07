@@ -3,13 +3,13 @@ import React from "react";
 import "./SingerDashboard.css";
 
 import DashboardWelcome
-    from "../components/Dashboard/DashboardWelcome/DashboardWelcome";
+    from "../components/dashboard/DashboardWelcome/DashboardWelcome";
 
 import PairingStatus
-    from "../components/Dashboard/PairingStatus/PairingStatus";
+    from "../components/dashboard/PairingStatus/PairingStatus";
 
 import MySongs
-    from "../components/Dashboard/MySongs/MySongs";
+    from "../components/dashboard/MySongs/MySongs";
 
 
 function SingerDashboard() {
