@@ -21,6 +21,7 @@ import {
     createPayment,
     getMyPayment
 } from "../services/paymentService";
+import { logout } from "../services/singerService";
 
 import "./SingerPayment.css";
 
@@ -324,6 +325,11 @@ const SingerPayment = () => {
         );
     };
 
+    const handleLogout = () => {
+        logout();
+        navigate("/login");
+    };
+
     if (loading) {
         return (
             <main className="singer-payment-page">
@@ -375,6 +381,14 @@ const SingerPayment = () => {
                             </div>
                         </div>
                     </div>
+
+                    <button
+                        type="button"
+                        className="payment-logout-button"
+                        onClick={handleLogout}
+                    >
+                        Logout
+                    </button>
                 </div>
 
                 <div className="payment-content">

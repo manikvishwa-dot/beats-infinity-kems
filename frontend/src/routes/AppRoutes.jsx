@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 
 /* ==========================================================
@@ -6,6 +6,9 @@ import { Routes, Route } from "react-router-dom";
 ========================================================== */
 
 import Home from "../pages/Home";
+import Events from "../pages/Events";
+import About from "../pages/About";
+import Contact from "../pages/Contact";
 import Login from "../pages/Login";
 import Registration from "../pages/Registration";
 import Welcome from "../pages/Welcome";
@@ -37,7 +40,6 @@ import RegistrationWizard from "../components/Auth/RegistrationWizard";
 
 import AdminDashboard from "../pages/AdminDashboard";
 import AdminLogin from "../pages/AdminLogin";
-import EventManagement from "../pages/EventManagement";
 import SongManagement from "../pages/SongManagement";
 import SingerManagement from "../pages/SingerManagement";
 import PairingManagement from "../pages/PairingManagement";
@@ -67,6 +69,40 @@ function AppRoutes() {
             <Route
                 path="/"
                 element={<Home />}
+            />
+
+
+            {/* ==================================================
+                EVENTS
+                -----------------------------------------------
+                Public page. Admin-only edit controls (banner
+                upload, date/time/venue/seats) render inline on
+                this same page when an admin session is active.
+            ================================================== */}
+
+            <Route
+                path="/events"
+                element={<Events />}
+            />
+
+
+            {/* ==================================================
+                ABOUT
+            ================================================== */}
+
+            <Route
+                path="/about"
+                element={<About />}
+            />
+
+
+            {/* ==================================================
+                CONTACT
+            ================================================== */}
+
+            <Route
+                path="/contact"
+                element={<Contact />}
             />
 
 
@@ -204,13 +240,11 @@ function AppRoutes() {
                 }
             />
 
+            {/* /admin/events now lives at the public /events page
+                (admins see the edit controls inline there). */}
             <Route
                 path="/admin/events"
-                element={
-                    <RequireAdminAuth>
-                        <EventManagement />
-                    </RequireAdminAuth>
-                }
+                element={<Navigate to="/events" replace />}
             />
 
             <Route

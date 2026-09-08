@@ -32,6 +32,40 @@
 
 }
 
+.pairing-event-row {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+
+    flex-wrap: wrap;
+
+    margin-bottom: 20px;
+
+}
+
+.pairing-event-compare-hint {
+
+    color: #FFD54A;
+
+    font-size: 12.5px;
+
+    max-width: 460px;
+
+}
+
+.pairing-table td.pairing-event-cell {
+
+    color: #FFD54A;
+
+    font-weight: 600;
+
+    font-size: 12.5px;
+
+}
+
 .pairing-section {
 
     margin-bottom: 40px;

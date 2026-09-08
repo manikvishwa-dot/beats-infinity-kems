@@ -1,0 +1,179 @@
+.event-selector {
+
+    position: relative;
+
+    display: inline-block;
+
+}
+
+.event-selector-trigger {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    min-height: 42px;
+
+    min-width: 220px;
+
+    padding: 0 16px;
+
+    border-radius: 999px;
+
+    border: 1px solid rgba(255,255,255,0.12);
+
+    background: rgba(255,255,255,0.04);
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+    transition: border-color .2s ease;
+
+}
+
+.event-selector-trigger:hover {
+
+    border-color: rgba(255,255,255,0.25);
+
+}
+
+.event-selector-trigger span:first-child {
+
+    flex: 1;
+
+    text-align: left;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+.event-selector-count {
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    color: #FFD54A;
+
+}
+
+.event-selector-panel {
+
+    position: absolute;
+
+    top: calc(100% + 8px);
+
+    left: 0;
+
+    z-index: 40;
+
+    min-width: 280px;
+
+    max-height: 320px;
+
+    overflow-y: auto;
+
+    padding: 10px;
+
+    border-radius: 14px;
+
+    background: #161616;
+
+    border: 1px solid rgba(255,255,255,0.12);
+
+    box-shadow: 0 20px 45px rgba(0,0,0,0.5);
+
+}
+
+.event-selector-empty {
+
+    padding: 14px;
+
+    text-align: center;
+
+    color: #888888;
+
+    font-size: 13px;
+
+}
+
+.event-selector-option {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 9px 10px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    font-size: 13.5px;
+
+    color: #eeeeee;
+
+}
+
+.event-selector-option:hover {
+
+    background: rgba(255,255,255,0.06);
+
+}
+
+.event-selector-option.disabled {
+
+    opacity: 0.4;
+
+    cursor: not-allowed;
+
+}
+
+.event-selector-option input {
+
+    accent-color: #1DB954;
+
+}
+
+.event-selector-option span:nth-child(2) {
+
+    flex: 1;
+
+}
+
+.event-selector-active-tag {
+
+    padding: 2px 8px;
+
+    border-radius: 999px;
+
+    background: rgba(29,185,84,0.16);
+
+    color: #1DB954;
+
+    font-size: 10.5px;
+
+    font-weight: 700;
+
+}
+
+.event-selector-hint {
+
+    margin: 8px 4px 2px;
+
+    color: #777777;
+
+    font-size: 11.5px;
+
+}

@@ -29,24 +29,46 @@ const getSingersOverview = async (req, res) => {
     try {
 
         // --------------------------------------------------
-        // LATEST PAYMENT PER SINGER
+        // LATEST PAYMENT PER (SINGER, EVENT)
+        //
+        // Scoped to one or more events when ?event_id= is given
+        // (comma-separated for a multi-event comparison, up to 3)
+        // - the overview otherwise mixes every event's payments
+        // together, which is only meaningful for the currently
+        // active event's day-to-day admin work. Keying by the
+        // (singer, event) pair rather than singer alone means a
+        // singer who took part in more than one selected event
+        // gets one row per event, not just their latest ever.
         // --------------------------------------------------
 
-        const {
-            data: payments,
-            error: paymentsError
-        } = await supabase
+        const eventIds = (req.query.event_id || "")
+            .split(",")
+            .map(value => value.trim())
+            .filter(Boolean);
+
+        let paymentsQuery = supabase
 
             .from("payments")
 
             .select(
-                "id,singer_id,status,selected_song_ids,created_at"
+                "id,singer_id,status,selected_song_ids,created_at,event_id"
             )
 
             .order(
                 "created_at",
                 { ascending: false }
             );
+
+        if (eventIds.length > 0) {
+
+            paymentsQuery = paymentsQuery.in("event_id", eventIds);
+
+        }
+
+        const {
+            data: payments,
+            error: paymentsError
+        } = await paymentsQuery;
 
 
         if (paymentsError) {
@@ -71,21 +93,24 @@ const getSingersOverview = async (req, res) => {
         }
 
 
-        const latestPaymentBySinger =
+        const latestPaymentByKey =
             new Map();
 
 
         (payments || []).forEach(
             payment => {
 
+                const key =
+                    `${payment.singer_id}:${payment.event_id || "none"}`;
+
                 if (
-                    !latestPaymentBySinger.has(
-                        payment.singer_id
+                    !latestPaymentByKey.has(
+                        key
                     )
                 ) {
 
-                    latestPaymentBySinger.set(
-                        payment.singer_id,
+                    latestPaymentByKey.set(
+                        key,
                         payment
                     );
 
@@ -95,11 +120,11 @@ const getSingersOverview = async (req, res) => {
         );
 
 
-        const singerIds =
-            [...latestPaymentBySinger.keys()];
+        const paymentKeys =
+            [...latestPaymentByKey.keys()];
 
 
-        if (singerIds.length === 0) {
+        if (paymentKeys.length === 0) {
 
             return res.status(200).json({
 
@@ -108,6 +133,57 @@ const getSingersOverview = async (req, res) => {
                 singers: []
 
             });
+
+        }
+
+
+        const singerIds =
+            [
+                ...new Set(
+                    [...latestPaymentByKey.values()].map(
+                        payment => payment.singer_id
+                    )
+                )
+            ];
+
+
+        // --------------------------------------------------
+        // EVENT NAMES (for display / Excel "Event Name" column)
+        // --------------------------------------------------
+
+        const resultEventIds =
+            [
+                ...new Set(
+                    [...latestPaymentByKey.values()]
+                        .map(payment => payment.event_id)
+                        .filter(Boolean)
+                )
+            ];
+
+        let eventNameById = new Map();
+
+        if (resultEventIds.length > 0) {
+
+            const { data: eventRows, error: eventsError } = await supabase
+                .from("events")
+                .select("id,name")
+                .in("id", resultEventIds);
+
+            if (eventsError) {
+
+                console.error(
+                    "ADMIN OVERVIEW - EVENTS:",
+                    eventsError
+                );
+
+            }
+            else {
+
+                eventNameById = new Map(
+                    (eventRows || []).map(event => [event.id, event.name])
+                );
+
+            }
 
         }
 
@@ -246,20 +322,20 @@ const getSingersOverview = async (req, res) => {
 
 
         // --------------------------------------------------
-        // BUILD ROWS
+        // BUILD ROWS - one per (singer, event) pair
         // --------------------------------------------------
 
         const rows =
-            singerIds
+            paymentKeys
 
                 .map(
-                    singerId => {
-
-                        const singer =
-                            singerMap.get(singerId);
+                    key => {
 
                         const payment =
-                            latestPaymentBySinger.get(singerId);
+                            latestPaymentByKey.get(key);
+
+                        const singer =
+                            singerMap.get(payment.singer_id);
 
 
                         if (!singer) {
@@ -295,7 +371,7 @@ const getSingersOverview = async (req, res) => {
                         return {
 
                             singer_id:
-                                singerId,
+                                payment.singer_id,
 
                             singer_name:
                                 singer.singer_name,
@@ -312,7 +388,13 @@ const getSingersOverview = async (req, res) => {
                                 payment.id,
 
                             payment_status:
-                                payment.status
+                                payment.status,
+
+                            event_id:
+                                payment.event_id || null,
+
+                            event_name:
+                                eventNameById.get(payment.event_id) || "—"
 
                         };
 
@@ -328,6 +410,9 @@ const getSingersOverview = async (req, res) => {
                     (a, b) =>
                         a.singer_name.localeCompare(
                             b.singer_name
+                        ) ||
+                        a.event_name.localeCompare(
+                            b.event_name
                         )
                 );
 

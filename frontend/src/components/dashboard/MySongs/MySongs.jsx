@@ -17,6 +17,7 @@ import {
 } from "react-router-dom";
 
 import { API_V1_URL } from "../../../config/api";
+import { getActiveEvent } from "../../../services/eventService";
 
 import "./MySongs.css";
 
@@ -32,6 +33,37 @@ const MAX_SONGS =
 function MySongs() {
 
     const navigate = useNavigate();
+
+    // Cached for the lifetime of this mount so both the "already
+    // submitted?" check and the eventual song-creation payload use
+    // the exact same event, fetched only once.
+    const activeEventIdRef = useRef(undefined);
+
+    const getOrFetchActiveEventId = async () => {
+
+        if (activeEventIdRef.current !== undefined) {
+
+            return activeEventIdRef.current;
+
+        }
+
+        try {
+
+            const result = await getActiveEvent();
+            activeEventIdRef.current = result.event?.id || null;
+
+        }
+        catch {
+
+            // Best-effort - proceed unscoped rather than block on
+            // this lookup failing.
+            activeEventIdRef.current = null;
+
+        }
+
+        return activeEventIdRef.current;
+
+    };
 
 
     // ==========================================================
@@ -354,12 +386,23 @@ const objectKeys = [
                 );
 
 
+                const activeEventId =
+                    await getOrFetchActiveEventId();
+
+
+                // Scoped to the currently active event, so a
+                // singer's OLD submission from a past event never
+                // shows up (or locks the form) under a new one.
                 const url =
                     `${API_URL}/song-requests?status=${encodeURIComponent(
                         "Submitted for Pairing"
                     )}&singer_id=${encodeURIComponent(
                         singerId
-                    )}`;
+                    )}${
+                        activeEventId
+                            ? `&event_id=${encodeURIComponent(activeEventId)}`
+                            : ""
+                    }`;
 
 
                 const response =
@@ -570,7 +613,7 @@ const objectKeys = [
 
 
                 const restored =
-                    restorePendingPaymentSelection();
+                    await restorePendingPaymentSelection();
 
                 if (!restored) {
                     setSelectedSongs([]);
@@ -599,7 +642,7 @@ const objectKeys = [
     // RESTORE LOCAL PENDING PAYMENT SELECTION
     // ==========================================================
 
-    const restorePendingPaymentSelection = () => {
+    const restorePendingPaymentSelection = async () => {
         try {
             const raw = sessionStorage.getItem(
                 "beatsInfinityPendingSongSelection"
@@ -616,6 +659,26 @@ const objectKeys = [
                 pending.songs.length !== MAX_SONGS
             ) {
                 return false;
+            }
+
+            // A pending selection saved under a past event is
+            // stale once a new event goes live - discard it rather
+            // than restoring last cycle's picks.
+            const activeEventId = await getOrFetchActiveEventId();
+
+            if (
+                pending.eventId !==
+                undefined &&
+                pending.eventId !==
+                activeEventId
+            ) {
+
+                sessionStorage.removeItem(
+                    "beatsInfinityPendingSongSelection"
+                );
+
+                return false;
+
             }
 
             const restoredSongs =
@@ -1383,6 +1446,12 @@ const objectKeys = [
         try {
             const databaseSongs = [];
 
+            // Scope any newly-created songs rows to whichever event
+            // is currently active, so pairing/reporting can tell
+            // this selection cycle apart from past events. Falls
+            // back to null (unscoped/legacy) if none is active yet.
+            const activeEventId = await getOrFetchActiveEventId();
+
 
             // --------------------------------------------------
             // SAVE / VALIDATE THE FIVE SONGS
@@ -1455,7 +1524,9 @@ const objectKeys = [
                     is_duet:
                         Boolean(
                             song.isDuet
-                        )
+                        ),
+                    event_id:
+                        activeEventId
                 };
 
 
@@ -1522,6 +1593,8 @@ const objectKeys = [
 
             const pendingSelection = {
                 singerId,
+                eventId:
+                    activeEventId,
                 createdAt:
                     new Date().toISOString(),
                 songs:

@@ -1,4 +1,5 @@
 const { supabase } = require("../../config/supabase");
+const { getActiveEventId } = require("../../utils/activeEvent");
 
 // ==========================================================
 // BEATS INFINITY - PAYMENT CONTROLLER
@@ -220,6 +221,8 @@ const createPayment = async (req, res) => {
         // CREATE PAYMENT
         // ------------------------------------------------------
 
+        const eventId = await getActiveEventId();
+
         const {
             data: payment,
             error: paymentError
@@ -230,7 +233,8 @@ const createPayment = async (req, res) => {
                 amount: PAYMENT_AMOUNT,
                 payment_type: "Singer Registration",
                 status: "Pending",
-                selected_song_ids: songIds
+                selected_song_ids: songIds,
+                event_id: eventId
             })
             .select()
             .single();
@@ -295,13 +299,25 @@ const getMyPayment = async (req, res) => {
             });
         }
 
+        // Scoped to the currently active event - otherwise a
+        // singer who already paid for a past event would see that
+        // old payment's status here instead of "not paid yet" for
+        // their new selection.
+        const activeEventId = await getActiveEventId();
+
+        let paymentQuery = supabase
+            .from("payments")
+            .select("*")
+            .eq("singer_id", singerId);
+
+        paymentQuery = activeEventId
+            ? paymentQuery.eq("event_id", activeEventId)
+            : paymentQuery.is("event_id", null);
+
         const {
             data: payment,
             error
-        } = await supabase
-            .from("payments")
-            .select("*")
-            .eq("singer_id", singerId)
+        } = await paymentQuery
             .order("created_at", {
                 ascending: false
             })

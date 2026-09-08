@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
     FaMobileAlt,
@@ -17,6 +17,8 @@ import {
 } from "../services/singerService";
 
 import "./SingerLogin.css";
+
+import logo from "../assets/logo/beats-infinity-logo.png";
 
 
 // ==========================================================
@@ -1551,7 +1553,7 @@ const SingerRegistration = () => {
 
             <button
                 type="submit"
-                className="login-button"
+                className="primary-button"
                 disabled={
                     loading ||
                     mobile.length !== 10
@@ -1660,7 +1662,7 @@ const SingerRegistration = () => {
 
             <button
                 type="submit"
-                className="login-button"
+                className="primary-button"
                 disabled={
                     loading ||
                     otp.length !== 6
@@ -1775,7 +1777,7 @@ const SingerRegistration = () => {
 
             <button
                 type="submit"
-                className="login-button"
+                className="primary-button"
                 disabled={
                     loading ||
                     pin.length !== 4 ||
@@ -1928,7 +1930,7 @@ const SingerRegistration = () => {
 
             <button
                 type="submit"
-                className="login-button"
+                className="primary-button"
                 disabled={loading}
             >
 
@@ -1991,14 +1993,25 @@ const SingerRegistration = () => {
 
 
                 {/* ==================================================
+                    HOME BUTTON
+                ================================================== */}
+
+                <Link to="/" className="singer-home-button">
+                    🏠 Home
+                </Link>
+
+
+                {/* ==================================================
                     BRAND
                 ================================================== */}
 
-                <div className="brand-top">
+                <Link to="/" className="brand-top">
 
-                    <div className="brand-infinity">
-                        ∞
-                    </div>
+                    <img
+                        src={logo}
+                        alt="Beats Infinity"
+                        className="brand-infinity"
+                    />
 
                     <div>
 
@@ -2012,7 +2025,7 @@ const SingerRegistration = () => {
 
                     </div>
 
-                </div>
+                </Link>
 
 
                 {/* ==================================================

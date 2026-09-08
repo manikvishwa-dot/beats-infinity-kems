@@ -1,6 +1,9 @@
 import "./DashboardWelcome.css";
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { logout } from "../../../services/singerService";
 
 // ==========================================================
 // GET CURRENT SINGER'S DISPLAY NAME
@@ -50,11 +53,20 @@ const getSingerName = () => {
 
 function DashboardWelcome() {
 
+    const navigate = useNavigate();
+
     const [greeting, setGreeting] = useState("");
 
     const [singerName, setSingerName] = useState(
         getSingerName()
     );
+
+    const handleLogout = () => {
+
+        logout();
+        navigate("/login");
+
+    };
 
     useEffect(() => {
 
@@ -83,6 +95,14 @@ function DashboardWelcome() {
     return (
 
         <section className="dashboard-welcome">
+
+            <button
+                type="button"
+                className="dashboard-logout-btn"
+                onClick={handleLogout}
+            >
+                Logout
+            </button>
 
             <div className="welcome-content">
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
+import EventSelector from "../components/admin/EventSelector";
 import ExcelToolbar from "../components/admin/ExcelToolbar";
 import {
     getPairingSuggestions,
@@ -8,6 +9,7 @@ import {
     decidePairing,
     bulkDecidePairings
 } from "../services/adminDashboardService";
+import { getEvents } from "../services/eventService";
 
 import "../styles/adminTheme.css";
 import "./PairingManagement.css";
@@ -16,11 +18,12 @@ const normalizeGender = value =>
     String(value || "").trim().toLowerCase();
 
 const PAIRING_COLUMNS = [
-    { key: "song_title", header: "Song", width: 30 },
+    { key: "event_name", header: "Event Name", width: 24 },
     { key: "male_singer_name", header: "Male Singer", width: 22 },
     { key: "female_singer_name", header: "Female Singer (fill in to pair an Open Song)", width: 36 },
+    { key: "song_title", header: "Song Name", width: 30 },
     { key: "decision", header: "Decision (Approved/Rejected - leave blank to skip)", width: 36 },
-    { key: "source", header: "Source (auto/manual)", width: 18 },
+    { key: "source", header: "Pairing Mode (auto/manual)", width: 20 },
     { key: "note", header: "Note (reference only, ignored on import)", width: 26 }
 ];
 
@@ -38,6 +41,9 @@ function PairingManagement() {
     const [success, setSuccess] = useState("");
     const [actionKey, setActionKey] = useState(null);
 
+    const [events, setEvents] = useState([]);
+    const [selectedEventIds, setSelectedEventIds] = useState([]);
+
     // Manual pairing form state
     const [manualMaleId, setManualMaleId] = useState("");
     const [manualFemaleId, setManualFemaleId] = useState("");
@@ -47,14 +53,42 @@ function PairingManagement() {
     // Open-songs partner picker: songId -> selected partner singer_id
     const [openSongPartners, setOpenSongPartners] = useState({});
 
+    useEffect(() => {
+
+        getEvents()
+            .then(result => {
+
+                const allEvents = result.events || [];
+                setEvents(allEvents);
+
+                const active = allEvents.find(item => item.is_active);
+                setSelectedEventIds(current =>
+                    current.length > 0 ? current : (active ? [active.id] : [])
+                );
+
+            })
+            .catch(requestError => {
+
+                console.error("Load events error:", requestError);
+
+            });
+
+    }, []);
+
+    // The Potential Matches / Open Songs / Manual Pairing sections
+    // are a live matching engine that only ever operates on ONE
+    // event - when comparing multiple, they follow the first
+    // selected event. The Pairing Report below supports all of them.
+    const primaryEventId = selectedEventIds[0] || null;
+
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
             setError("");
 
             const [suggestionsResult, overviewResult] = await Promise.all([
-                getPairingSuggestions(),
-                getSingersOverview()
+                getPairingSuggestions(selectedEventIds.join(",")),
+                getSingersOverview(primaryEventId)
             ]);
 
             setSuggestions({
@@ -75,7 +109,7 @@ function PairingManagement() {
         finally {
             setLoading(false);
         }
-    }, []);
+    }, [selectedEventIds, primaryEventId]);
 
     useEffect(() => {
         loadData();
@@ -151,9 +185,12 @@ function PairingManagement() {
     // their current status, so a straight re-upload is a no-op),
     // potential matches (decision left blank), and male-side open
     // songs (female singer left blank for the admin to fill in).
+    const primaryEventName = events.find(item => item.id === primaryEventId)?.name || "—";
+
     const excelRows = useMemo(() => {
 
         const fromExisting = suggestions.existing_pairings.map(pairing => ({
+            event_name: pairing.event_name || "—",
             song_title: pairing.song_title,
             male_singer_name: pairing.male_singer_name,
             female_singer_name: pairing.female_singer_name,
@@ -163,26 +200,42 @@ function PairingManagement() {
         }));
 
         const fromPotential = suggestions.potential_matches.map(candidate => ({
+            event_name: primaryEventName,
             song_title: candidate.song_title,
             male_singer_name: candidate.male_singer_name,
             female_singer_name: candidate.female_singer_name,
-            decision: "",
+            decision: "Pairing Pending",
             source: "auto",
             note: "Potential Match"
         }));
 
         const fromOpen = openSongsMale.map(openSong => ({
+            event_name: primaryEventName,
             song_title: openSong.song_title,
             male_singer_name: openSong.singer_name,
             female_singer_name: "",
-            decision: "",
+            decision: "Pairing Pending",
             source: "manual",
             note: "Open Song - fill in a female singer to pair"
         }));
 
         return [...fromExisting, ...fromPotential, ...fromOpen];
 
-    }, [suggestions.existing_pairings, suggestions.potential_matches, openSongsMale]);
+    }, [suggestions.existing_pairings, suggestions.potential_matches, openSongsMale, primaryEventName]);
+
+    // Same rows as the Excel export - grouped by event first (only
+    // meaningful when comparing more than one), then sorted
+    // alphabetically by male singer, then song, for the on-page
+    // report table.
+    const pairingReportRows = useMemo(
+        () =>
+            [...excelRows].sort((a, b) =>
+                a.event_name.localeCompare(b.event_name) ||
+                a.male_singer_name.localeCompare(b.male_singer_name) ||
+                a.song_title.localeCompare(b.song_title)
+            ),
+        [excelRows]
+    );
 
     const handleImportRows = async parsedRows => {
 
@@ -206,7 +259,7 @@ function PairingManagement() {
             source: row.source
         }));
 
-        const response = await bulkDecidePairings(rows);
+        const response = await bulkDecidePairings(rows, primaryEventId);
 
         await loadData();
 
@@ -366,9 +419,22 @@ function PairingManagement() {
                     Review potential matches, resolve open songs and manage pairings.
                 </p>
 
+                <div className="pairing-event-row">
+                    <EventSelector
+                        events={events}
+                        selectedIds={selectedEventIds}
+                        onChange={setSelectedEventIds}
+                    />
+                    {selectedEventIds.length > 1 && (
+                        <span className="pairing-event-compare-hint">
+                            Comparing {selectedEventIds.length} events in the Pairing Report below. Potential Matches / Open Songs / Manual Pairing use only the first selected event.
+                        </span>
+                    )}
+                </div>
+
                 <ExcelToolbar
                     columns={PAIRING_COLUMNS}
-                    rows={excelRows}
+                    rows={pairingReportRows}
                     filename="beats-infinity-pairings"
                     onImportRows={handleImportRows}
                     hint="Fill in Decision (Approved/Rejected) for any row - including Open Songs, where you can also fill in the Female Singer - then re-upload. Rows left blank are skipped."
@@ -646,43 +712,59 @@ function PairingManagement() {
                     </div>
 
                     {/* ==================================================
-                        EXISTING PAIRINGS
+                        PAIRING REPORT
+                        -----------------------------------------------
+                        Every male singer's song and its pairing
+                        status in one place - decided pairings,
+                        live potential matches, and open songs still
+                        awaiting a partner - sorted alphabetically by
+                        male singer.
                     ================================================== */}
 
                     <div className="pairing-section">
-                        <h2>Pairing History</h2>
+                        <h2>Pairing Report</h2>
 
-                        {suggestions.existing_pairings.length === 0 ? (
+                        {pairingReportRows.length === 0 ? (
                             <div className="pairing-empty">
-                                No pairings have been decided yet.
+                                No song selections to report on yet.
                             </div>
                         ) : (
                             <div className="pairing-table-wrapper">
                                 <table className="pairing-table">
                                     <thead>
                                         <tr>
-                                            <th>Song</th>
+                                            <th>Event</th>
                                             <th>Male Singer</th>
                                             <th>Female Singer</th>
-                                            <th>Status</th>
-                                            <th>Source</th>
+                                            <th>Song Name</th>
+                                            <th>Decision</th>
+                                            <th>Pairing Mode</th>
+                                            <th>Note</th>
                                         </tr>
                                     </thead>
 
                                     <tbody>
-                                        {suggestions.existing_pairings.map(pairing => (
-                                            <tr key={pairing.id}>
-                                                <td>{pairing.song_title}</td>
-                                                <td>{pairing.male_singer_name}</td>
-                                                <td>{pairing.female_singer_name}</td>
+                                        {pairingReportRows.map((row, index) => (
+                                            <tr key={`${row.event_name}:${row.male_singer_name}:${row.song_title}:${index}`}>
+                                                <td className="pairing-event-cell">{row.event_name}</td>
+                                                <td>{row.male_singer_name}</td>
+                                                <td>{row.female_singer_name || "—"}</td>
+                                                <td>{row.song_title}</td>
                                                 <td>
                                                     <span
-                                                        className={`pairing-status-pill ${pairing.status === "Approved" ? "approved" : "rejected"}`}
+                                                        className={`pairing-status-pill ${
+                                                            row.decision === "Approved"
+                                                                ? "approved"
+                                                                : row.decision === "Rejected"
+                                                                    ? "rejected"
+                                                                    : "potential"
+                                                        }`}
                                                     >
-                                                        {pairing.status}
+                                                        {row.decision}
                                                     </span>
                                                 </td>
-                                                <td>{pairing.source}</td>
+                                                <td>{row.source}</td>
+                                                <td></td>
                                             </tr>
                                         ))}
                                     </tbody>

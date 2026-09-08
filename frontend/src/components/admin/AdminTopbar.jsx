@@ -13,7 +13,7 @@ const NAV_ITEMS = [
 
     { label: "Songs", path: "/admin/songs", icon: "🎵" },
 
-    { label: "Events", path: "/admin/events", icon: "📅" },
+    { label: "Events", path: "/events", icon: "📅" },
 
     { label: "Pairing", path: "/admin/pairing", icon: "🎼" },
 

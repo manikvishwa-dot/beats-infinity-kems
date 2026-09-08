@@ -290,13 +290,15 @@ const loginWithPin = async (
 // RESET PIN
 //
 // POST /api/v1/singers/reset-pin
+//
+// Requires a verified "reset_pin" purpose OTP for this mobile
+// (see verifyOTP above) - the backend checks singer_otps for
+// that, not date_of_birth.
 // ==========================================================
 
 const resetPin = async (
 
     mobile,
-
-    date_of_birth,
 
     new_pin
 
@@ -321,8 +323,6 @@ const resetPin = async (
 
                 mobile,
 
-                date_of_birth,
-
                 new_pin
 
             })
@@ -333,6 +333,23 @@ const resetPin = async (
 
 
     return handleResponse(response);
+
+};
+
+
+// ==========================================================
+// LOGOUT
+//
+// Purely local - there's no server-side singer session to
+// revoke (unlike the admin Bearer-token session). Also clears
+// any in-progress song selection so a different singer on the
+// same device never sees a leftover pending selection.
+// ==========================================================
+
+const logout = () => {
+
+    localStorage.removeItem("beatsInfinitySinger");
+    sessionStorage.removeItem("beatsInfinityPendingSongSelection");
 
 };
 
@@ -398,6 +415,8 @@ export {
 
     resetPin,
 
-    updateSingerProfile
+    updateSingerProfile,
+
+    logout
 
 };

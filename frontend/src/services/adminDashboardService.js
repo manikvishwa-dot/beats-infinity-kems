@@ -69,11 +69,13 @@ const getAllSingers = async () => {
 // SINGERS OVERVIEW
 // ==========================================================
 
-const getSingersOverview = async () => {
+const getSingersOverview = async eventId => {
+
+    const query = eventId ? `?event_id=${encodeURIComponent(eventId)}` : "";
 
     const response = await fetch(
 
-        `${API_BASE_URL}/singers-overview`,
+        `${API_BASE_URL}/singers-overview${query}`,
 
         {
             headers: {
@@ -93,11 +95,13 @@ const getSingersOverview = async () => {
 // PAIRING SUGGESTIONS
 // ==========================================================
 
-const getPairingSuggestions = async () => {
+const getPairingSuggestions = async eventId => {
+
+    const query = eventId ? `?event_id=${encodeURIComponent(eventId)}` : "";
 
     const response = await fetch(
 
-        `${API_BASE_URL}/pairings/suggestions`,
+        `${API_BASE_URL}/pairings/suggestions${query}`,
 
         {
             headers: {
@@ -199,7 +203,7 @@ const bulkUpdateSingers = async rows => {
 // BULK DECIDE PAIRINGS (Excel import)
 // ==========================================================
 
-const bulkDecidePairings = async rows => {
+const bulkDecidePairings = async (rows, eventId) => {
 
     const response = await fetch(
 
@@ -211,7 +215,7 @@ const bulkDecidePairings = async rows => {
                 "Content-Type": "application/json",
                 ...getAuthHeader()
             },
-            body: JSON.stringify({ rows })
+            body: JSON.stringify({ rows, event_id: eventId })
         }
 
     );

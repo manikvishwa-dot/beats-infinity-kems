@@ -1,3 +1,19 @@
+.admin-dashboard-event-row {
+
+    margin-bottom: 24px;
+
+}
+
+.singer-table td.singer-event-cell {
+
+    color: #FFD54A;
+
+    font-weight: 600;
+
+    font-size: 12.5px;
+
+}
+
 .singer-group {
 
     margin-bottom: 40px;

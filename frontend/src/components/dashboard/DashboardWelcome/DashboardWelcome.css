@@ -47,6 +47,51 @@
 
 
 /* ==========================================================
+   LOGOUT
+========================================================== */
+
+.dashboard-logout-btn {
+
+    position: absolute;
+
+    top: 20px;
+
+    right: 24px;
+
+    z-index: 3;
+
+    padding: 8px 20px;
+
+    border-radius: 999px;
+
+    border: 1px solid rgba(255, 255, 255, 0.16);
+
+    background: rgba(255, 255, 255, 0.04);
+
+    color: #dddddd;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: transform .2s ease, border-color .2s ease, color .2s ease;
+
+}
+
+.dashboard-logout-btn:hover {
+
+    transform: translateY(-2px);
+
+    border-color: rgba(255, 213, 74, 0.5);
+
+    color: #FFD54A;
+
+}
+
+
+/* ==========================================================
    CONTENT
 ========================================================== */
 

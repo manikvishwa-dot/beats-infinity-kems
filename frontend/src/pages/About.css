@@ -1,0 +1,447 @@
+.about-page {
+
+    min-height: 100vh;
+
+    padding: 130px 24px 80px;
+
+    box-sizing: border-box;
+
+    background:
+        radial-gradient(circle at top right, rgba(29,185,84,.08), transparent 32%),
+        radial-gradient(circle at bottom left, rgba(255,213,74,.06), transparent 32%),
+        #0B0B0B;
+
+    color: #ffffff;
+
+    font-family: "Inter", sans-serif;
+
+}
+
+.about-page-inner {
+
+    max-width: 780px;
+
+    margin: 0 auto;
+
+}
+
+.about-page-header {
+
+    text-align: center;
+
+    margin-bottom: 36px;
+
+}
+
+.about-page-eyebrow {
+
+    color: #1DB954;
+
+    font-size: 12px;
+
+    font-weight: 800;
+
+    letter-spacing: 2px;
+
+}
+
+.about-page-header h1 {
+
+    font-family: "Poppins", sans-serif;
+
+    font-weight: 800;
+
+    font-size: 34px;
+
+    margin: 8px 0 0;
+
+    color: #ffffff;
+
+}
+
+.about-card {
+
+    padding: 36px 40px;
+
+    border-radius: 24px;
+
+    background: rgba(18,18,18,.65);
+
+    backdrop-filter: blur(24px);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    box-shadow: 0 30px 70px rgba(0,0,0,.45);
+
+    text-align: left;
+
+}
+
+.about-card p {
+
+    color: #cccccc;
+
+    font-size: 16px;
+
+    line-height: 1.8;
+
+    margin: 0 0 22px;
+
+    text-align: left;
+
+}
+
+.about-card p:last-child {
+
+    margin-bottom: 0;
+
+}
+
+.about-founders-section {
+
+    margin-top: 48px;
+
+    text-align: center;
+
+}
+
+.about-founders-section h2 {
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 22px;
+
+    font-weight: 800;
+
+    margin: 0 0 28px;
+
+    color: #ffffff;
+
+}
+
+.about-founders-row {
+
+    display: flex;
+
+    justify-content: center;
+
+    flex-wrap: wrap;
+
+    gap: 40px;
+
+}
+
+.about-founder-card {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 12px;
+
+    width: 140px;
+
+}
+
+.about-founder-avatar {
+
+    width: 128px;
+
+    height: 128px;
+
+    border-radius: 50%;
+
+    overflow: hidden;
+
+    border: 3px solid rgba(255,213,74,0.5);
+
+    box-shadow: 0 20px 45px rgba(0,0,0,0.5), 0 0 0 6px rgba(255,255,255,0.03);
+
+    transition: transform .25s ease, border-color .25s ease;
+
+}
+
+.about-founder-card:hover .about-founder-avatar {
+
+    transform: translateY(-6px) scale(1.03);
+
+    border-color: rgba(255,213,74,0.9);
+
+}
+
+.about-founder-avatar img {
+
+    width: 100%;
+
+    height: 100%;
+
+    object-fit: cover;
+
+}
+
+.about-founder-name {
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 16px;
+
+    font-weight: 700;
+
+    color: #ffffff;
+
+}
+
+/* ==========================================================
+   OUR JOURNEY
+   ========================================================== */
+
+.about-journey-section {
+
+    margin-top: 64px;
+
+}
+
+.about-journey-section h2,
+.about-belief-section h2 {
+
+    text-align: center;
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 26px;
+
+    font-weight: 800;
+
+    margin: 0 0 40px;
+
+    color: #ffffff;
+
+}
+
+.about-journey-timeline {
+
+    position: relative;
+
+    max-width: 640px;
+
+    margin: 0 auto;
+
+    padding-left: 70px;
+
+}
+
+.about-journey-timeline::before {
+
+    content: "";
+
+    position: absolute;
+
+    top: 8px;
+
+    bottom: 8px;
+
+    left: 27px;
+
+    width: 2px;
+
+    background: linear-gradient(180deg, #1DB954, rgba(255,213,74,0.4));
+
+}
+
+.about-journey-item {
+
+    position: relative;
+
+    display: flex;
+
+    gap: 22px;
+
+    margin-bottom: 38px;
+
+}
+
+.about-journey-item:last-child {
+
+    margin-bottom: 0;
+
+}
+
+.about-journey-badge {
+
+    position: absolute;
+
+    left: -70px;
+
+    top: 0;
+
+    width: 56px;
+
+    height: 56px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: linear-gradient(135deg, #1DB954, #39EF79);
+
+    color: #0B0B0B;
+
+    font-family: "Poppins", sans-serif;
+
+    font-weight: 800;
+
+    font-size: 13px;
+
+    box-shadow: 0 10px 26px rgba(29,185,84,.3), 0 0 0 6px #0B0B0B;
+
+}
+
+.about-journey-content {
+
+    padding: 4px 0 0;
+
+    text-align: left;
+
+}
+
+.about-journey-content h3 {
+
+    margin: 0 0 8px;
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 18px;
+
+    font-weight: 700;
+
+    color: #FFD54A;
+
+    text-align: left;
+
+}
+
+.about-journey-content p {
+
+    margin: 0;
+
+    color: #bbbbbb;
+
+    font-size: 14.5px;
+
+    line-height: 1.7;
+
+    text-align: left;
+
+}
+
+/* ==========================================================
+   OUR BELIEF
+   ========================================================== */
+
+.about-belief-section {
+
+    margin-top: 72px;
+
+    text-align: center;
+
+}
+
+.about-belief-statements {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 14px;
+
+    margin-bottom: 28px;
+
+}
+
+.about-belief-statements p {
+
+    margin: 0;
+
+    color: #dddddd;
+
+    font-size: 19px;
+
+    font-weight: 500;
+
+}
+
+.about-belief-closing {
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 22px;
+
+    font-weight: 800;
+
+    color: #FFD54A;
+
+    margin: 0;
+
+}
+
+@media (max-width: 640px) {
+
+    .about-page {
+
+        padding: 110px 16px 60px;
+
+    }
+
+    .about-card {
+
+        padding: 26px 22px;
+
+    }
+
+    .about-founder-avatar {
+
+        width: 100px;
+
+        height: 100px;
+
+    }
+
+    .about-journey-timeline {
+
+        padding-left: 54px;
+
+    }
+
+    .about-journey-badge {
+
+        left: -54px;
+
+        width: 44px;
+
+        height: 44px;
+
+        font-size: 11px;
+
+    }
+
+    .about-belief-statements p {
+
+        font-size: 16px;
+
+    }
+
+    .about-belief-closing {
+
+        font-size: 18px;
+
+    }
+
+}

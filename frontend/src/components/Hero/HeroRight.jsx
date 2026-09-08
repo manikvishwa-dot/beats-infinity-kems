@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
     FaCalendarAlt,
     FaMapMarkerAlt,
@@ -8,18 +9,121 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import journey from "../Journey/journeyData";
+import { getActiveEvent } from "../../services/eventService";
 
 import "./HeroRight.css";
+
+const FALLBACK_EVENT = journey[0];
+
+const formatDate = value => {
+
+    if (!value) {
+
+        return FALLBACK_EVENT.date;
+
+    }
+
+    try {
+
+        return new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+        });
+
+    }
+    catch {
+
+        return value;
+
+    }
+
+};
+
+const formatTime = value => {
+
+    if (!value) {
+
+        return "09:00 AM";
+
+    }
+
+    const [hourStr, minuteStr] = value.split(":");
+    const hour = parseInt(hourStr, 10);
+
+    if (Number.isNaN(hour)) {
+
+        return value;
+
+    }
+
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+
+    return `${displayHour}:${minuteStr} ${period}`;
+
+};
 
 function HeroRight() {
 
     const navigate = useNavigate();
 
-    // Featured Event (Latest Event)
-    const featuredEvent = journey[0];
+    // Falls back to the static "featured" journey entry until an
+    // admin creates/activates a real event on the /events page.
+    const [event, setEvent] = useState({
+        title: FALLBACK_EVENT.title,
+        image: FALLBACK_EVENT.image,
+        date: FALLBACK_EVENT.date,
+        time: "09:00 AM",
+        venue: FALLBACK_EVENT.venue,
+        filledSeats: 50,
+        maxSeats: 55
+    });
 
-    const progress = 50;
-    const totalSeats = 55;
+    useEffect(() => {
+
+        let cancelled = false;
+
+        getActiveEvent()
+            .then(result => {
+
+                if (cancelled || !result.event) {
+
+                    return;
+
+                }
+
+                const activeEvent = result.event;
+
+                setEvent({
+                    title: activeEvent.name,
+                    image: activeEvent.banner_image_url || FALLBACK_EVENT.image,
+                    date: formatDate(activeEvent.event_date),
+                    time: formatTime(activeEvent.event_time),
+                    venue: activeEvent.venue || FALLBACK_EVENT.venue,
+                    filledSeats: activeEvent.filled_seats || 0,
+                    maxSeats: activeEvent.max_seats || 0
+                });
+
+            })
+            .catch(() => {
+
+                // Keep the static fallback - the hero should never
+                // break just because the events table/API isn't
+                // ready yet.
+
+            });
+
+        return () => {
+
+            cancelled = true;
+
+        };
+
+    }, []);
+
+    const progress = event.filledSeats;
+    const totalSeats = event.maxSeats || 1;
 
     return (
 
@@ -28,8 +132,8 @@ function HeroRight() {
             <div className="event-card">
 
                 <img
-                    src={featuredEvent.image}
-                    alt={featuredEvent.title}
+                    src={event.image}
+                    alt={event.title}
                     className="event-poster"
                 />
 
@@ -37,7 +141,7 @@ function HeroRight() {
 
                     <h3 className="event-title">
 
-                        {featuredEvent.title}
+                        {event.title}
 
                     </h3>
 
@@ -47,7 +151,7 @@ function HeroRight() {
 
                             <FaCalendarAlt />
 
-                            <span>{featuredEvent.date}</span>
+                            <span>{event.date}</span>
 
                         </div>
 
@@ -55,7 +159,7 @@ function HeroRight() {
 
                             <FaClock />
 
-                            <span>09:00 AM</span>
+                            <span>{event.time}</span>
 
                         </div>
 
@@ -63,7 +167,7 @@ function HeroRight() {
 
                             <FaMapMarkerAlt />
 
-                            <span>{featuredEvent.venue}</span>
+                            <span>{event.venue}</span>
 
                         </div>
 
@@ -83,7 +187,7 @@ function HeroRight() {
 
                             <span className="registration-count">
 
-                                {progress} / {totalSeats} Seats Filled
+                                {event.filledSeats} / {event.maxSeats} Seats Filled
 
                             </span>
 

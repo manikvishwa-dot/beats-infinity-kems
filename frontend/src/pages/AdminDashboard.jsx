@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
+import EventSelector from "../components/admin/EventSelector";
 import { getSingersOverview } from "../services/adminDashboardService";
+import { getEvents } from "../services/eventService";
 import { markPaymentAsPaid, rejectPayment } from "../services/paymentService";
 import { updateSong } from "../services/songService";
 
@@ -36,16 +38,41 @@ function AdminDashboard() {
     const [error, setError] = useState("");
     const [actionId, setActionId] = useState(null);
 
+    const [events, setEvents] = useState([]);
+    const [selectedEventIds, setSelectedEventIds] = useState([]);
+
     // Inline song-title editing: { songId, value } while active
     const [editingCell, setEditingCell] = useState(null);
     const [savingCell, setSavingCell] = useState(false);
+
+    useEffect(() => {
+
+        getEvents()
+            .then(result => {
+
+                const allEvents = result.events || [];
+                setEvents(allEvents);
+
+                const active = allEvents.find(item => item.is_active);
+                setSelectedEventIds(current =>
+                    current.length > 0 ? current : (active ? [active.id] : [])
+                );
+
+            })
+            .catch(requestError => {
+
+                console.error("Load events error:", requestError);
+
+            });
+
+    }, []);
 
     const loadOverview = useCallback(async () => {
         try {
             setLoading(true);
             setError("");
 
-            const result = await getSingersOverview();
+            const result = await getSingersOverview(selectedEventIds.join(","));
 
             setSingers(result.singers || []);
         }
@@ -59,7 +86,7 @@ function AdminDashboard() {
         finally {
             setLoading(false);
         }
-    }, []);
+    }, [selectedEventIds]);
 
     useEffect(() => {
         loadOverview();
@@ -197,6 +224,7 @@ function AdminDashboard() {
                     <table className="singer-table">
                         <thead>
                             <tr>
+                                <th>Event</th>
                                 <th>Singer Name</th>
                                 {Array.from({ length: MAX_SONGS }).map((_, index) => (
                                     <th key={index}>Song {index + 1}</th>
@@ -210,7 +238,11 @@ function AdminDashboard() {
                                 const isActioning = actionId === row.payment_id;
 
                                 return (
-                                    <tr key={row.singer_id}>
+                                    <tr key={`${row.singer_id}:${row.event_id}`}>
+                                        <td className="singer-event-cell">
+                                            {row.event_name}
+                                        </td>
+
                                         <td className="singer-name-cell">
                                             {row.singer_name}
                                         </td>
@@ -313,6 +345,14 @@ function AdminDashboard() {
                 <p className="admin-page-subtitle">
                     Singer registrations, song selections and payment status at a glance.
                 </p>
+
+                <div className="admin-dashboard-event-row">
+                    <EventSelector
+                        events={events}
+                        selectedIds={selectedEventIds}
+                        onChange={setSelectedEventIds}
+                    />
+                </div>
 
                 {error && <div className="admin-dashboard-error">⚠️ {error}</div>}
 

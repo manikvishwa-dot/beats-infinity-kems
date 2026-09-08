@@ -1,19 +1,23 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
     checkSinger,
     loginWithPin,
     sendOTP,
-    verifyOTP
+    verifyOTP,
+    resetPin
 } from "../services/singerService";
 
 import "./SingerLogin.css";
+
+import logo from "../assets/logo/beats-infinity-logo.png";
 
 
 const SingerLogin = () => {
 
     const navigate = useNavigate();
+    const location = useLocation();
 
     // =====================================================
     // SCREEN
@@ -27,6 +31,9 @@ const SingerLogin = () => {
         registration-otp
         registration-pin
         registration-details
+        forgot-pin-mobile
+        forgot-pin-otp
+        forgot-pin-newpin
     */
 
 
@@ -49,6 +56,29 @@ const SingerLogin = () => {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [generatedOtp, setGeneratedOtp] = useState("");
+
+
+    // =====================================================
+    // ARRIVED FROM "FORGOT PIN?" ON THE MAIN LOGIN FORM
+    //
+    // LoginForm navigates here with
+    // { mode: "forgot-pin", mobile }.
+    // =====================================================
+
+    useEffect(() => {
+
+        if (location.state?.mode === "forgot-pin") {
+
+            setMobile(
+                (location.state.mobile || "").replace(/\D/g, "").slice(0, 10)
+            );
+
+            setScreen("forgot-pin-mobile");
+
+        }
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
 
     // =====================================================
@@ -761,6 +791,348 @@ const SingerLogin = () => {
 
 
     // =====================================================
+    // FORGOT PIN - START (from login screen directly, or
+    // pre-filled via LoginForm's "Forgot PIN?" button)
+    // =====================================================
+
+    const handleStartForgotPin = () => {
+
+        clearMessages();
+
+        setOtp("");
+        setGeneratedOtp("");
+        setPin("");
+        setConfirmPin("");
+
+        setScreen("forgot-pin-mobile");
+
+    };
+
+
+    // =====================================================
+    // FORGOT PIN - SEND OTP
+    // =====================================================
+
+    const handleSendResetOtp =
+        async (event) => {
+
+            event.preventDefault();
+
+            clearMessages();
+
+            setGeneratedOtp("");
+
+
+            if (mobile.length !== 10) {
+
+                setError(
+                    "Please enter a valid 10-digit mobile number."
+                );
+
+                return;
+
+            }
+
+
+            setLoading(true);
+
+
+            try {
+
+                const existing =
+                    await checkSinger(mobile);
+
+
+                if (
+                    !existing ||
+                    existing.exists !== true
+                ) {
+
+                    setError(
+                        "No account found for this mobile number."
+                    );
+
+                    return;
+
+                }
+
+
+                const result =
+                    await sendOTP(
+                        mobile,
+                        "reset_pin"
+                    );
+
+
+                if (
+                    !result ||
+                    result.success !== true
+                ) {
+
+                    setError(
+                        result?.message ||
+                        "Unable to generate OTP."
+                    );
+
+                    return;
+
+                }
+
+
+                // DEVELOPMENT ONLY - Supabase-generated OTP
+                if (result.otp) {
+
+                    setGeneratedOtp(
+                        String(result.otp)
+                    );
+
+                }
+
+
+                setSuccess(
+                    "OTP generated successfully."
+                );
+
+                setScreen(
+                    "forgot-pin-otp"
+                );
+
+            }
+
+            catch (err) {
+
+                console.error(
+                    "Reset PIN - send OTP error:",
+                    err
+                );
+
+                setError(
+                    err?.message ||
+                    "Unable to generate OTP."
+                );
+
+            }
+
+            finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+
+    // =====================================================
+    // FORGOT PIN - VERIFY OTP
+    // =====================================================
+
+    const handleVerifyResetOtp =
+        async (event) => {
+
+            event.preventDefault();
+
+            clearMessages();
+
+
+            if (otp.length !== 6) {
+
+                setError(
+                    "Please enter the 6-digit OTP."
+                );
+
+                return;
+
+            }
+
+
+            setLoading(true);
+
+
+            try {
+
+                const result =
+                    await verifyOTP(
+                        mobile,
+                        otp,
+                        "reset_pin"
+                    );
+
+
+                if (
+                    result &&
+                    result.success === true &&
+                    result.verified === true
+                ) {
+
+                    setOtp("");
+                    setGeneratedOtp("");
+
+                    setSuccess(
+                        "OTP verified successfully."
+                    );
+
+                    setTimeout(() => {
+
+                        clearMessages();
+
+                        setScreen(
+                            "forgot-pin-newpin"
+                        );
+
+                    }, 500);
+
+                    return;
+
+                }
+
+
+                setError(
+                    result?.message ||
+                    "Invalid OTP."
+                );
+
+                setOtp("");
+
+            }
+
+            catch (err) {
+
+                console.error(
+                    "Reset PIN - verify OTP error:",
+                    err
+                );
+
+                setError(
+                    err?.message ||
+                    "Unable to verify OTP."
+                );
+
+            }
+
+            finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+
+    // =====================================================
+    // FORGOT PIN - RESEND OTP
+    // =====================================================
+
+    const handleResendResetOtp = () => {
+
+        setOtp("");
+
+        handleSendResetOtp({ preventDefault: () => {} });
+
+    };
+
+
+    // =====================================================
+    // FORGOT PIN - SET NEW PIN
+    // =====================================================
+
+    const handleResetPin =
+        async (event) => {
+
+            event.preventDefault();
+
+            clearMessages();
+
+
+            if (pin.length !== 4) {
+
+                setError(
+                    "PIN must contain exactly 4 digits."
+                );
+
+                return;
+
+            }
+
+
+            if (pin !== confirmPin) {
+
+                setError(
+                    "PIN and Confirm PIN do not match."
+                );
+
+                return;
+
+            }
+
+
+            setLoading(true);
+
+
+            try {
+
+                const result =
+                    await resetPin(
+                        mobile,
+                        pin
+                    );
+
+
+                if (
+                    result &&
+                    result.success === true
+                ) {
+
+                    setPin("");
+                    setConfirmPin("");
+
+                    setSuccess(
+                        "PIN reset successfully. Please log in with your new PIN."
+                    );
+
+                    setTimeout(() => {
+
+                        clearMessages();
+
+                        setScreen("login");
+
+                    }, 1200);
+
+                    return;
+
+                }
+
+
+                setError(
+                    result?.message ||
+                    "Unable to reset PIN."
+                );
+
+            }
+
+            catch (err) {
+
+                console.error(
+                    "Reset PIN error:",
+                    err
+                );
+
+                setError(
+                    err?.message ||
+                    "Unable to reset PIN."
+                );
+
+            }
+
+            finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+
+    // =====================================================
     // LOGIN SCREEN
     // =====================================================
 
@@ -853,6 +1225,19 @@ const SingerLogin = () => {
                         ? "Logging in..."
                         : "LOGIN"
                     }
+
+                </button>
+
+
+                <button
+                    type="button"
+                    className="back-button"
+                    onClick={
+                        handleStartForgotPin
+                    }
+                >
+
+                    🔑 Forgot PIN?
 
                 </button>
 
@@ -1345,6 +1730,340 @@ const SingerLogin = () => {
 
 
     // =====================================================
+    // FORGOT PIN - MOBILE
+    // =====================================================
+
+    const renderForgotPinMobile = () => {
+
+        return (
+
+            <form
+                className="singer-form"
+                onSubmit={
+                    handleSendResetOtp
+                }
+            >
+
+                <div className="welcome-icon">
+                    🔑
+                </div>
+
+
+                <h2>
+                    Forgot PIN
+                </h2>
+
+
+                <p className="subtitle">
+                    Enter your registered mobile number to receive an OTP.
+                </p>
+
+
+                <label>
+                    Mobile Number
+                </label>
+
+
+                <div className="mobile-input-wrapper">
+
+                    <span>
+                        +91
+                    </span>
+
+
+                    <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={mobile}
+                        onChange={
+                            handleMobileChange
+                        }
+                        placeholder="9876543210"
+                        autoFocus
+                    />
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    className="primary-button"
+                    disabled={loading}
+                >
+
+                    {loading
+                        ? "Generating OTP..."
+                        : "SEND OTP"
+                    }
+
+                </button>
+
+
+                <button
+                    type="button"
+                    className="back-button"
+                    onClick={
+                        handleBackToLogin
+                    }
+                >
+
+                    ← Back to Login
+
+                </button>
+
+            </form>
+
+        );
+
+    };
+
+
+    // =====================================================
+    // FORGOT PIN - OTP
+    // =====================================================
+
+    const renderForgotPinOtp = () => {
+
+        return (
+
+            <form
+                className="singer-form"
+                onSubmit={
+                    handleVerifyResetOtp
+                }
+            >
+
+                <div className="welcome-icon">
+                    🔐
+                </div>
+
+
+                <h2>
+                    Verify OTP
+                </h2>
+
+
+                <p className="subtitle">
+                    Enter the 6-digit OTP sent for your mobile number.
+                </p>
+
+
+                <div className="mobile-display">
+                    📱 +91 {mobile}
+                </div>
+
+
+                <label>
+                    6-Digit OTP
+                </label>
+
+
+                <input
+                    className="pin-input"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otp}
+                    onChange={
+                        handleOtpChange
+                    }
+                    placeholder="••••••"
+                    autoFocus
+                />
+
+
+                {generatedOtp && (
+
+                    <div
+                        style={{
+                            marginTop: "15px",
+                            padding: "12px",
+                            borderRadius: "8px",
+                            textAlign: "center",
+                            background:
+                                "rgba(255,213,74,0.10)",
+                            border:
+                                "1px solid rgba(255,213,74,0.30)"
+                        }}
+                    >
+
+                        Development OTP:
+
+                        <strong
+                            style={{
+                                color: "#FFD54A",
+                                marginLeft: "8px",
+                                letterSpacing: "3px"
+                            }}
+                        >
+
+                            {generatedOtp}
+
+                        </strong>
+
+                    </div>
+
+                )}
+
+
+                <button
+                    type="submit"
+                    className="primary-button"
+                    disabled={loading}
+                >
+
+                    {loading
+                        ? "Verifying..."
+                        : "VERIFY OTP"
+                    }
+
+                </button>
+
+
+                <button
+                    type="button"
+                    className="back-button"
+                    onClick={
+                        handleResendResetOtp
+                    }
+                    disabled={loading}
+                >
+
+                    ↻ Resend OTP
+
+                </button>
+
+
+                <button
+                    type="button"
+                    className="back-button"
+                    onClick={() => {
+
+                        clearMessages();
+
+                        setOtp("");
+                        setGeneratedOtp("");
+
+                        setScreen(
+                            "forgot-pin-mobile"
+                        );
+
+                    }}
+                >
+
+                    ← Back
+
+                </button>
+
+            </form>
+
+        );
+
+    };
+
+
+    // =====================================================
+    // FORGOT PIN - NEW PIN
+    // =====================================================
+
+    const renderForgotPinNewPin = () => {
+
+        return (
+
+            <form
+                className="singer-form"
+                onSubmit={
+                    handleResetPin
+                }
+            >
+
+                <div className="welcome-icon">
+                    🔑
+                </div>
+
+
+                <h2>
+                    Set New PIN
+                </h2>
+
+
+                <p className="subtitle">
+                    Create a new 4-digit PIN for your account.
+                </p>
+
+
+                <label>
+                    New 4-Digit PIN
+                </label>
+
+
+                <input
+                    className="pin-input"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={pin}
+                    onChange={
+                        handlePinChange
+                    }
+                    placeholder="••••"
+                    autoFocus
+                />
+
+
+                <label>
+                    Confirm New PIN
+                </label>
+
+
+                <input
+                    className="pin-input"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={confirmPin}
+                    onChange={
+                        handleConfirmPinChange
+                    }
+                    placeholder="••••"
+                />
+
+
+                <button
+                    type="submit"
+                    className="primary-button"
+                    disabled={loading}
+                >
+
+                    {loading
+                        ? "Resetting..."
+                        : "RESET PIN"
+                    }
+
+                </button>
+
+
+                <button
+                    type="button"
+                    className="back-button"
+                    onClick={
+                        handleBackToLogin
+                    }
+                >
+
+                    ← Back to Login
+
+                </button>
+
+            </form>
+
+        );
+
+    };
+
+
+    // =====================================================
     // PAGE
     // =====================================================
 
@@ -1375,13 +2094,22 @@ const SingerLogin = () => {
 
             <div className="singer-login-card">
 
+                {/* HOME BUTTON */}
+
+                <Link to="/" className="singer-home-button">
+                    🏠 Home
+                </Link>
+
+
                 {/* BRAND */}
 
-                <div className="brand-top">
+                <Link to="/" className="brand-top">
 
-                    <div className="brand-infinity">
-                        ∞
-                    </div>
+                    <img
+                        src={logo}
+                        alt="Beats Infinity"
+                        className="brand-infinity"
+                    />
 
 
                     <div>
@@ -1397,7 +2125,7 @@ const SingerLogin = () => {
 
                     </div>
 
-                </div>
+                </Link>
 
 
                 {/* ERROR */}
@@ -1458,6 +2186,27 @@ const SingerLogin = () => {
 
                 {screen === "registration-details" &&
                     renderRegistrationDetails()
+                }
+
+
+                {/* FORGOT PIN - MOBILE */}
+
+                {screen === "forgot-pin-mobile" &&
+                    renderForgotPinMobile()
+                }
+
+
+                {/* FORGOT PIN - OTP */}
+
+                {screen === "forgot-pin-otp" &&
+                    renderForgotPinOtp()
+                }
+
+
+                {/* FORGOT PIN - NEW PIN */}
+
+                {screen === "forgot-pin-newpin" &&
+                    renderForgotPinNewPin()
                 }
 
 

@@ -1,4 +1,5 @@
 const { supabase } = require("../../config/supabase");
+const { getActiveEventId } = require("../../utils/activeEvent");
 
 // ==========================================================
 // BEATS INFINITY - PAIRING CONTROLLER
@@ -42,12 +43,9 @@ const normalizeTitle = value =>
 // SHARED: LATEST PAYMENT PER SINGER, WITH SINGER + SONG INFO
 // ==========================================================
 
-const loadSingerSongMap = async () => {
+const loadSingerSongMap = async (eventId = null) => {
 
-    const {
-        data: payments,
-        error: paymentsError
-    } = await supabase
+    let paymentsQuery = supabase
 
         .from("payments")
 
@@ -59,6 +57,17 @@ const loadSingerSongMap = async () => {
             "created_at",
             { ascending: false }
         );
+
+    if (eventId) {
+
+        paymentsQuery = paymentsQuery.eq("event_id", eventId);
+
+    }
+
+    const {
+        data: payments,
+        error: paymentsError
+    } = await paymentsQuery;
 
 
     if (paymentsError) {
@@ -156,7 +165,7 @@ const loadSingerSongMap = async () => {
             .from("songs")
 
             .select(
-                "id,title,movie"
+                "id,title,movie,event_id"
             )
 
             .in(
@@ -241,11 +250,24 @@ const getSuggestions = async (req, res) => {
 
     try {
 
+        // Potential Matches / Open Songs / Manual Pairing are a
+        // live matching engine - it only ever operates on ONE
+        // event at a time (matching across different events would
+        // be meaningless), so it uses just the first selected
+        // event. The Pairing Report below, being a plain listing,
+        // supports comparing all of them (up to 3) side by side.
+        const eventIds = (req.query.event_id || "")
+            .split(",")
+            .map(value => value.trim())
+            .filter(Boolean);
+
+        const primaryEventId = eventIds[0] || null;
+
         const {
             singers,
             songMap,
             selectionsBySinger
-        } = await loadSingerSongMap();
+        } = await loadSingerSongMap(primaryEventId);
 
 
         const singerById =
@@ -387,21 +409,29 @@ const getSuggestions = async (req, res) => {
         // EXCLUDE ALREADY-DECIDED COMBOS
         // ----------------------------------------------------
 
-        const {
-            data: decided,
-            error: decidedError
-        } = await supabase
+        let decidedQuery = supabase
 
             .from("pairings")
 
             .select(
-                "id,song_id,male_singer_id,female_singer_id,status,source,created_at"
+                "id,song_id,male_singer_id,female_singer_id,status,source,created_at,event_id"
             )
 
             .order(
                 "created_at",
                 { ascending: false }
             );
+
+        if (eventIds.length > 0) {
+
+            decidedQuery = decidedQuery.in("event_id", eventIds);
+
+        }
+
+        const {
+            data: decided,
+            error: decidedError
+        } = await decidedQuery;
 
 
         if (decidedError) {
@@ -479,6 +509,70 @@ const getSuggestions = async (req, res) => {
                 );
 
 
+        // ------------------------------------------------------
+        // RESOLVE NAMES FOR THE REPORT INDEPENDENTLY
+        //
+        // songMap/singerById above are scoped to just the primary
+        // event (the live matching engine). In multi-event compare
+        // mode, `decided` can include rows from OTHER selected
+        // events too, whose songs/singers won't be in those maps -
+        // top up with a direct lookup so the report never shows
+        // "Unknown Song"/"Unknown Singer" for a valid past event.
+        // ------------------------------------------------------
+
+        const reportSongMap = new Map(songMap);
+        const reportSingerMap = new Map(singerById);
+
+        const missingSongIds = [
+            ...new Set((decided || []).map(row => row.song_id))
+        ].filter(id => id && !reportSongMap.has(id));
+
+        if (missingSongIds.length > 0) {
+
+            const { data: extraSongs } = await supabase
+                .from("songs")
+                .select("id,title,movie")
+                .in("id", missingSongIds);
+
+            (extraSongs || []).forEach(song => reportSongMap.set(song.id, song));
+
+        }
+
+        const missingSingerIds = [
+            ...new Set(
+                (decided || []).flatMap(row => [row.male_singer_id, row.female_singer_id])
+            )
+        ].filter(id => id && !reportSingerMap.has(id));
+
+        if (missingSingerIds.length > 0) {
+
+            const { data: extraSingers } = await supabase
+                .from("singers")
+                .select("id,singer_name,gender")
+                .in("id", missingSingerIds);
+
+            (extraSingers || []).forEach(singer => reportSingerMap.set(singer.id, singer));
+
+        }
+
+        const eventNameById = new Map();
+
+        const decidedEventIds = [
+            ...new Set((decided || []).map(row => row.event_id).filter(Boolean))
+        ];
+
+        if (decidedEventIds.length > 0) {
+
+            const { data: eventRows } = await supabase
+                .from("events")
+                .select("id,name")
+                .in("id", decidedEventIds);
+
+            (eventRows || []).forEach(event => eventNameById.set(event.id, event.name));
+
+        }
+
+
         const existingPairings =
             (decided || []).map(
                 row => ({
@@ -490,21 +584,21 @@ const getSuggestions = async (req, res) => {
                         row.song_id,
 
                     song_title:
-                        songMap.get(row.song_id)?.title ||
+                        reportSongMap.get(row.song_id)?.title ||
                         "Unknown Song",
 
                     male_singer_id:
                         row.male_singer_id,
 
                     male_singer_name:
-                        singerById.get(row.male_singer_id)?.singer_name ||
+                        reportSingerMap.get(row.male_singer_id)?.singer_name ||
                         "Unknown Singer",
 
                     female_singer_id:
                         row.female_singer_id,
 
                     female_singer_name:
-                        singerById.get(row.female_singer_id)?.singer_name ||
+                        reportSingerMap.get(row.female_singer_id)?.singer_name ||
                         "Unknown Singer",
 
                     status:
@@ -514,7 +608,13 @@ const getSuggestions = async (req, res) => {
                         row.source,
 
                     created_at:
-                        row.created_at
+                        row.created_at,
+
+                    event_id:
+                        row.event_id || null,
+
+                    event_name:
+                        eventNameById.get(row.event_id) || "—"
 
                 })
             );
@@ -876,6 +976,18 @@ const applyPairingDecision = async ({
     // the same combination.
     // ----------------------------------------------------
 
+    // Stamped from the song's own event_id - a pairing belongs to
+    // whichever event the singer's selection was actually made
+    // under, regardless of which event happens to be active right
+    // now when the admin gets around to deciding it.
+    const { data: songRow } = await supabase
+        .from("songs")
+        .select("event_id")
+        .eq("id", song_id)
+        .maybeSingle();
+
+    const eventId = songRow?.event_id || null;
+
     const { data: existing } = await supabase
         .from("pairings")
         .select("id")
@@ -895,6 +1007,7 @@ const applyPairingDecision = async ({
                 status: decision,
                 source: pairingSource,
                 approved_by: decision === "Approved" ? adminId || null : null,
+                event_id: eventId,
                 updated_at: new Date().toISOString()
             })
             .eq("id", existing.id)
@@ -912,7 +1025,8 @@ const applyPairingDecision = async ({
                 female_singer_id,
                 status: decision,
                 source: pairingSource,
-                approved_by: decision === "Approved" ? adminId || null : null
+                approved_by: decision === "Approved" ? adminId || null : null,
+                event_id: eventId
             })
             .select("*")
             .single());
@@ -1033,23 +1147,37 @@ const getMyPairing = async (req, res) => {
         }
 
 
+        // Scoped to the currently active event, so an Approved
+        // pairing from a past event doesn't linger on a singer's
+        // dashboard forever once a new event cycle has started.
+        const activeEventId =
+            await getActiveEventId();
+
+        let pairingQuery =
+            supabase
+
+                .from("pairings")
+
+                .select("*")
+
+                .eq(
+                    "status",
+                    "Approved"
+                )
+
+                .or(
+                    `male_singer_id.eq.${singerId},female_singer_id.eq.${singerId}`
+                );
+
+        pairingQuery =
+            activeEventId
+                ? pairingQuery.eq("event_id", activeEventId)
+                : pairingQuery.is("event_id", null);
+
         const {
             data: pairing,
             error
-        } = await supabase
-
-            .from("pairings")
-
-            .select("*")
-
-            .eq(
-                "status",
-                "Approved"
-            )
-
-            .or(
-                `male_singer_id.eq.${singerId},female_singer_id.eq.${singerId}`
-            )
+        } = await pairingQuery
 
             .order(
                 "updated_at",
@@ -1197,7 +1325,7 @@ const bulkDecidePairings = async (req, res) => {
 
         }
 
-        const { selectionsBySinger } = await loadSingerSongMap();
+        const { selectionsBySinger } = await loadSingerSongMap(req.body?.event_id || null);
 
         // Every singer, not just those with a payment, so a row
         // can reference anyone in the roster.

@@ -14,6 +14,14 @@ function ExcelToolbar({ columns, rows, filename, onImportRows, hint }) {
     const [importing, setImporting] = useState(false);
     const [result, setResult] = useState(null);
 
+    const handleDownloadTemplate = () => {
+
+        // Same shape as export, just with no data rows - a clean
+        // starting point for filling in new entries from scratch.
+        exportToExcel(columns, [], `${filename}-template`);
+
+    };
+
     const handleExport = () => {
 
         exportToExcel(columns, rows, filename);
@@ -74,6 +82,10 @@ function ExcelToolbar({ columns, rows, filename, onImportRows, hint }) {
     return (
         <div className="excel-toolbar">
             <div className="excel-toolbar-buttons">
+                <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={handleDownloadTemplate}>
+                    ⬇ Download Template
+                </button>
+
                 <button type="button" className="admin-btn admin-btn-outline admin-btn-sm" onClick={handleExport}>
                     ⬇ Export Excel
                 </button>

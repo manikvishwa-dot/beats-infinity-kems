@@ -24,22 +24,33 @@ const getSongs =
 
         try {
 
+            // The Song Management catalog shows the reusable song
+            // library (event_id IS NULL) by default - singer
+            // selection-instance rows (stamped with an event_id at
+            // submission time) are excluded so the library isn't
+            // cluttered with per-singer duplicates. Pass
+            // ?event_id=<uuid> to see a specific event's selections
+            // instead.
+            let query = supabase
+                .from("songs")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            if (req.query.event_id) {
+
+                query = query.eq("event_id", req.query.event_id);
+
+            }
+            else {
+
+                query = query.is("event_id", null);
+
+            }
+
             const {
                 data,
                 error
-            } = await supabase
-
-                .from("songs")
-
-                .select("*")
-
-                .order(
-                    "created_at",
-                    {
-                        ascending:
-                            false
-                    }
-                );
+            } = await query;
 
 
             if (error) {
@@ -299,7 +310,9 @@ const createSong =
 
                 is_duet,
 
-                song_type
+                song_type,
+
+                event_id
 
             } = req.body;
 
@@ -432,7 +445,15 @@ const createSong =
                 song_type:
                     VALID_SONG_TYPES.includes(song_type)
                         ? song_type
-                        : "Solo"
+                        : "Solo",
+
+                // Left null for admin catalog entries (Song
+                // Management) - the singer selection flow
+                // (MySongs.jsx) passes the currently active event's
+                // id so its picks are scoped to that event.
+                event_id:
+                    event_id ||
+                    null
 
             };
 

@@ -58,6 +58,14 @@ const getSongRequests =
                 req.query.singerId ||
                 null;
 
+            const status =
+                req.query.status ||
+                null;
+
+            const eventId =
+                req.query.event_id ||
+                null;
+
 
             let query =
                 supabase
@@ -79,6 +87,32 @@ const getSongRequests =
                     query.eq(
                         "singer_id",
                         singerId
+                    );
+
+            }
+
+
+            if (
+                status
+            ) {
+
+                query =
+                    query.eq(
+                        "status",
+                        status
+                    );
+
+            }
+
+
+            if (
+                eventId
+            ) {
+
+                query =
+                    query.eq(
+                        "event_id",
+                        eventId
                     );
 
             }

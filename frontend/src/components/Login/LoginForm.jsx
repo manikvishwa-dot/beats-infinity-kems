@@ -1,7 +1,7 @@
 import "./Login.css";
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
     checkSinger,
@@ -365,16 +365,27 @@ function LoginForm() {
 
 
                     {/* ==================================================
+                        HOME BUTTON
+                    ================================================== */}
+
+                    <Link to="/" className="login-home-button">
+                        🏠 Home
+                    </Link>
+
+
+                    {/* ==================================================
                         LOGO
                     ================================================== */}
 
                     <div className="login-logo">
 
-                        <img
-                            src={logo}
-                            alt="Beats Infinity"
-                            className="login-logo-image"
-                        />
+                        <Link to="/">
+                            <img
+                                src={logo}
+                                alt="Beats Infinity"
+                                className="login-logo-image"
+                            />
+                        </Link>
 
                     </div>
 

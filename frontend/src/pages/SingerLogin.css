@@ -190,11 +190,13 @@
 
     width: 100%;
 
-    max-width: 470px;
+    max-width: 520px;
 
-    padding: 34px;
+    padding: 44px 42px 42px;
 
-    border-radius: 26px;
+    padding-top: 78px;
+
+    border-radius: 28px;
 
     background:
         rgba(
@@ -240,41 +242,74 @@
 
     justify-content: center;
 
-    gap: 14px;
+    gap: 16px;
 
-    margin-bottom: 26px;
+    margin-bottom: 32px;
+
+    text-decoration: none;
+
+    cursor: pointer;
+
+}
+
+.singer-home-button {
+
+    position: absolute;
+
+    top: 20px;
+
+    left: 24px;
+
+    z-index: 3;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    padding: 7px 16px;
+
+    border-radius: 999px;
+
+    border: 1px solid rgba(255, 255, 255, .18);
+
+    background: rgba(255, 255, 255, .05);
+
+    color: #dddddd;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    text-decoration: none;
+
+    transition: transform .2s ease, border-color .2s ease, color .2s ease;
+
+}
+
+.singer-home-button:hover {
+
+    transform: translateY(-2px);
+
+    border-color: rgba(29, 185, 84, .5);
+
+    color: #1DB954;
 
 }
 
 
 .brand-infinity {
 
-    width: 54px;
+    width: 60px;
 
-    height: 54px;
+    height: 60px;
+
+    flex-shrink: 0;
+
+    object-fit: contain;
 
     border-radius: 16px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    font-size: 42px;
-
-    font-weight: 800;
-
-    color: #fff;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ffca28,
-            #ff4081,
-            #7c4dff,
-            #00bcd4
-        );
 
     box-shadow:
         0 0 25px

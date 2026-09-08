@@ -44,6 +44,9 @@ const adminDashboardRoutes =
 const pairingRoutes =
     require("./routes/v1/pairingRoutes");
 
+const eventRoutes =
+    require("./routes/v1/eventRoutes");
+
 
 // ==========================================================
 // EXPRESS APP
@@ -189,6 +192,16 @@ app.use(
 );
 
 
+// ----------------------------------------------------------
+// EVENTS
+// ----------------------------------------------------------
+
+app.use(
+    "/api/v1/events",
+    eventRoutes
+);
+
+
 console.log(
     "========================================"
 );
@@ -284,6 +297,24 @@ app.use(
             "❌ Server Error:",
             err
         );
+
+
+        // Multer upload errors (file too large, wrong field, a
+        // fileFilter rejection) are user-actionable - surface
+        // the real reason instead of a generic 500.
+        if (err.name === "MulterError" || err.code === "LIMIT_FILE_SIZE") {
+
+            const message =
+                err.code === "LIMIT_FILE_SIZE"
+                    ? "That image is too large - please upload a file under 10MB."
+                    : err.message || "Unable to process the uploaded file.";
+
+            return res.status(400).json({
+                success: false,
+                message
+            });
+
+        }
 
 
         res.status(500).json({
