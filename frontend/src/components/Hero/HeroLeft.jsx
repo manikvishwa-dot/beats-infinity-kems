@@ -6,6 +6,7 @@ import {
 import { GiMicrophone } from "react-icons/gi";
 
 import homepage from "../../config/homepage";
+import InstallPwaButton from "./InstallPwaButton";
 
 import "./HeroLeft.css";
 
@@ -14,6 +15,10 @@ function HeroLeft() {
     return (
 
         <div className="hero-left">
+
+            {/* Install App */}
+
+            <InstallPwaButton />
 
             {/* Community Badge */}
 

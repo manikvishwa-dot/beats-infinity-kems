@@ -1,0 +1,31 @@
+.hero-install-btn {
+    background: rgba(29, 185, 84, 0.12) !important;
+    color: #1DB954 !important;
+    border: 1px solid rgba(29, 185, 84, 0.4) !important;
+    border-radius: 999px !important;
+    padding: 6px 18px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+    text-transform: none !important;
+    margin-bottom: 18px !important;
+    backdrop-filter: blur(12px);
+    transition: 0.2s ease;
+}
+
+.hero-install-btn:hover {
+    background: rgba(29, 185, 84, 0.22) !important;
+    transform: translateY(-1px);
+}
+
+.ios-install-help {
+    padding: 14px 16px;
+    max-width: 260px;
+    background: #1D1D1D;
+    color: #eee;
+}
+
+.ios-share-icon {
+    vertical-align: middle;
+    margin: 0 2px;
+}

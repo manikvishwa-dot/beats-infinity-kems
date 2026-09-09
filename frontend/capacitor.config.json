@@ -1,0 +1,8 @@
+{
+  "appId": "com.beatsinfinity.app",
+  "appName": "Beats Infinity",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
