@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
+import EventSelector from "../components/admin/EventSelector";
 import ExcelToolbar from "../components/admin/ExcelToolbar";
-import { getAllSingers, bulkUpdateSingers } from "../services/adminDashboardService";
+import { getAllSingers, getSingersOverview, bulkUpdateSingers } from "../services/adminDashboardService";
+import { getEvents } from "../services/eventService";
 
 import "../styles/adminTheme.css";
 import "./SingerManagement.css";
@@ -47,6 +49,14 @@ function SingerManagement() {
     const [error, setError] = useState("");
     const [search, setSearch] = useState("");
 
+    // Event scope - the singers table itself has no event_id (a
+    // singer's account is shared across every event), so "enrolled
+    // for this event" is derived from who has a payment for it.
+    const [events, setEvents] = useState([]);
+    const [selectedEventIds, setSelectedEventIds] = useState([]);
+    const [enrolledIds, setEnrolledIds] = useState(null);
+    const [enrolledLoading, setEnrolledLoading] = useState(false);
+
     const loadSingers = useCallback(async () => {
         try {
             setLoading(true);
@@ -72,18 +82,75 @@ function SingerManagement() {
         loadSingers();
     }, [loadSingers]);
 
+    useEffect(() => {
+
+        getEvents()
+            .then(result => {
+
+                const allEvents = result.events || [];
+                setEvents(allEvents);
+
+                const active = allEvents.find(item => item.is_active);
+                setSelectedEventIds(current =>
+                    current.length > 0 ? current : (active ? [active.id] : [])
+                );
+
+            })
+            .catch(requestError => {
+
+                console.error("Load events error:", requestError);
+
+            });
+
+    }, []);
+
+    useEffect(() => {
+
+        if (selectedEventIds.length === 0) {
+            setEnrolledIds(null);
+            return;
+        }
+
+        setEnrolledLoading(true);
+
+        getSingersOverview(selectedEventIds.join(","))
+            .then(result => {
+
+                setEnrolledIds(new Set((result.singers || []).map(row => row.singer_id)));
+
+            })
+            .catch(requestError => {
+
+                console.error("Load enrolled singers error:", requestError);
+                setEnrolledIds(new Set());
+
+            })
+            .finally(() => {
+
+                setEnrolledLoading(false);
+
+            });
+
+    }, [selectedEventIds]);
+
     const filteredSingers = useMemo(() => {
         const query = search.trim().toLowerCase();
 
-        if (!query) {
-            return singers;
-        }
+        return singers.filter(singer => {
 
-        return singers.filter(singer =>
-            (singer.singer_name || "").toLowerCase().includes(query) ||
-            (singer.mobile_number || "").includes(query)
-        );
-    }, [singers, search]);
+            const matchesSearch =
+                !query ||
+                (singer.singer_name || "").toLowerCase().includes(query) ||
+                (singer.mobile_number || "").includes(query);
+
+            const matchesEvent =
+                !enrolledIds ||
+                enrolledIds.has(singer.id);
+
+            return matchesSearch && matchesEvent;
+
+        });
+    }, [singers, search, enrolledIds]);
 
     const handleImportRows = async parsedRows => {
 
@@ -109,7 +176,17 @@ function SingerManagement() {
 
             <div className="admin-shell-content">
                 <h1 className="admin-page-title">Singers</h1>
-                <p className="admin-page-subtitle">Full roster of registered singers.</p>
+                <p className="admin-page-subtitle">
+                    Full roster of registered singers - filter by event to see who's enrolled where.
+                </p>
+
+                <div className="admin-dashboard-event-row">
+                    <EventSelector
+                        events={events}
+                        selectedIds={selectedEventIds}
+                        onChange={setSelectedEventIds}
+                    />
+                </div>
 
                 <ExcelToolbar
                     columns={SINGER_COLUMNS}
@@ -123,7 +200,13 @@ function SingerManagement() {
 
                 <div className="singer-mgmt-toolbar">
                     <span className="singer-mgmt-count">
-                        <strong>{filteredSingers.length}</strong> of {singers.length} singers enrolled
+                        {enrolledLoading ? (
+                            "Loading enrollment for selected event(s)..."
+                        ) : enrolledIds ? (
+                            <><strong>{filteredSingers.length}</strong> singer{filteredSingers.length === 1 ? "" : "s"} enrolled for the selected event(s)</>
+                        ) : (
+                            <><strong>{filteredSingers.length}</strong> of {singers.length} singers (all events)</>
+                        )}
                     </span>
 
                     <input

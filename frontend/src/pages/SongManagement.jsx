@@ -1,26 +1,36 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
-import ExcelToolbar from "../components/admin/ExcelToolbar";
-import { getSongs, createSong, updateSong, deleteSong, bulkUpsertSongs } from "../services/songService";
+import EventSelector from "../components/admin/EventSelector";
+import {
+    getSongById,
+    createSong,
+    updateSong,
+    searchSongCatalog
+} from "../services/songService";
+import { getAllSingers, getSingersOverview } from "../services/adminDashboardService";
+import { getEvents, getActiveEvent } from "../services/eventService";
+import {
+    createPayment,
+    addSongToPayment,
+    removeSongFromPayment,
+    replaceSongInPayment,
+    reassignSongToSinger
+} from "../services/paymentService";
 
 import "../styles/adminTheme.css";
 import "./SongManagement.css";
 
 const SONG_TYPES = ["Solo", "Duet", "Male Duet", "Female Duet"];
 
-const SONG_COLUMNS = [
-    { key: "id", header: "ID (leave blank to add a new song)", width: 38 },
-    { key: "title", header: "Song Name", width: 30 },
-    { key: "music_director", header: "Music Director", width: 22 },
-    { key: "movie", header: "Movie", width: 22 },
-    { key: "language", header: "Language", width: 14 },
-    { key: "difficulty", header: "Difficulty", width: 12 },
-    { key: "song_type", header: "Type (Solo/Duet/Male Duet/Female Duet)", width: 30 },
-    { key: "male_singers", header: "Original Male Singer(s)", width: 26 },
-    { key: "female_singers", header: "Original Female Singer(s)", width: 26 },
-    { key: "karaoke_available", header: "Karaoke Available (TRUE/FALSE)", width: 24 }
-];
+const normalizeSearchResult = (song, index = 0) => ({
+    id: String(song?.videoId || song?.id || `search-${index}`),
+    title: song?.title || "Untitled",
+    movie: song?.movie || "",
+    artist: song?.channel || song?.artist || "",
+    thumbnail: song?.thumbnail || "",
+    provider: song?.provider || "YouTube"
+});
 
 const EMPTY_FORM = {
     title: "",
@@ -34,18 +44,6 @@ const EMPTY_FORM = {
     karaoke_available: true
 };
 
-// song_type is a directly admin-set field (not derived) - this
-// is just a defensive fallback for any pre-existing row that
-// predates the column.
-const getSongType = song => song.song_type || "Solo";
-
-const getTypeBadgeClass = type => {
-    if (type === "Duet") return "table-badge duet";
-    if (type === "Male Duet") return "table-badge male-duet";
-    if (type === "Female Duet") return "table-badge female-duet";
-    return "table-badge";
-};
-
 const parseNames = value =>
     value
         .split(",")
@@ -54,49 +52,146 @@ const parseNames = value =>
 
 function SongManagement() {
 
-    const [songs, setSongs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    // Event scope - controls the "Songs Selected By Singers" table
+    const [events, setEvents] = useState([]);
+    const [selectedEventIds, setSelectedEventIds] = useState([]);
+    const [eventsReady, setEventsReady] = useState(false);
 
-    const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState("All");
+    const [selectedSongRows, setSelectedSongRows] = useState([]);
+    const [loadingSelected, setLoadingSelected] = useState(true);
+    const [selectedError, setSelectedError] = useState("");
 
+    // Edit Song modal (triggered from the selections table)
     const [showForm, setShowForm] = useState(false);
-    const [editingSong, setEditingSong] = useState(null);
+    const [editingSongId, setEditingSongId] = useState(null);
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
+    const [formError, setFormError] = useState("");
+
+    // Replace Song modal (swap one song for another, same singer)
+    const [showReplaceModal, setShowReplaceModal] = useState(false);
+    const [replaceRow, setReplaceRow] = useState(null);
+    const [replaceQuery, setReplaceQuery] = useState("");
+    const [replaceResults, setReplaceResults] = useState([]);
+    const [replaceSearching, setReplaceSearching] = useState(false);
+    const [replaceSaving, setReplaceSaving] = useState(false);
+    const [replaceError, setReplaceError] = useState("");
+
+    // Reassign Song modal (move a song to a different singer)
+    const [showReassignModal, setShowReassignModal] = useState(false);
+    const [reassignRow, setReassignRow] = useState(null);
+    const [reassignTargetId, setReassignTargetId] = useState("");
+    const [reassignSaving, setReassignSaving] = useState(false);
+    const [reassignError, setReassignError] = useState("");
+
+    // Add New Song modal (a new row in the table - new singer, or
+    // one more song for a singer who has fewer than 5)
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [singerRoster, setSingerRoster] = useState([]);
+    const [singerSearch, setSingerSearch] = useState("");
+    const [addSingerId, setAddSingerId] = useState("");
+    const [addQuery, setAddQuery] = useState("");
+    const [addResults, setAddResults] = useState([]);
+    const [addSearching, setAddSearching] = useState(false);
+    const [addSaving, setAddSaving] = useState(false);
+    const [addError, setAddError] = useState("");
+
+    useEffect(() => {
+
+        getEvents()
+            .then(result => {
+
+                const allEvents = result.events || [];
+                setEvents(allEvents);
+
+                const active = allEvents.find(item => item.is_active);
+                setSelectedEventIds(current =>
+                    current.length > 0 ? current : (active ? [active.id] : [])
+                );
+
+            })
+            .catch(requestError => {
+
+                console.error("Load events error:", requestError);
+
+            })
+            .finally(() => {
+
+                // Gates the first data fetch below - without this, an
+                // unscoped "all events" request fires immediately on
+                // mount (selectedEventIds still []), racing the later,
+                // correctly-scoped one. If the heavier unscoped request
+                // resolves last, it silently overwrites the scoped
+                // result with mixed-event data.
+                setEventsReady(true);
+
+            });
+
+        getAllSingers()
+            .then(result => {
+
+                setSingerRoster(result.singers || []);
+
+            })
+            .catch(requestError => {
+
+                console.error("Load singer roster error:", requestError);
+
+            });
+
+    }, []);
 
     // ==========================================================
-    // LOAD SONGS
+    // LOAD SONGS SELECTED BY SINGERS (scoped to selected event(s))
     // ==========================================================
 
-    const loadSongs = useCallback(async () => {
+    const loadSelectedSongs = useCallback(async () => {
+        if (!eventsReady) {
+            return;
+        }
+
         try {
-            setLoading(true);
-            setError("");
+            setLoadingSelected(true);
+            setSelectedError("");
 
-            const result = await getSongs();
+            const result = await getSingersOverview(selectedEventIds.join(","));
 
-            setSongs(result.songs || []);
+            const rows = (result.singers || []).flatMap(singer =>
+                (singer.songs || [])
+                    .filter(song => song.title)
+                    .map(song => ({
+                        song_id: song.song_id,
+                        song_title: song.title,
+                        singer_id: singer.singer_id,
+                        singer_name: singer.singer_name,
+                        gender: singer.gender,
+                        payment_id: singer.payment_id,
+                        payment_status: singer.payment_status,
+                        event_id: singer.event_id,
+                        event_name: singer.event_name
+                    }))
+            );
+
+            setSelectedSongRows(rows);
         }
         catch (requestError) {
-            console.error("Load songs error:", requestError);
-            setError(
+            console.error("Load selected songs error:", requestError);
+            setSelectedError(
                 requestError.message ||
-                "Unable to load songs."
+                "Unable to load songs selected by singers."
             );
         }
         finally {
-            setLoading(false);
+            setLoadingSelected(false);
         }
-    }, []);
+    }, [selectedEventIds, eventsReady]);
 
     useEffect(() => {
-        loadSongs();
-    }, [loadSongs]);
+        loadSelectedSongs();
+    }, [loadSelectedSongs]);
 
     // ==========================================================
-    // FORM HANDLING
+    // EDIT SONG (triggered from the selections table)
     // ==========================================================
 
     const handleChange = event => {
@@ -108,26 +203,34 @@ function SongManagement() {
         }));
     };
 
-    const openAddForm = () => {
-        setEditingSong(null);
-        setFormData(EMPTY_FORM);
-        setShowForm(true);
-    };
+    const openEditForm = async songId => {
+        setFormError("");
 
-    const openEditForm = song => {
-        setEditingSong(song);
-        setFormData({
-            title: song.title || "",
-            music_director: song.music_director || "",
-            movie: song.movie || "",
-            language: song.language || "Tamil",
-            difficulty: song.difficulty || "Medium",
-            song_type: song.song_type || "Solo",
-            male_singers: (song.male_singers || []).join(", "),
-            female_singers: (song.female_singers || []).join(", "),
-            karaoke_available: song.karaoke_available !== false
-        });
-        setShowForm(true);
+        try {
+            const result = await getSongById(songId);
+            const song = result.song || {};
+
+            setEditingSongId(songId);
+            setFormData({
+                title: song.title || "",
+                music_director: song.music_director || "",
+                movie: song.movie || "",
+                language: song.language || "Tamil",
+                difficulty: song.difficulty || "Medium",
+                song_type: song.song_type || "Solo",
+                male_singers: (song.male_singers || []).join(", "),
+                female_singers: (song.female_singers || []).join(", "),
+                karaoke_available: song.karaoke_available !== false
+            });
+            setShowForm(true);
+        }
+        catch (requestError) {
+            console.error("Load song error:", requestError);
+            setSelectedError(
+                requestError.message ||
+                "Unable to load this song for editing."
+            );
+        }
     };
 
     const closeForm = () => {
@@ -136,7 +239,7 @@ function SongManagement() {
         }
 
         setShowForm(false);
-        setEditingSong(null);
+        setEditingSongId(null);
     };
 
     const saveSong = async event => {
@@ -148,7 +251,7 @@ function SongManagement() {
         }
 
         setSaving(true);
-        setError("");
+        setFormError("");
 
         const maleSingers = parseNames(formData.male_singers);
         const femaleSingers = parseNames(formData.female_singers);
@@ -169,20 +272,15 @@ function SongManagement() {
         };
 
         try {
-            if (editingSong) {
-                await updateSong(editingSong.id, payload);
-            }
-            else {
-                await createSong(payload);
-            }
+            await updateSong(editingSongId, payload);
 
             setShowForm(false);
-            setEditingSong(null);
-            await loadSongs();
+            setEditingSongId(null);
+            await loadSelectedSongs();
         }
         catch (requestError) {
             console.error("Save song error:", requestError);
-            setError(
+            setFormError(
                 requestError.message ||
                 "Unable to save song."
             );
@@ -192,9 +290,9 @@ function SongManagement() {
         }
     };
 
-    const handleDelete = async songId => {
+    const handleDeleteSelectedSong = async row => {
         const confirmed = window.confirm(
-            "Are you sure you want to delete this song from the catalog?"
+            `Remove "${row.song_title}" from ${row.singer_name}'s selection? The song itself isn't deleted, just unlinked from this singer.`
         );
 
         if (!confirmed) {
@@ -202,84 +300,319 @@ function SongManagement() {
         }
 
         try {
-            await deleteSong(songId);
-            await loadSongs();
+            await removeSongFromPayment(row.payment_id, row.song_id);
+            await loadSelectedSongs();
         }
         catch (requestError) {
-            console.error("Delete song error:", requestError);
-            setError(
+            console.error("Remove song error:", requestError);
+            setSelectedError(
                 requestError.message ||
-                "Unable to delete song."
+                "Unable to remove this song."
             );
         }
     };
 
     // ==========================================================
-    // FILTER / SEARCH
+    // REPLACE SONG (swap one song for another, same singer -
+    // the array length never changes, so no 5-song conflict)
     // ==========================================================
 
-    const filteredSongs = useMemo(() => {
-        const searchText = search.toLowerCase().trim();
+    const openReplaceModal = row => {
+        setReplaceRow(row);
+        setReplaceQuery("");
+        setReplaceResults([]);
+        setReplaceError("");
+        setShowReplaceModal(true);
+    };
 
-        return songs.filter(song => {
-            const matchesSearch =
-                !searchText ||
-                (song.title || "").toLowerCase().includes(searchText) ||
-                (song.music_director || "").toLowerCase().includes(searchText);
+    const closeReplaceModal = () => {
+        if (replaceSaving) {
+            return;
+        }
 
-            const matchesFilter =
-                filter === "All" ||
-                getSongType(song) === filter;
+        setShowReplaceModal(false);
+        setReplaceRow(null);
+    };
 
-            return matchesSearch && matchesFilter;
-        });
-    }, [songs, search, filter]);
+    const runReplaceSearch = async event => {
+        event.preventDefault();
 
-    const soloCount = songs.filter(song => getSongType(song) === "Solo").length;
-    const duetCount = songs.filter(song => getSongType(song) !== "Solo").length;
-    const karaokeCount = songs.filter(song => song.karaoke_available !== false).length;
+        const query = replaceQuery.trim();
+
+        if (!query) {
+            return;
+        }
+
+        try {
+            setReplaceSearching(true);
+            setReplaceError("");
+
+            const results = await searchSongCatalog(query);
+            setReplaceResults(results.map(normalizeSearchResult));
+        }
+        catch (requestError) {
+            console.error("Replace search error:", requestError);
+            setReplaceResults([]);
+            setReplaceError(
+                requestError.message ||
+                "Unable to search songs."
+            );
+        }
+        finally {
+            setReplaceSearching(false);
+        }
+    };
+
+    const chooseReplacement = async result => {
+        if (!replaceRow) {
+            return;
+        }
+
+        setReplaceSaving(true);
+        setReplaceError("");
+
+        try {
+            const songResult = await createSong({
+                title: result.title,
+                movie: result.movie || null,
+                music_director: result.artist || null,
+                thumbnail: result.thumbnail || "",
+                provider: result.provider || "YouTube",
+                karaoke_available: true,
+                difficulty: "Medium",
+                male_singers: [],
+                female_singers: [],
+                event_id: replaceRow.event_id
+            });
+
+            if (!songResult.song?.id) {
+                throw new Error(`Unable to save song "${result.title}".`);
+            }
+
+            await replaceSongInPayment(
+                replaceRow.payment_id,
+                replaceRow.song_id,
+                songResult.song.id
+            );
+
+            setShowReplaceModal(false);
+            setReplaceRow(null);
+            await loadSelectedSongs();
+        }
+        catch (requestError) {
+            console.error("Replace song error:", requestError);
+            setReplaceError(
+                requestError.message ||
+                "Unable to replace this song."
+            );
+        }
+        finally {
+            setReplaceSaving(false);
+        }
+    };
 
     // ==========================================================
-    // EXCEL EXPORT / IMPORT
+    // REASSIGN SONG TO A DIFFERENT SINGER
     // ==========================================================
 
-    const excelRows = useMemo(
-        () => filteredSongs.map(song => ({
-            id: song.id,
-            title: song.title || "",
-            music_director: song.music_director || "",
-            movie: song.movie || "",
-            language: song.language || "Tamil",
-            difficulty: song.difficulty || "Medium",
-            song_type: getSongType(song),
-            male_singers: (song.male_singers || []).join(", "),
-            female_singers: (song.female_singers || []).join(", "),
-            karaoke_available: song.karaoke_available !== false ? "TRUE" : "FALSE"
-        })),
-        [filteredSongs]
-    );
+    const openReassignModal = row => {
+        setReassignRow(row);
+        setReassignTargetId("");
+        setReassignError("");
+        setShowReassignModal(true);
+    };
 
-    const handleImportRows = async parsedRows => {
+    const closeReassignModal = () => {
+        if (reassignSaving) {
+            return;
+        }
 
-        const rows = parsedRows.map(row => ({
-            id: row.id || undefined,
-            title: row.title,
-            music_director: row.music_director,
-            movie: row.movie,
-            language: row.language,
-            difficulty: row.difficulty,
-            song_type: row.song_type,
-            male_singers: row.male_singers,
-            female_singers: row.female_singers,
-            karaoke_available: row.karaoke_available
-        }));
+        setShowReassignModal(false);
+        setReassignRow(null);
+    };
 
-        const response = await bulkUpsertSongs(rows);
+    const submitReassign = async () => {
+        if (!reassignRow || !reassignTargetId) {
+            setReassignError("Please choose a singer.");
+            return;
+        }
 
-        await loadSongs();
+        setReassignSaving(true);
+        setReassignError("");
 
-        return { message: response.message };
+        try {
+            await reassignSongToSinger(
+                reassignRow.song_id,
+                reassignRow.singer_id,
+                reassignTargetId,
+                reassignRow.event_id
+            );
 
+            setShowReassignModal(false);
+            setReassignRow(null);
+            await loadSelectedSongs();
+        }
+        catch (requestError) {
+            console.error("Reassign song error:", requestError);
+            setReassignError(
+                requestError.message ||
+                "Unable to reassign this song."
+            );
+        }
+        finally {
+            setReassignSaving(false);
+        }
+    };
+
+    // Other singers already registered for the SAME event as the
+    // row being reassigned - mirrors the Pairing/Payments pages'
+    // event-scoped dropdown instead of the full global roster.
+    const reassignTargetOptions = useMemo(() => {
+        if (!reassignRow) {
+            return [];
+        }
+
+        const seen = new Map();
+
+        selectedSongRows
+            .filter(row =>
+                row.event_id === reassignRow.event_id &&
+                row.singer_id !== reassignRow.singer_id
+            )
+            .forEach(row => {
+                if (!seen.has(row.singer_id)) {
+                    seen.set(row.singer_id, row.singer_name);
+                }
+            });
+
+        return [...seen.entries()].map(([singer_id, singer_name]) => ({ singer_id, singer_name }));
+    }, [selectedSongRows, reassignRow]);
+
+    // ==========================================================
+    // ADD NEW SONG (a new row - a brand-new singer for this event,
+    // or one more song for a singer who has fewer than 5)
+    // ==========================================================
+
+    const openAddModal = () => {
+        setShowAddModal(true);
+        setSingerSearch("");
+        setAddSingerId("");
+        setAddQuery("");
+        setAddResults([]);
+        setAddError("");
+    };
+
+    const closeAddModal = () => {
+        if (addSaving) {
+            return;
+        }
+
+        setShowAddModal(false);
+    };
+
+    const runAddSearch = async event => {
+        event.preventDefault();
+
+        const query = addQuery.trim();
+
+        if (!query) {
+            return;
+        }
+
+        try {
+            setAddSearching(true);
+            setAddError("");
+
+            const results = await searchSongCatalog(query);
+            setAddResults(results.map(normalizeSearchResult));
+        }
+        catch (requestError) {
+            console.error("Add search error:", requestError);
+            setAddResults([]);
+            setAddError(
+                requestError.message ||
+                "Unable to search songs."
+            );
+        }
+        finally {
+            setAddSearching(false);
+        }
+    };
+
+    const filteredSingerRoster = useMemo(() => {
+        const searchText = singerSearch.toLowerCase().trim();
+
+        if (!searchText) {
+            return singerRoster;
+        }
+
+        return singerRoster.filter(singer =>
+            (singer.singer_name || "").toLowerCase().includes(searchText) ||
+            (singer.mobile_number || "").includes(searchText)
+        );
+    }, [singerRoster, singerSearch]);
+
+    const chooseNewSong = async result => {
+        if (!addSingerId) {
+            setAddError("Please select a singer first.");
+            return;
+        }
+
+        setAddSaving(true);
+        setAddError("");
+
+        try {
+            const activeEvent = selectedEventIds.length > 0
+                ? null
+                : await getActiveEvent();
+
+            const targetEventId = selectedEventIds[0] || activeEvent?.event?.id || null;
+
+            const songResult = await createSong({
+                title: result.title,
+                movie: result.movie || null,
+                music_director: result.artist || null,
+                thumbnail: result.thumbnail || "",
+                provider: result.provider || "YouTube",
+                karaoke_available: true,
+                difficulty: "Medium",
+                male_singers: [],
+                female_singers: [],
+                event_id: targetEventId
+            });
+
+            if (!songResult.song?.id) {
+                throw new Error(`Unable to save song "${result.title}".`);
+            }
+
+            const existingRows = selectedSongRows.filter(row =>
+                row.singer_id === addSingerId &&
+                row.event_id === targetEventId
+            );
+
+            if (existingRows.length === 0) {
+                await createPayment(addSingerId, [songResult.song.id]);
+            }
+            else if (existingRows.length >= 5) {
+                throw new Error("This singer already has 5 songs - use Replace instead.");
+            }
+            else {
+                await addSongToPayment(existingRows[0].payment_id, songResult.song.id);
+            }
+
+            setShowAddModal(false);
+            await loadSelectedSongs();
+        }
+        catch (requestError) {
+            console.error("Add song error:", requestError);
+            setAddError(
+                requestError.message ||
+                "Unable to add this song."
+            );
+        }
+        finally {
+            setAddSaving(false);
+        }
     };
 
     // ==========================================================
@@ -291,162 +624,115 @@ function SongManagement() {
             <AdminTopbar />
 
             <section className="song-management">
-            <div className="song-management-header">
-                <div>
-                    <span className="admin-section-label">🎵 SONG LIBRARY</span>
-                    <h1>Song Management</h1>
-                    <p>Manage the Beats ∞ Infinity song library</p>
-                </div>
-
-                <button type="button" className="add-song-btn" onClick={openAddForm}>
-                    ＋ Add New Song
-                </button>
-            </div>
-
-            {error && (
-                <div className="empty-table" style={{ color: "#ff6b6b", marginBottom: "20px" }}>
-                    ⚠️ {error}
-                </div>
-            )}
-
-            <ExcelToolbar
-                columns={SONG_COLUMNS}
-                rows={excelRows}
-                filename="beats-infinity-songs"
-                onImportRows={handleImportRows}
-                hint="Export, edit any field (or add new rows with the ID column blank), then re-upload the same file to bulk-save. Rows with a matching ID update that song; blank-ID rows create new songs."
-            />
-
-            <div className="song-summary">
-                <div className="summary-card">
-                    <span>🎵</span>
-                    <div>
-                        <strong>{songs.length}</strong>
-                        <small>Total Songs</small>
-                    </div>
-                </div>
-
-                <div className="summary-card">
-                    <span>🎶</span>
-                    <div>
-                        <strong>{duetCount}</strong>
-                        <small>Duet Songs</small>
-                    </div>
-                </div>
-
-                <div className="summary-card">
-                    <span>🎤</span>
-                    <div>
-                        <strong>{soloCount}</strong>
-                        <small>Solo Songs</small>
-                    </div>
-                </div>
-
-                <div className="summary-card">
-                    <span>🎧</span>
-                    <div>
-                        <strong>{karaokeCount}</strong>
-                        <small>Karaoke Available</small>
-                    </div>
+            <div className="song-hero">
+                <div className="song-hero-art">🎵</div>
+                <div className="song-hero-text">
+                    <span className="admin-section-label">🎤 SINGER SELECTIONS</span>
+                    <h1>Song Selections</h1>
+                    <p>Every song singers have picked, scoped to the event below — edit, replace or reassign any pick.</p>
                 </div>
             </div>
 
-            <div className="song-toolbar">
-                <div className="admin-song-search">
-                    <span>🔎</span>
-                    <input
-                        type="text"
-                        placeholder="Search song or music director..."
-                        value={search}
-                        onChange={event => setSearch(event.target.value)}
+            <div className="song-selected-section">
+                <div className="admin-dashboard-event-row song-selected-toolbar">
+                    <EventSelector
+                        events={events}
+                        selectedIds={selectedEventIds}
+                        onChange={setSelectedEventIds}
                     />
-                    {search && (
-                        <button type="button" onClick={() => setSearch("")}>✕</button>
-                    )}
+
+                    <button type="button" className="add-song-btn" onClick={openAddModal}>
+                        ＋ Add New Song
+                    </button>
                 </div>
 
-                <div className="admin-filters">
-                    {["All", "Solo", "Duet", "Male Duet", "Female Duet"].map(item => (
-                        <button
-                            key={item}
-                            type="button"
-                            className={filter === item ? "admin-filter active" : "admin-filter"}
-                            onClick={() => setFilter(item)}
-                        >
-                            {item}
-                        </button>
-                    ))}
-                </div>
-            </div>
+                {selectedError && (
+                    <div className="empty-table" style={{ color: "#ff6b6b", marginBottom: "20px" }}>
+                        ⚠️ {selectedError}
+                    </div>
+                )}
 
-            <div className="song-table-container">
-                <table className="song-table">
-                    <thead>
-                        <tr>
-                            <th>Song</th>
-                            <th>Music Director</th>
-                            <th>Movie</th>
-                            <th>Language</th>
-                            <th>Type</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
+                <div className="song-table-container">
+                    <table className="song-table">
+                        <thead>
+                            <tr>
+                                <th>Song</th>
+                                <th>Singer</th>
+                                <th>Gender</th>
+                                <th>Event</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
 
-                    <tbody>
-                        {loading ? (
-                            <tr>
-                                <td colSpan="6" className="empty-table">
-                                    <strong>Loading songs...</strong>
-                                </td>
-                            </tr>
-                        ) : filteredSongs.length === 0 ? (
-                            <tr>
-                                <td colSpan="6" className="empty-table">
-                                    🎵
-                                    <strong>No songs found</strong>
-                                    <span>Try another search or filter.</span>
-                                </td>
-                            </tr>
-                        ) : (
-                            filteredSongs.map(song => (
-                                <tr key={song.id}>
-                                    <td>
-                                        <div className="song-title-cell">
-                                            <div className="table-song-icon">🎵</div>
-                                            <strong>{song.title}</strong>
-                                        </div>
-                                    </td>
-                                    <td>{song.music_director || "—"}</td>
-                                    <td>{song.movie || "—"}</td>
-                                    <td>{song.language || "—"}</td>
-                                    <td>
-                                        <span className={getTypeBadgeClass(getSongType(song))}>
-                                            {getSongType(song)}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className="table-actions">
-                                            <button
-                                                type="button"
-                                                className="edit-btn"
-                                                onClick={() => openEditForm(song)}
-                                            >
-                                                ✏️
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="delete-btn"
-                                                onClick={() => handleDelete(song.id)}
-                                            >
-                                                🗑️
-                                            </button>
-                                        </div>
+                        <tbody>
+                            {loadingSelected ? (
+                                <tr>
+                                    <td colSpan="5" className="empty-table">
+                                        <strong>Loading selections...</strong>
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                            ) : selectedSongRows.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="empty-table">
+                                        🎤
+                                        <strong>No songs selected yet</strong>
+                                        <span>Nothing selected for the chosen event(s) so far.</span>
+                                    </td>
+                                </tr>
+                            ) : (
+                                selectedSongRows.map((row, index) => (
+                                    <tr key={`${row.singer_id}-${row.song_id}-${index}`}>
+                                        <td>
+                                            <div className="song-title-cell">
+                                                <div className="table-song-icon">🎵</div>
+                                                <strong>{row.song_title}</strong>
+                                            </div>
+                                        </td>
+                                        <td>{row.singer_name}</td>
+                                        <td>{row.gender || "—"}</td>
+                                        <td>{row.event_name || "—"}</td>
+                                        <td>
+                                            <div className="table-actions">
+                                                <button
+                                                    type="button"
+                                                    className="edit-btn"
+                                                    title="Edit song details"
+                                                    onClick={() => openEditForm(row.song_id)}
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="edit-btn"
+                                                    title="Replace with a different song"
+                                                    onClick={() => openReplaceModal(row)}
+                                                >
+                                                    🔁
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="edit-btn"
+                                                    title="Reassign to a different singer"
+                                                    onClick={() => openReassignModal(row)}
+                                                >
+                                                    👤
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="delete-btn"
+                                                    title="Remove from this singer's selection"
+                                                    onClick={() => handleDeleteSelectedSong(row)}
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {showForm && (
@@ -455,10 +741,16 @@ function SongManagement() {
                         <div className="modal-header">
                             <div>
                                 <span>🎵</span>
-                                <h2>{editingSong ? "Edit Song" : "Add New Song"}</h2>
+                                <h2>Edit Song</h2>
                             </div>
                             <button type="button" className="modal-close" onClick={closeForm}>✕</button>
                         </div>
+
+                        {formError && (
+                            <div className="empty-table" style={{ color: "#ff6b6b", marginBottom: "14px" }}>
+                                ⚠️ {formError}
+                            </div>
+                        )}
 
                         <form onSubmit={saveSong}>
                             <div className="form-group">
@@ -568,10 +860,220 @@ function SongManagement() {
                                     Cancel
                                 </button>
                                 <button type="submit" className="save-song-btn" disabled={saving}>
-                                    {saving ? "Saving..." : editingSong ? "Update Song" : "Save Song"}
+                                    {saving ? "Saving..." : "Update Song"}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showReplaceModal && replaceRow && (
+                <div className="song-modal-overlay">
+                    <div className="song-modal assign-song-modal">
+                        <div className="modal-header">
+                            <div>
+                                <span>🔁</span>
+                                <h2>Replace Song</h2>
+                            </div>
+                            <button type="button" className="modal-close" onClick={closeReplaceModal}>✕</button>
+                        </div>
+
+                        <div className="assign-modal-body">
+                            <p className="song-assign-hint">
+                                Replacing <strong>{replaceRow.song_title}</strong> for <strong>{replaceRow.singer_name}</strong>.
+                                The rest of their songs stay the same.
+                            </p>
+
+                            {replaceError && (
+                                <div className="empty-table" style={{ color: "#ff6b6b", marginBottom: "14px" }}>
+                                    ⚠️ {replaceError}
+                                </div>
+                            )}
+
+                            <form className="assign-search-row" onSubmit={runReplaceSearch}>
+                                <div className="admin-song-search">
+                                    <span>🔎</span>
+                                    <input
+                                        type="text"
+                                        placeholder="Search for the replacement song..."
+                                        value={replaceQuery}
+                                        onChange={event => setReplaceQuery(event.target.value)}
+                                    />
+                                </div>
+
+                                <button type="submit" className="save-song-btn" disabled={replaceSearching}>
+                                    {replaceSearching ? "Searching..." : "Search"}
+                                </button>
+                            </form>
+
+                            {replaceResults.length > 0 && (
+                                <div className="assign-results-list">
+                                    {replaceResults.map(result => (
+                                        <div key={result.id} className="assign-result-row">
+                                            <span>{result.title}{result.artist ? ` — ${result.artist}` : ""}</span>
+                                            <button
+                                                type="button"
+                                                className="add-song-btn"
+                                                disabled={replaceSaving}
+                                                onClick={() => chooseReplacement(result)}
+                                            >
+                                                {replaceSaving ? "Saving..." : "Use This"}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-actions">
+                            <button type="button" className="cancel-btn" onClick={closeReplaceModal} disabled={replaceSaving}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showReassignModal && reassignRow && (
+                <div className="song-modal-overlay">
+                    <div className="song-modal">
+                        <div className="modal-header">
+                            <div>
+                                <span>👤</span>
+                                <h2>Reassign Song</h2>
+                            </div>
+                            <button type="button" className="modal-close" onClick={closeReassignModal}>✕</button>
+                        </div>
+
+                        <p className="song-assign-hint">
+                            Moving <strong>{reassignRow.song_title}</strong> from <strong>{reassignRow.singer_name}</strong> to
+                            another singer registered for {reassignRow.event_name || "this event"}.
+                        </p>
+
+                        {reassignError && (
+                            <div className="empty-table" style={{ color: "#ff6b6b", marginBottom: "14px" }}>
+                                ⚠️ {reassignError}
+                            </div>
+                        )}
+
+                        <div className="form-group">
+                            <label>Move to Singer</label>
+                            <select
+                                value={reassignTargetId}
+                                onChange={event => setReassignTargetId(event.target.value)}
+                            >
+                                <option value="">Select a singer...</option>
+                                {reassignTargetOptions.map(option => (
+                                    <option key={option.singer_id} value={option.singer_id}>
+                                        {option.singer_name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {reassignTargetOptions.length === 0 && (
+                                <small>No other singers registered for this event yet.</small>
+                            )}
+                        </div>
+
+                        <div className="modal-actions">
+                            <button type="button" className="cancel-btn" onClick={closeReassignModal} disabled={reassignSaving}>
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="save-song-btn"
+                                onClick={submitReassign}
+                                disabled={reassignSaving || !reassignTargetId}
+                            >
+                                {reassignSaving ? "Reassigning..." : "Reassign"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showAddModal && (
+                <div className="song-modal-overlay">
+                    <div className="song-modal assign-song-modal">
+                        <div className="modal-header">
+                            <div>
+                                <span>🎵</span>
+                                <h2>Add New Song</h2>
+                            </div>
+                            <button type="button" className="modal-close" onClick={closeAddModal}>✕</button>
+                        </div>
+
+                        <div className="assign-modal-body">
+                            {addError && (
+                                <div className="empty-table" style={{ color: "#ff6b6b", marginBottom: "14px" }}>
+                                    ⚠️ {addError}
+                                </div>
+                            )}
+
+                            <div className="form-group">
+                                <label>Singer</label>
+                                <input
+                                    type="text"
+                                    placeholder="Search singer by name or mobile..."
+                                    value={singerSearch}
+                                    onChange={event => setSingerSearch(event.target.value)}
+                                />
+
+                                <select
+                                    value={addSingerId}
+                                    onChange={event => setAddSingerId(event.target.value)}
+                                    style={{ marginTop: "10px" }}
+                                >
+                                    <option value="">Select a singer...</option>
+                                    {filteredSingerRoster.map(singer => (
+                                        <option key={singer.id} value={singer.id}>
+                                            {singer.singer_name} — {singer.mobile_number}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <form className="assign-search-row" onSubmit={runAddSearch}>
+                                <div className="admin-song-search">
+                                    <span>🔎</span>
+                                    <input
+                                        type="text"
+                                        placeholder="Search song, singer or movie..."
+                                        value={addQuery}
+                                        onChange={event => setAddQuery(event.target.value)}
+                                    />
+                                </div>
+
+                                <button type="submit" className="save-song-btn" disabled={addSearching}>
+                                    {addSearching ? "Searching..." : "Search"}
+                                </button>
+                            </form>
+
+                            {addResults.length > 0 && (
+                                <div className="assign-results-list">
+                                    {addResults.map(result => (
+                                        <div key={result.id} className="assign-result-row">
+                                            <span>{result.title}{result.artist ? ` — ${result.artist}` : ""}</span>
+                                            <button
+                                                type="button"
+                                                className="add-song-btn"
+                                                disabled={addSaving || !addSingerId}
+                                                onClick={() => chooseNewSong(result)}
+                                            >
+                                                {addSaving ? "Saving..." : "Use This"}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-actions">
+                            <button type="button" className="cancel-btn" onClick={closeAddModal} disabled={addSaving}>
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

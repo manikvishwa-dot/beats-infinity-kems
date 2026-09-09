@@ -280,9 +280,17 @@ const objectKeys = [
 
             return {
 
+                // videoId is the stable identifier the YouTube search
+                // API actually returns - falling back to the array
+                // index (as this used to) meant two DIFFERENT songs
+                // from two DIFFERENT searches could collide on the
+                // same id whenever they happened to land at the same
+                // results-grid position, wrongly showing "✓ Selected"
+                // for an unrelated song.
                 id:
                     String(
                         song?.id ||
+                        song?.videoId ||
                         song?.trackId ||
                         song?.providerId ||
                         `song-${index}`

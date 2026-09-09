@@ -105,6 +105,21 @@
 
 .requested-date strong { color: #dddddd; font-size: 13px; }
 
+.admin-dashboard-event-row {
+    margin-bottom: 24px;
+}
+
+.payment-event-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #FFD54A;
+    background: rgba(255, 213, 74, 0.12);
+    white-space: nowrap;
+}
+
 .payment-singer-row {
     margin-top: 18px;
     gap: 16px;

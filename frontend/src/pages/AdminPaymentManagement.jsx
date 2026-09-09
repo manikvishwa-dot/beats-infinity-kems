@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
+import EventSelector from "../components/admin/EventSelector";
 import ExcelToolbar from "../components/admin/ExcelToolbar";
 import {
     getPayments,
@@ -13,6 +14,7 @@ import {
     rejectPayment,
     bulkUpdatePaymentStatus
 } from "../services/paymentService";
+import { getEvents } from "../services/eventService";
 
 import "../styles/adminTheme.css";
 import "./AdminPaymentManagement.css";
@@ -21,6 +23,7 @@ const PAYMENT_COLUMNS = [
     { key: "id", header: "ID", width: 38 },
     { key: "singer_name", header: "Singer Name", width: 26 },
     { key: "mobile_number", header: "Mobile Number", width: 18 },
+    { key: "event_name", header: "Event", width: 22 },
     { key: "amount", header: "Amount", width: 12 },
     { key: "song_count", header: "Songs Selected", width: 16 },
     { key: "status", header: "Status (Pending/Paid/Rejected)", width: 26 }
@@ -84,15 +87,62 @@ const AdminPaymentManagement = () => {
     const [error, setError] =
         useState("");
 
+    const [events, setEvents] =
+        useState([]);
+
+    const [selectedEventIds, setSelectedEventIds] =
+        useState([]);
+
+    const [eventsReady, setEventsReady] =
+        useState(false);
+
+    useEffect(() => {
+
+        getEvents()
+            .then(result => {
+
+                const allEvents = result.events || [];
+                setEvents(allEvents);
+
+                const active = allEvents.find(item => item.is_active);
+                setSelectedEventIds(current =>
+                    current.length > 0 ? current : (active ? [active.id] : [])
+                );
+
+            })
+            .catch(requestError => {
+
+                console.error("Load events error:", requestError);
+
+            })
+            .finally(() => {
+
+                // Gates the first data fetch below - without this, an
+                // unscoped "all events" request fires immediately on
+                // mount (selectedEventIds still []), racing the later,
+                // correctly-scoped one. If the heavier unscoped request
+                // resolves last, it silently overwrites the scoped
+                // result with mixed-event data.
+                setEventsReady(true);
+
+            });
+
+    }, []);
+
     const loadPayments = useCallback(
         async () => {
+            if (!eventsReady) {
+                return;
+            }
+
             try {
                 setLoading(true);
                 setError("");
 
                 const result =
                     await getPayments(
-                        filter
+                        filter,
+                        selectedEventIds.join(",")
                     );
 
                 setPayments(
@@ -114,7 +164,7 @@ const AdminPaymentManagement = () => {
                 setLoading(false);
             }
         },
-        [filter]
+        [filter, selectedEventIds, eventsReady]
     );
 
     useEffect(() => {
@@ -224,6 +274,7 @@ const AdminPaymentManagement = () => {
             id: payment.id,
             singer_name: payment.singer?.singer_name || "",
             mobile_number: payment.singer?.mobile_number || "",
+            event_name: payment.event_name || "—",
             amount: payment.amount || 0,
             song_count: payment.song_count || 0,
             status: payment.status
@@ -268,6 +319,14 @@ const AdminPaymentManagement = () => {
                     ↻ Refresh
                 </button>
             </header>
+
+            <div className="admin-dashboard-event-row">
+                <EventSelector
+                    events={events}
+                    selectedIds={selectedEventIds}
+                    onChange={setSelectedEventIds}
+                />
+            </div>
 
             <ExcelToolbar
                 columns={PAYMENT_COLUMNS}
@@ -365,6 +424,10 @@ const AdminPaymentManagement = () => {
                                             )}
                                         </strong>
                                     </div>
+
+                                    <span className="payment-event-badge">
+                                        📅 {payment.event_name || "—"}
+                                    </span>
                                 </div>
 
                                 <div className="payment-singer-row">

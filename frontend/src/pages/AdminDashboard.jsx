@@ -40,6 +40,7 @@ function AdminDashboard() {
 
     const [events, setEvents] = useState([]);
     const [selectedEventIds, setSelectedEventIds] = useState([]);
+    const [eventsReady, setEventsReady] = useState(false);
 
     // Inline song-title editing: { songId, value } while active
     const [editingCell, setEditingCell] = useState(null);
@@ -63,11 +64,26 @@ function AdminDashboard() {
 
                 console.error("Load events error:", requestError);
 
+            })
+            .finally(() => {
+
+                // Gates the first data fetch below - without this, an
+                // unscoped "all events" request fires immediately on
+                // mount (selectedEventIds still []), racing the later,
+                // correctly-scoped one. If the heavier unscoped request
+                // resolves last, it silently overwrites the scoped
+                // result with mixed-event data.
+                setEventsReady(true);
+
             });
 
     }, []);
 
     const loadOverview = useCallback(async () => {
+        if (!eventsReady) {
+            return;
+        }
+
         try {
             setLoading(true);
             setError("");
@@ -86,7 +102,7 @@ function AdminDashboard() {
         finally {
             setLoading(false);
         }
-    }, [selectedEventIds]);
+    }, [selectedEventIds, eventsReady]);
 
     useEffect(() => {
         loadOverview();

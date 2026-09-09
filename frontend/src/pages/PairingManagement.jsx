@@ -43,6 +43,7 @@ function PairingManagement() {
 
     const [events, setEvents] = useState([]);
     const [selectedEventIds, setSelectedEventIds] = useState([]);
+    const [eventsReady, setEventsReady] = useState(false);
 
     // Manual pairing form state
     const [manualMaleId, setManualMaleId] = useState("");
@@ -71,6 +72,17 @@ function PairingManagement() {
 
                 console.error("Load events error:", requestError);
 
+            })
+            .finally(() => {
+
+                // Gates the first data fetch below - without this, an
+                // unscoped "all events" request fires immediately on
+                // mount (selectedEventIds still []), racing the later,
+                // correctly-scoped one. If the heavier unscoped request
+                // resolves last, it silently overwrites the scoped
+                // result with mixed-event data.
+                setEventsReady(true);
+
             });
 
     }, []);
@@ -82,6 +94,10 @@ function PairingManagement() {
     const primaryEventId = selectedEventIds[0] || null;
 
     const loadData = useCallback(async () => {
+        if (!eventsReady) {
+            return;
+        }
+
         try {
             setLoading(true);
             setError("");
@@ -109,7 +125,7 @@ function PairingManagement() {
         finally {
             setLoading(false);
         }
-    }, [selectedEventIds, primaryEventId]);
+    }, [selectedEventIds, primaryEventId, eventsReady]);
 
     useEffect(() => {
         loadData();
@@ -185,8 +201,11 @@ function PairingManagement() {
     // their current status, so a straight re-upload is a no-op),
     // potential matches (decision left blank), and male-side open
     // songs (female singer left blank for the admin to fill in).
-    const primaryEventName = events.find(item => item.id === primaryEventId)?.name || "—";
-
+    //
+    // event_name always comes from the backend (the ACTUAL event the
+    // underlying song selection belongs to), never assumed from the
+    // currently-selected dropdown - a song that's scoped to the wrong
+    // event needs to be visible as such, not silently relabeled.
     const excelRows = useMemo(() => {
 
         const fromExisting = suggestions.existing_pairings.map(pairing => ({
@@ -200,7 +219,7 @@ function PairingManagement() {
         }));
 
         const fromPotential = suggestions.potential_matches.map(candidate => ({
-            event_name: primaryEventName,
+            event_name: candidate.event_name || "—",
             song_title: candidate.song_title,
             male_singer_name: candidate.male_singer_name,
             female_singer_name: candidate.female_singer_name,
@@ -210,7 +229,7 @@ function PairingManagement() {
         }));
 
         const fromOpen = openSongsMale.map(openSong => ({
-            event_name: primaryEventName,
+            event_name: openSong.event_name || "—",
             song_title: openSong.song_title,
             male_singer_name: openSong.singer_name,
             female_singer_name: "",
@@ -221,7 +240,7 @@ function PairingManagement() {
 
         return [...fromExisting, ...fromPotential, ...fromOpen];
 
-    }, [suggestions.existing_pairings, suggestions.potential_matches, openSongsMale, primaryEventName]);
+    }, [suggestions.existing_pairings, suggestions.potential_matches, openSongsMale]);
 
     // Same rows as the Excel export - grouped by event first (only
     // meaningful when comparing more than one), then sorted

@@ -226,11 +226,61 @@ const bulkDecidePairings = async (rows, eventId) => {
 };
 
 
+// ==========================================================
+// SUPER ADMIN STATS - SINGERS PER EVENT (last 6 months)
+// ==========================================================
+
+const getSingersPerEvent = async () => {
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/stats/singers-per-event`,
+
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+
+    );
+
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
+// SUPER ADMIN STATS - FINANCE BY EVENT (last 6 months)
+// ==========================================================
+
+const getFinanceByEvent = async () => {
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/stats/finance-by-event`,
+
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+
+    );
+
+
+    return handleResponse(response);
+
+};
+
+
 export {
     getAllSingers,
     getSingersOverview,
     getPairingSuggestions,
     decidePairing,
     bulkUpdateSingers,
-    bulkDecidePairings
+    bulkDecidePairings,
+    getSingersPerEvent,
+    getFinanceByEvent
 };

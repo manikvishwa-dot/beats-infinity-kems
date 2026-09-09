@@ -93,6 +93,30 @@ router.put(
     paymentController.bulkUpdatePaymentStatus
 );
 
+router.put(
+    "/reassign-song",
+    requireAdmin,
+    paymentController.reassignSongToSinger
+);
+
+router.put(
+    "/:id/replace-song",
+    requireAdmin,
+    paymentController.replaceSongInPayment
+);
+
+router.put(
+    "/:id/add-song",
+    requireAdmin,
+    paymentController.addSongToPayment
+);
+
+router.put(
+    "/:id/remove-song",
+    requireAdmin,
+    paymentController.removeSongFromPayment
+);
+
 console.log("✅ Payment routes loaded successfully");
 console.log("GET    /api/v1/payments/my?singer_id=UUID");
 console.log("GET    /api/v1/payments");
@@ -100,6 +124,10 @@ console.log("POST   /api/v1/payments");
 console.log("PUT    /api/v1/payments/:id/mark-paid");
 console.log("PUT    /api/v1/payments/:id/reject");
 console.log("PUT    /api/v1/payments/bulk-status");
+console.log("PUT    /api/v1/payments/:id/replace-song");
+console.log("PUT    /api/v1/payments/:id/add-song");
+console.log("PUT    /api/v1/payments/:id/remove-song");
+console.log("PUT    /api/v1/payments/reassign-song");
 console.log("========================================");
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const { supabase } = require("../../config/supabase");
 const bcrypt = require("bcryptjs");
+const { isWhatsappConfigured, sendOtpViaWhatsapp } = require("../../services/whatsappService");
 
 // ==========================================================
 // BEATS INFINITY - SINGER CONTROLLER
@@ -582,19 +583,51 @@ const sendOTP = async (req, res) => {
 
 
         // ==================================================
-        // DEVELOPMENT RESPONSE
+        // DELIVER OTP OVER WHATSAPP (Meta Cloud API)
         //
-        // IMPORTANT:
-        // REMOVE "otp" FROM THIS RESPONSE BEFORE
-        // PRODUCTION / REAL SMS INTEGRATION.
+        // Falls back to the "Development OTP" response below
+        // whenever WhatsApp isn't configured yet, or a send
+        // attempt fails - registration/reset-pin never gets
+        // blocked by a delivery problem while this is being
+        // set up.
         // ==================================================
+
+        let deliveredViaWhatsapp = false;
+
+        if (isWhatsappConfigured()) {
+
+            try {
+
+                await sendOtpViaWhatsapp(mobile, otp);
+
+                deliveredViaWhatsapp = true;
+
+                console.log(
+                    "✅ OTP sent via WhatsApp to:",
+                    mobile
+                );
+
+            }
+            catch (whatsappError) {
+
+                console.error(
+                    "❌ WhatsApp OTP send failed, falling back to Development OTP:",
+                    whatsappError.response?.data || whatsappError.message
+                );
+
+            }
+
+        }
+
 
         return res.status(200).json({
 
             success: true,
 
             message:
-                "OTP generated successfully.",
+                deliveredViaWhatsapp
+                    ? "OTP sent via WhatsApp."
+                    : "OTP generated successfully.",
 
             mobile,
 
@@ -602,8 +635,10 @@ const sendOTP = async (req, res) => {
 
             expiresAt,
 
-            // DEVELOPMENT ONLY
-            otp
+            // Only present when WhatsApp delivery isn't configured
+            // or a send attempt failed - never sent alongside a
+            // real, successfully-delivered OTP.
+            ...(deliveredViaWhatsapp ? {} : { otp })
 
         });
 

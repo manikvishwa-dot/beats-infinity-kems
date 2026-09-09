@@ -218,7 +218,33 @@ function SuperAdminDashboard() {
                     <>
                         <div className="finance-summary-grid">
                             <div className="admin-card finance-stat">
-                                <span className="finance-stat-label">Revenue Received</span>
+                                <span className="finance-stat-label">Total Singers Registered</span>
+                                <strong className="finance-stat-value neutral">
+                                    {summary?.summary?.total_payment_count || 0}
+                                </strong>
+                                <span className="finance-stat-sub">
+                                    {summary?.summary?.rejected_count || 0} rejected
+                                </span>
+                            </div>
+
+                            <div className="admin-card finance-stat">
+                                <span className="finance-stat-label">Total Paid</span>
+                                <strong className="finance-stat-value positive">
+                                    {summary?.summary?.paid_count || 0}
+                                </strong>
+                                <span className="finance-stat-sub">confirmed by admin</span>
+                            </div>
+
+                            <div className="admin-card finance-stat">
+                                <span className="finance-stat-label">Total Pending</span>
+                                <strong className="finance-stat-value neutral">
+                                    {summary?.summary?.pending_count || 0}
+                                </strong>
+                                <span className="finance-stat-sub">awaiting confirmation</span>
+                            </div>
+
+                            <div className="admin-card finance-stat">
+                                <span className="finance-stat-label">Amount Received</span>
                                 <strong className="finance-stat-value positive">
                                     {formatCurrency(summary?.summary?.revenue)}
                                 </strong>
@@ -238,22 +264,14 @@ function SuperAdminDashboard() {
                             </div>
 
                             <div className="admin-card finance-stat">
-                                <span className="finance-stat-label">Balance</span>
-                                <strong className={`finance-stat-value ${(summary?.summary?.balance || 0) >= 0 ? "positive" : "negative"}`}>
-                                    {formatCurrency(summary?.summary?.balance)}
-                                </strong>
-                                <span className="finance-stat-sub">
-                                    {(summary?.summary?.balance || 0) >= 0 ? "In surplus" : "In deficit"}
+                                <span className="finance-stat-label">
+                                    {(summary?.summary?.balance || 0) >= 0 ? "Profit" : "Loss"}
                                 </span>
-                            </div>
-
-                            <div className="admin-card finance-stat">
-                                <span className="finance-stat-label">Pending / Rejected</span>
-                                <strong className="finance-stat-value neutral">
-                                    {summary?.summary?.pending_count || 0} / {summary?.summary?.rejected_count || 0}
+                                <strong className={`finance-stat-value ${(summary?.summary?.balance || 0) >= 0 ? "positive" : "negative"}`}>
+                                    {formatCurrency(Math.abs(summary?.summary?.balance || 0))}
                                 </strong>
                                 <span className="finance-stat-sub">
-                                    {summary?.summary?.total_payment_count || 0} total payment request(s)
+                                    Amount Received − Expenses
                                 </span>
                             </div>
                         </div>

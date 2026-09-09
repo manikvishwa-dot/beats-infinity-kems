@@ -502,7 +502,10 @@ const getSuggestions = async (req, res) => {
                             "Unknown Singer",
 
                         status:
-                            "Potential Match"
+                            "Potential Match",
+
+                        event_id:
+                            songMap.get(candidate.song_id)?.event_id || null
 
                     })
 
@@ -531,7 +534,7 @@ const getSuggestions = async (req, res) => {
 
             const { data: extraSongs } = await supabase
                 .from("songs")
-                .select("id,title,movie")
+                .select("id,title,movie,event_id")
                 .in("id", missingSongIds);
 
             (extraSongs || []).forEach(song => reportSongMap.set(song.id, song));
@@ -557,20 +560,32 @@ const getSuggestions = async (req, res) => {
 
         const eventNameById = new Map();
 
-        const decidedEventIds = [
-            ...new Set((decided || []).map(row => row.event_id).filter(Boolean))
+        const allReportEventIds = [
+            ...new Set([
+                ...(decided || []).map(row => row.event_id),
+                ...potential.map(row => row.event_id)
+            ].filter(Boolean))
         ];
 
-        if (decidedEventIds.length > 0) {
+        if (allReportEventIds.length > 0) {
 
             const { data: eventRows } = await supabase
                 .from("events")
                 .select("id,name")
-                .in("id", decidedEventIds);
+                .in("id", allReportEventIds);
 
             (eventRows || []).forEach(event => eventNameById.set(event.id, event.name));
 
         }
+
+        // Potential Matches now carry the ACTUAL event the underlying
+        // song selection belongs to (not just "the event currently
+        // being viewed") - this is what surfaces data that's scoped
+        // to the wrong event instead of hiding it. Open Songs get the
+        // same treatment further down, once that list exists.
+        potential.forEach(row => {
+            row.event_name = eventNameById.get(row.event_id) || "—";
+        });
 
 
         const existingPairings =
@@ -752,7 +767,10 @@ const getSuggestions = async (req, res) => {
                                 singer.singer_name,
 
                             gender:
-                                singer.gender
+                                singer.gender,
+
+                            event_id:
+                                songMap.get(song_id)?.event_id || null
 
                         });
 
@@ -768,6 +786,25 @@ const getSuggestions = async (req, res) => {
             (a, b) =>
                 a.song_title.localeCompare(b.song_title)
         );
+
+        const missingOpenSongEventIds = [
+            ...new Set(openSongs.map(row => row.event_id))
+        ].filter(id => id && !eventNameById.has(id));
+
+        if (missingOpenSongEventIds.length > 0) {
+
+            const { data: extraEventRows } = await supabase
+                .from("events")
+                .select("id,name")
+                .in("id", missingOpenSongEventIds);
+
+            (extraEventRows || []).forEach(event => eventNameById.set(event.id, event.name));
+
+        }
+
+        openSongs.forEach(row => {
+            row.event_name = eventNameById.get(row.event_id) || "—";
+        });
 
 
         return res.status(200).json({

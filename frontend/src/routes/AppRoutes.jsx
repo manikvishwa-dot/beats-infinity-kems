@@ -45,6 +45,7 @@ import SingerManagement from "../pages/SingerManagement";
 import PairingManagement from "../pages/PairingManagement";
 import AdminPaymentManagement from "../pages/AdminPaymentManagement";
 import SuperAdminDashboard from "../pages/SuperAdminDashboard";
+import ComparisonDashboard from "../pages/ComparisonDashboard";
 import RequireAdminAuth from "../components/admin/RequireAdminAuth";
 
 
@@ -293,6 +294,15 @@ function AppRoutes() {
                 element={
                     <RequireAdminAuth role="super_admin">
                         <SuperAdminDashboard />
+                    </RequireAdminAuth>
+                }
+            />
+
+            <Route
+                path="/superadmin/comparison"
+                element={
+                    <RequireAdminAuth role="super_admin">
+                        <ComparisonDashboard />
                     </RequireAdminAuth>
                 }
             />

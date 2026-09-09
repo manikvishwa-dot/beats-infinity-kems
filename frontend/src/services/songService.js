@@ -8,6 +8,9 @@ import { getAuthHeader } from "./adminService";
 const API_BASE_URL =
     `${API_V1_URL}/songs`;
 
+const SEARCH_URL =
+    `${API_V1_URL}/song-search`;
+
 
 const handleResponse = async response => {
 
@@ -56,6 +59,26 @@ const getSongs = async () => {
         }
     );
 
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
+// GET SONG BY ID
+// ==========================================================
+
+const getSongById = async songId => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/${songId}`,
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+    );
 
     return handleResponse(response);
 
@@ -153,6 +176,23 @@ const deleteSong = async songId => {
 
 
 // ==========================================================
+// SEARCH SONG CATALOG (YouTube-backed, same as singer search)
+// ==========================================================
+
+const searchSongCatalog = async query => {
+
+    const response = await fetch(
+        `${SEARCH_URL}?q=${encodeURIComponent(query)}`
+    );
+
+    const data = await handleResponse(response);
+
+    return data.songs || data.results || data.data || [];
+
+};
+
+
+// ==========================================================
 // BULK UPSERT SONGS (Excel import)
 // ==========================================================
 
@@ -185,8 +225,10 @@ const bulkUpsertSongs = async rows => {
 
 export {
     getSongs,
+    getSongById,
     createSong,
     updateSong,
     deleteSong,
-    bulkUpsertSongs
+    bulkUpsertSongs,
+    searchSongCatalog
 };

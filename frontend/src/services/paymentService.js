@@ -72,11 +72,18 @@ const getMyPayment = async (singerId) => {
 // ADMIN - GET PAYMENTS
 // ==========================================================
 
-const getPayments = async (status = "All") => {
-    const query =
-        status && status !== "All"
-            ? `?status=${encodeURIComponent(status)}`
-            : "";
+const getPayments = async (status = "All", eventId = "") => {
+    const params = new URLSearchParams();
+
+    if (status && status !== "All") {
+        params.set("status", status);
+    }
+
+    if (eventId) {
+        params.set("event_id", eventId);
+    }
+
+    const query = params.toString() ? `?${params.toString()}` : "";
 
     const response = await fetch(
         `${API_BASE_URL}${query}`,
@@ -148,8 +155,104 @@ const bulkUpdatePaymentStatus = async (rows) => {
     return handleResponse(response);
 };
 
+// ==========================================================
+// ADMIN - ADD ONE SONG TO AN EXISTING PAYMENT
+// ==========================================================
+
+const addSongToPayment = async (paymentId, songId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/${paymentId}/add-song`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({
+                song_id: songId
+            })
+        }
+    );
+
+    return handleResponse(response);
+};
+
+// ==========================================================
+// ADMIN - REMOVE ONE SONG FROM A PAYMENT (UNLINK, NOT DELETE)
+// ==========================================================
+
+const removeSongFromPayment = async (paymentId, songId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/${paymentId}/remove-song`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({
+                song_id: songId
+            })
+        }
+    );
+
+    return handleResponse(response);
+};
+
+// ==========================================================
+// ADMIN - REPLACE ONE SONG IN A PAYMENT
+// ==========================================================
+
+const replaceSongInPayment = async (paymentId, oldSongId, newSongId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/${paymentId}/replace-song`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({
+                old_song_id: oldSongId,
+                new_song_id: newSongId
+            })
+        }
+    );
+
+    return handleResponse(response);
+};
+
+// ==========================================================
+// ADMIN - REASSIGN A SONG TO A DIFFERENT SINGER
+// ==========================================================
+
+const reassignSongToSinger = async (songId, fromSingerId, toSingerId, eventId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/reassign-song`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({
+                song_id: songId,
+                from_singer_id: fromSingerId,
+                to_singer_id: toSingerId,
+                event_id: eventId
+            })
+        }
+    );
+
+    return handleResponse(response);
+};
+
 export {
     createPayment,
+    addSongToPayment,
+    removeSongFromPayment,
+    replaceSongInPayment,
+    reassignSongToSinger,
     getMyPayment,
     getPayments,
     markPaymentAsPaid,

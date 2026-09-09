@@ -15,7 +15,13 @@ const {
 } = require("../../controllers/v1/pairingController");
 
 const {
-    requireAdmin
+    getSingersPerEvent,
+    getFinanceByEvent
+} = require("../../controllers/v1/superAdminStatsController");
+
+const {
+    requireAdmin,
+    requireSuperAdmin
 } = require("../../middleware/requireAdminAuth");
 
 
@@ -97,6 +103,32 @@ router.post(
 );
 
 
+// ==========================================================
+// SUPER ADMIN STATS - SINGERS PER EVENT (last 6 months)
+//
+// GET /api/v1/admin/stats/singers-per-event
+// ==========================================================
+
+router.get(
+    "/stats/singers-per-event",
+    requireSuperAdmin,
+    getSingersPerEvent
+);
+
+
+// ==========================================================
+// SUPER ADMIN STATS - FINANCE BY EVENT (last 6 months)
+//
+// GET /api/v1/admin/stats/finance-by-event
+// ==========================================================
+
+router.get(
+    "/stats/finance-by-event",
+    requireSuperAdmin,
+    getFinanceByEvent
+);
+
+
 console.log(
     "✅ Admin dashboard routes loaded successfully"
 );
@@ -123,6 +155,14 @@ console.log(
 
 console.log(
     "POST   /api/v1/admin/pairings/bulk-decide"
+);
+
+console.log(
+    "GET    /api/v1/admin/stats/singers-per-event"
+);
+
+console.log(
+    "GET    /api/v1/admin/stats/finance-by-event"
 );
 
 

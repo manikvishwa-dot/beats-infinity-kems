@@ -28,7 +28,10 @@ function AdminTopbar({ loginPath = "/admin/login" }) {
     const session = getSession();
 
     const isSuperAdmin = session?.admin?.role === "super_admin";
-    const isDashboard = location.pathname === "/admin" || location.pathname === "/superadmin";
+    const isDashboard =
+        location.pathname === "/admin" ||
+        location.pathname === "/superadmin" ||
+        location.pathname === "/superadmin/comparison";
 
     const handleLogout = async () => {
         await logout();
@@ -108,6 +111,20 @@ function AdminTopbar({ loginPath = "/admin/login" }) {
                     >
                         <span className="admin-topbar-link-icon">👑</span>
                         Finance
+                    </Link>
+                )}
+
+                {isSuperAdmin && (
+                    <Link
+                        to="/superadmin/comparison"
+                        className={
+                            location.pathname === "/superadmin/comparison"
+                                ? "admin-topbar-link active super"
+                                : "admin-topbar-link super"
+                        }
+                    >
+                        <span className="admin-topbar-link-icon">📈</span>
+                        Comparison Dashboard
                     </Link>
                 )}
             </nav>
