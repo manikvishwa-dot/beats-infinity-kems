@@ -1630,16 +1630,8 @@ const SingerRegistration = () => {
                 <div className="otp-development">
 
                     <strong>
-                        Development OTP
+                        Your OTP for User Creation is : {generatedOtp}
                     </strong>
-
-                    <div className="otp-code">
-                        {generatedOtp}
-                    </div>
-
-                    <small>
-                        This OTP is shown only during local development.
-                    </small>
 
                 </div>
 

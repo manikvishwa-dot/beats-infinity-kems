@@ -1441,7 +1441,7 @@ const SingerLogin = () => {
                         }}
                     >
 
-                        Development OTP:
+                        Your OTP for User Creation is :
 
                         <strong
                             style={{
@@ -1888,7 +1888,7 @@ const SingerLogin = () => {
                         }}
                     >
 
-                        Development OTP:
+                        Your OTP for PIN Reset is :
 
                         <strong
                             style={{
