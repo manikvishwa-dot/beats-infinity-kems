@@ -1,3 +1,9 @@
+.hero-install-wrap {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 18px;
+}
+
 .hero-install-btn {
     background: rgba(29, 185, 84, 0.12) !important;
     color: #1DB954 !important;
@@ -8,7 +14,6 @@
     font-weight: 700 !important;
     letter-spacing: 0.5px;
     text-transform: none !important;
-    margin-bottom: 18px !important;
     backdrop-filter: blur(12px);
     transition: 0.2s ease;
 }
@@ -18,11 +23,36 @@
     transform: translateY(-1px);
 }
 
-.ios-install-help {
-    padding: 14px 16px;
-    max-width: 260px;
+.hero-install-help {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 50;
+    width: 260px;
+    padding: 14px 34px 14px 16px;
     background: #1D1D1D;
     color: #eee;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+.hero-install-help-close {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.hero-install-help-close:hover {
+    color: #fff;
 }
 
 .ios-share-icon {

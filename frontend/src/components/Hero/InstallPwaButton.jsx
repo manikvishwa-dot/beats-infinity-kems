@@ -1,13 +1,31 @@
 import { useEffect, useState } from "react";
 
-import { Button, Popover, Box, Typography } from "@mui/material";
+import { Button } from "@mui/material";
 import GetAppRoundedIcon from "@mui/icons-material/GetAppRounded";
 import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
 
 import "./InstallPwaButton.css";
 
-const isIos = () =>
-    /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+// iPadOS (13+) reports itself as a Mac desktop Safari in the user
+// agent string - the only reliable way to still detect a real
+// iPad is "Mac platform, but with touch support" (a real Mac has
+// maxTouchPoints === 0).
+const isIos = () => {
+
+    const ua = window.navigator.userAgent;
+
+    if (/iphone|ipad|ipod/i.test(ua)) {
+
+        return true;
+
+    }
+
+    return (
+        window.navigator.platform === "MacIntel" &&
+        window.navigator.maxTouchPoints > 1
+    );
+
+};
 
 const isStandalone = () =>
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -18,11 +36,15 @@ const isStandalone = () =>
 // prompt when the browser has one ready) and iOS (Safari never
 // offers a programmatic prompt) visitors can add Beats Infinity
 // to their home screen. Hides itself once already installed.
+//
+// The help text is a plain CSS-positioned box, not a portal-based
+// popover - deliberately, so there is no anchor/measurement logic
+// that could silently fail to render on any given mobile browser.
 function InstallPwaButton() {
 
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [installed, setInstalled] = useState(isStandalone());
-    const [anchorEl, setAnchorEl] = useState(null);
+    const [showHelp, setShowHelp] = useState(false);
     const [helpMessage, setHelpMessage] = useState("");
 
     useEffect(() => {
@@ -59,9 +81,7 @@ function InstallPwaButton() {
 
     }
 
-    const ios = isIos();
-
-    const handleClick = async event => {
+    const handleClick = async () => {
 
         if (deferredPrompt) {
 
@@ -79,28 +99,18 @@ function InstallPwaButton() {
 
         }
 
-        if (ios) {
+        setHelpMessage(
+            isIos() ? "share" : "menu"
+        );
 
-            setHelpMessage(
-                "share"
-            );
-
-        }
-        else {
-
-            setHelpMessage(
-                "menu"
-            );
-
-        }
-
-        setAnchorEl(event.currentTarget);
+        setShowHelp(current => !current);
 
     };
 
     return (
 
-        <>
+        <div className="hero-install-wrap">
+
             <Button
                 onClick={handleClick}
                 startIcon={<GetAppRoundedIcon />}
@@ -110,32 +120,38 @@ function InstallPwaButton() {
                 Install App
             </Button>
 
-            <Popover
-                open={Boolean(anchorEl)}
-                anchorEl={anchorEl}
-                onClose={() => setAnchorEl(null)}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                transformOrigin={{ vertical: "top", horizontal: "center" }}
-            >
-                <Box className="ios-install-help">
+            {showHelp && (
+
+                <div className="hero-install-help">
 
                     {helpMessage === "share" ? (
 
-                        <Typography variant="body2">
+                        <span>
                             Tap <IosShareRoundedIcon fontSize="inherit" className="ios-share-icon" /> <strong>Share</strong> below, then choose <strong>"Add to Home Screen"</strong>.
-                        </Typography>
+                        </span>
 
                     ) : (
 
-                        <Typography variant="body2">
+                        <span>
                             Look for an <strong>install</strong> icon in your browser's address bar, or open your browser's menu and choose <strong>"Install app"</strong> / <strong>"Add to Home screen"</strong>.
-                        </Typography>
+                        </span>
 
                     )}
 
-                </Box>
-            </Popover>
-        </>
+                    <button
+                        type="button"
+                        className="hero-install-help-close"
+                        onClick={() => setShowHelp(false)}
+                        aria-label="Close"
+                    >
+                        ✕
+                    </button>
+
+                </div>
+
+            )}
+
+        </div>
 
     );
 
