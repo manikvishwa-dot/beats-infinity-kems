@@ -279,6 +279,116 @@
 }
 
 /* ==========================================================
+   MOBILE MENU TOGGLE (hamburger) - hidden on desktop
+   ========================================================== */
+
+.navbar-mobile-toggle{
+
+    display:none !important;
+
+    color:#ffffff !important;
+
+}
+
+/* ==========================================================
+   MOBILE DRAWER
+   ========================================================== */
+
+.navbar-drawer .MuiDrawer-paper{
+
+    width:min(78vw,320px);
+
+    background:#0B0B0B;
+
+    border-left:1px solid rgba(255,255,255,.08);
+
+}
+
+.navbar-drawer-content{
+
+    display:flex;
+
+    flex-direction:column;
+
+    height:100%;
+
+    padding:24px 20px;
+
+}
+
+.navbar-drawer-close{
+
+    align-self:flex-end;
+
+    color:#ffffff !important;
+
+    margin-bottom:12px;
+
+}
+
+.navbar-drawer-list{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+}
+
+.drawer-nav-button{
+
+    width:100%;
+
+    justify-content:flex-start !important;
+
+    color:#ffffff !important;
+
+    font-family:"Poppins",sans-serif !important;
+
+    font-size:16px !important;
+
+    font-weight:600 !important;
+
+    text-transform:none !important;
+
+    padding:12px 10px !important;
+
+    border-radius:10px !important;
+
+}
+
+.drawer-nav-button:hover,
+.drawer-nav-button.active{
+
+    color:#1DB954 !important;
+
+    background:rgba(29,185,84,.08) !important;
+
+}
+
+.navbar-drawer-actions{
+
+    margin-top:auto;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:14px;
+
+    padding-top:20px;
+
+}
+
+.navbar-drawer-actions .login-button,
+.navbar-drawer-actions .register-button{
+
+    width:100%;
+
+}
+
+/* ==========================================================
    RESPONSIVE
    ========================================================== */
 
@@ -300,15 +410,26 @@
 
 @media (max-width:992px){
 
-    .navbar-menu{
+    .navbar-menu,
+    .navbar-actions{
 
-        display:none;
+        display:none !important;
 
     }
 
-    .navbar-actions{
+    .navbar-mobile-toggle{
+
+        display:inline-flex !important;
 
         margin-left:auto;
+
+    }
+
+    .navbar-logo-section{
+
+        flex:0 0 auto;
+
+        padding-left:0;
 
     }
 
@@ -327,22 +448,6 @@
     .navbar-logo{
 
         height:66px;
-
-    }
-
-    .login-button{
-
-        display:none !important;
-
-    }
-
-    .register-button{
-
-        min-width:135px;
-
-        height:38px;
-
-        font-size:12px !important;
 
     }
 

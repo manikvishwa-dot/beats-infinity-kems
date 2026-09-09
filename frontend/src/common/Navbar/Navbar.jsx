@@ -5,8 +5,15 @@ import {
     Toolbar,
     Box,
     Button,
-    Container
+    Container,
+    IconButton,
+    Drawer,
+    List,
+    ListItem
 } from "@mui/material";
+
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 import {
     Link,
@@ -23,6 +30,9 @@ function Navbar() {
     const location = useLocation();
 
     const [scrolled, setScrolled] =
+        useState(false);
+
+    const [mobileOpen, setMobileOpen] =
         useState(false);
 
 
@@ -57,6 +67,15 @@ function Navbar() {
         };
 
     }, []);
+
+
+    // Close the mobile drawer automatically on route change, so
+    // it never stays open covering the page after navigating.
+    useEffect(() => {
+
+        setMobileOpen(false);
+
+    }, [location.pathname]);
 
 
     // ==========================================================
@@ -151,7 +170,7 @@ function Navbar() {
 
 
                     {/* ==================================================
-                        MENU
+                        MENU (desktop)
                     ================================================== */}
 
                     <Box
@@ -206,7 +225,7 @@ function Navbar() {
 
 
                     {/* ==================================================
-                        ACTION BUTTONS
+                        ACTION BUTTONS (desktop)
                     ================================================== */}
 
                     <Box
@@ -263,9 +282,102 @@ function Navbar() {
                     </Box>
 
 
+                    {/* ==================================================
+                        MOBILE MENU TOGGLE
+                    ================================================== */}
+
+                    <IconButton
+                        className="navbar-mobile-toggle"
+                        onClick={() => setMobileOpen(true)}
+                        aria-label="Open menu"
+                    >
+
+                        <MenuRoundedIcon />
+
+                    </IconButton>
+
+
                 </Toolbar>
 
             </Container>
+
+            {/* ==================================================
+                MOBILE DRAWER
+            ================================================== */}
+
+            <Drawer
+                anchor="right"
+                open={mobileOpen}
+                onClose={() => setMobileOpen(false)}
+                className="navbar-drawer"
+                ModalProps={{ keepMounted: true }}
+            >
+
+                <Box className="navbar-drawer-content">
+
+                    <IconButton
+                        className="navbar-drawer-close"
+                        onClick={() => setMobileOpen(false)}
+                        aria-label="Close menu"
+                    >
+
+                        <CloseRoundedIcon />
+
+                    </IconButton>
+
+                    <List className="navbar-drawer-list">
+
+                        {navItems.map(item => (
+
+                            <ListItem key={item.label} disablePadding>
+
+                                <Button
+                                    component={Link}
+                                    to={item.path}
+                                    className={
+                                        location.pathname === item.path
+                                            ? "drawer-nav-button active"
+                                            : "drawer-nav-button"
+                                    }
+                                >
+
+                                    {item.label}
+
+                                </Button>
+
+                            </ListItem>
+
+                        ))}
+
+                    </List>
+
+                    <Box className="navbar-drawer-actions">
+
+                        <Button
+                            component={Link}
+                            to="/login"
+                            className="login-button"
+                        >
+
+                            Login
+
+                        </Button>
+
+                        <Button
+                            component={Link}
+                            to="/singer-registration"
+                            className="register-button"
+                        >
+
+                            Join Beats ∞ Infinity
+
+                        </Button>
+
+                    </Box>
+
+                </Box>
+
+            </Drawer>
 
         </AppBar>
 
