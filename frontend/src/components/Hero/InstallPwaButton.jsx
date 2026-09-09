@@ -13,16 +13,17 @@ const isStandalone = () =>
     window.matchMedia("(display-mode: standalone)").matches ||
     window.navigator.standalone === true;
 
-// Shows an "Install App" pill at the top of the hero so both
-// Android/desktop (real install prompt) and iOS (Safari has no
-// programmatic prompt - only "Add to Home Screen" instructions)
-// visitors can add Beats Infinity to their home screen. Hides
-// itself once already installed/running standalone.
+// Shows an "Install App" pill at the top of the hero, always
+// visible for easy access, so both Android/desktop (real install
+// prompt when the browser has one ready) and iOS (Safari never
+// offers a programmatic prompt) visitors can add Beats Infinity
+// to their home screen. Hides itself once already installed.
 function InstallPwaButton() {
 
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [installed, setInstalled] = useState(isStandalone());
     const [anchorEl, setAnchorEl] = useState(null);
+    const [helpMessage, setHelpMessage] = useState("");
 
     useEffect(() => {
 
@@ -60,33 +61,40 @@ function InstallPwaButton() {
 
     const ios = isIos();
 
-    if (!deferredPrompt && !ios) {
-
-        // Browser doesn't support install prompts (or already
-        // dismissed this session) and isn't iOS Safari either -
-        // nothing useful to show.
-        return null;
-
-    }
-
     const handleClick = async event => {
 
-        if (ios) {
+        if (deferredPrompt) {
 
-            setAnchorEl(event.currentTarget);
+            deferredPrompt.prompt();
+
+            const { outcome } = await deferredPrompt.userChoice;
+
+            if (outcome === "accepted") {
+
+                setDeferredPrompt(null);
+
+            }
+
             return;
 
         }
 
-        deferredPrompt.prompt();
+        if (ios) {
 
-        const { outcome } = await deferredPrompt.userChoice;
-
-        if (outcome === "accepted") {
-
-            setDeferredPrompt(null);
+            setHelpMessage(
+                "share"
+            );
 
         }
+        else {
+
+            setHelpMessage(
+                "menu"
+            );
+
+        }
+
+        setAnchorEl(event.currentTarget);
 
     };
 
@@ -111,9 +119,19 @@ function InstallPwaButton() {
             >
                 <Box className="ios-install-help">
 
-                    <Typography variant="body2">
-                        Tap <IosShareRoundedIcon fontSize="inherit" className="ios-share-icon" /> <strong>Share</strong> below, then choose <strong>"Add to Home Screen"</strong>.
-                    </Typography>
+                    {helpMessage === "share" ? (
+
+                        <Typography variant="body2">
+                            Tap <IosShareRoundedIcon fontSize="inherit" className="ios-share-icon" /> <strong>Share</strong> below, then choose <strong>"Add to Home Screen"</strong>.
+                        </Typography>
+
+                    ) : (
+
+                        <Typography variant="body2">
+                            Look for an <strong>install</strong> icon in your browser's address bar, or open your browser's menu and choose <strong>"Install app"</strong> / <strong>"Add to Home screen"</strong>.
+                        </Typography>
+
+                    )}
 
                 </Box>
             </Popover>
