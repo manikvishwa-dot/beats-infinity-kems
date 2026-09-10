@@ -13,6 +13,8 @@ import {
     FaLock
 } from "react-icons/fa";
 
+import PasswordToggleInput from "../common/PasswordToggleInput";
+
 import logo from "../../assets/logo/beats-infinity-logo.png";
 
 
@@ -489,8 +491,7 @@ function LoginForm() {
 
                             <FaLock />
 
-                            <input
-                                type="password"
+                            <PasswordToggleInput
                                 inputMode="numeric"
                                 maxLength="4"
                                 value={pin}

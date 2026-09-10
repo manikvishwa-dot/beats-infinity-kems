@@ -11,6 +11,8 @@ import {
 
 import "./SingerLogin.css";
 
+import PasswordToggleInput from "../components/common/PasswordToggleInput";
+
 import logo from "../assets/logo/beats-infinity-logo.png";
 
 
@@ -1202,9 +1204,8 @@ const SingerLogin = () => {
                 </label>
 
 
-                <input
+                <PasswordToggleInput
                     className="pin-input"
-                    type="password"
                     inputMode="numeric"
                     maxLength={4}
                     value={pin}
@@ -1412,9 +1413,9 @@ const SingerLogin = () => {
                 </label>
 
 
-                <input
+                <PasswordToggleInput
                     className="pin-input"
-                    type="tel"
+                    visibleType="tel"
                     inputMode="numeric"
                     maxLength={6}
                     value={otp}
@@ -1538,9 +1539,8 @@ const SingerLogin = () => {
                 </label>
 
 
-                <input
+                <PasswordToggleInput
                     className="pin-input"
-                    type="password"
                     inputMode="numeric"
                     maxLength={4}
                     value={pin}
@@ -1557,9 +1557,8 @@ const SingerLogin = () => {
                 </label>
 
 
-                <input
+                <PasswordToggleInput
                     className="pin-input"
-                    type="password"
                     inputMode="numeric"
                     maxLength={4}
                     value={confirmPin}
@@ -1859,9 +1858,9 @@ const SingerLogin = () => {
                 </label>
 
 
-                <input
+                <PasswordToggleInput
                     className="pin-input"
-                    type="tel"
+                    visibleType="tel"
                     inputMode="numeric"
                     maxLength={6}
                     value={otp}
@@ -1998,9 +1997,8 @@ const SingerLogin = () => {
                 </label>
 
 
-                <input
+                <PasswordToggleInput
                     className="pin-input"
-                    type="password"
                     inputMode="numeric"
                     maxLength={4}
                     value={pin}
@@ -2017,9 +2015,8 @@ const SingerLogin = () => {
                 </label>
 
 
-                <input
+                <PasswordToggleInput
                     className="pin-input"
-                    type="password"
                     inputMode="numeric"
                     maxLength={4}
                     value={confirmPin}

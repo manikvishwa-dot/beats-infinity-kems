@@ -18,6 +18,8 @@ import {
 
 import "./SingerLogin.css";
 
+import PasswordToggleInput from "../components/common/PasswordToggleInput";
+
 import logo from "../assets/logo/beats-infinity-logo.png";
 
 
@@ -1609,8 +1611,8 @@ const SingerRegistration = () => {
                 </label>
 
 
-                <input
-                    type="tel"
+                <PasswordToggleInput
+                    visibleType="tel"
                     inputMode="numeric"
                     maxLength="6"
                     value={otp}
@@ -1724,8 +1726,7 @@ const SingerRegistration = () => {
                 </label>
 
 
-                <input
-                    type="password"
+                <PasswordToggleInput
                     inputMode="numeric"
                     maxLength="4"
                     value={pin}
@@ -1751,8 +1752,7 @@ const SingerRegistration = () => {
                 </label>
 
 
-                <input
-                    type="password"
+                <PasswordToggleInput
                     inputMode="numeric"
                     maxLength="4"
                     value={confirmPin}

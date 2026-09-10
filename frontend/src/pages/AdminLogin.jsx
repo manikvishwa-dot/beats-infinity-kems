@@ -3,6 +3,8 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 
 import { login } from "../services/adminService";
 
+import PasswordToggleInput from "../components/common/PasswordToggleInput";
+
 import "./AdminLogin.css";
 
 
@@ -228,8 +230,7 @@ function AdminLogin() {
                             Password
                         </label>
 
-                        <input
-                            type="password"
+                        <PasswordToggleInput
                             value={password}
                             onChange={
                                 event =>
