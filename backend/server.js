@@ -47,6 +47,9 @@ const pairingRoutes =
 const eventRoutes =
     require("./routes/v1/eventRoutes");
 
+const journeyRoutes =
+    require("./routes/v1/journeyRoutes");
+
 
 // ==========================================================
 // EXPRESS APP
@@ -286,6 +289,16 @@ app.use(
 app.use(
     "/api/v1/events",
     eventRoutes
+);
+
+
+// ----------------------------------------------------------
+// MUSICAL JOURNEY (Home page carousel)
+// ----------------------------------------------------------
+
+app.use(
+    "/api/v1/journey",
+    journeyRoutes
 );
 
 

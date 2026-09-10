@@ -45,6 +45,7 @@ import SongManagement from "../pages/SongManagement";
 import SingerManagement from "../pages/SingerManagement";
 import PairingManagement from "../pages/PairingManagement";
 import AdminPaymentManagement from "../pages/AdminPaymentManagement";
+import JourneyManagement from "../pages/JourneyManagement";
 import SuperAdminDashboard from "../pages/SuperAdminDashboard";
 import ComparisonDashboard from "../pages/ComparisonDashboard";
 import RequireAdminAuth from "../components/admin/RequireAdminAuth";
@@ -291,6 +292,15 @@ function AppRoutes() {
                 element={
                     <RequireAdminAuth>
                         <AdminPaymentManagement />
+                    </RequireAdminAuth>
+                }
+            />
+
+            <Route
+                path="/admin/journey"
+                element={
+                    <RequireAdminAuth>
+                        <JourneyManagement />
                     </RequireAdminAuth>
                 }
             />

@@ -1,14 +1,43 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import "./Journey.css";
 
-import journey from "./journeyData";
+import { getJourneyEvents } from "../../services/journeyService";
 
 import JourneyCard from "./JourneyCard";
 
 function Journey() {
 
     const sliderRef = useRef(null);
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+
+        let cancelled = false;
+
+        getJourneyEvents()
+            .then(data => {
+                if (!cancelled) {
+                    setEvents(data.events || []);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setEvents([]);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+
+    }, []);
 
     const scrollLeft = () => {
 
@@ -33,6 +62,10 @@ function Journey() {
         });
 
     };
+
+    if (!loading && events.length === 0) {
+        return null;
+    }
 
     return (
 
@@ -82,11 +115,18 @@ function Journey() {
 
                         {
 
-                            journey.map((event) => (
+                            events.map((event) => (
 
                                 <JourneyCard
                                     key={event.id}
-                                    event={event}
+                                    event={{
+                                        id: event.id,
+                                        title: event.title,
+                                        month: event.month_label,
+                                        date: event.date_label,
+                                        venue: event.venue,
+                                        image: event.image_url
+                                    }}
                                 />
 
                             ))
