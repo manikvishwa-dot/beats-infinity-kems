@@ -46,3 +46,9 @@ docs/*.tmp
 **/.env
 **/.env.local
 **/.env.production
+
+# frontend/.env.production is an exception - it only holds the
+# public backend API URL (already visible to any visitor in the
+# built JS bundle, not a secret), and needs to be committed since
+# Render's static-site build doesn't inject dashboard env vars.
+!frontend/.env.production
