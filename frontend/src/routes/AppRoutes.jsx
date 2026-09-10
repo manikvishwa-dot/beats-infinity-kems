@@ -8,6 +8,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "../pages/Home";
 import Events from "../pages/Events";
 import About from "../pages/About";
+import Gallery from "../pages/Gallery";
 import Contact from "../pages/Contact";
 import Login from "../pages/Login";
 import Registration from "../pages/Registration";
@@ -84,6 +85,16 @@ function AppRoutes() {
             <Route
                 path="/events"
                 element={<Events />}
+            />
+
+
+            {/* ==================================================
+                GALLERY
+            ================================================== */}
+
+            <Route
+                path="/gallery"
+                element={<Gallery />}
             />
 
 
