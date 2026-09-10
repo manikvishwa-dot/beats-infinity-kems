@@ -96,6 +96,93 @@ app.get(
 
 
 // ==========================================================
+// SUPABASE-TOUCHING HEALTH CHECK
+//
+// GET /health
+//
+// Unlike "/" above, this actually queries Supabase - it exists
+// for an external uptime pinger (cron-job.org) to hit periodically
+// so the free-tier project never accumulates enough inactivity to
+// get auto-paused. A static response wouldn't touch Supabase at
+// all, so it wouldn't reset that clock.
+// ==========================================================
+
+app.get(
+    "/health",
+    async (req, res) => {
+
+        try {
+
+            const {
+                error
+            } = await supabase
+
+                .from("events")
+
+                .select("id")
+
+                .limit(1);
+
+
+            if (error) {
+
+                console.error(
+                    "HEALTH CHECK - SUPABASE:",
+                    error
+                );
+
+                return res.status(503).json({
+
+                    success: false,
+
+                    supabase:
+                        "unreachable",
+
+                    error:
+                        error.message
+
+                });
+
+            }
+
+
+            return res.status(200).json({
+
+                success: true,
+
+                supabase:
+                    "reachable",
+
+                checked_at:
+                    new Date().toISOString()
+
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "HEALTH CHECK EXCEPTION:",
+                error
+            );
+
+            return res.status(500).json({
+
+                success: false,
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+    }
+);
+
+
+// ==========================================================
 // API ROUTES
 // ==========================================================
 
