@@ -2,12 +2,14 @@ import Navbar from "../common/Navbar/Navbar";
 
 import manikPhoto from "../assets/team/manik.jpg";
 import geethaPhoto from "../assets/team/geetha.jpeg";
+import ramyaPhoto from "../assets/team/ramya.jpg";
 
 import "./About.css";
 
 const FOUNDERS = [
     { name: "Manik Vishwa", photo: manikPhoto },
-    { name: "Geetha", photo: geethaPhoto }
+    { name: "Geetha", photo: geethaPhoto },
+    { name: "Ramya", photo: ramyaPhoto }
 ];
 
 const JOURNEY_MILESTONES = [
@@ -15,7 +17,7 @@ const JOURNEY_MILESTONES = [
         badge: "2023",
         title: "The Beginning",
         description:
-            "Beats Infinity was founded by Manik Vishwa and Geetha, driven by a shared " +
+            "Beats Infinity was founded by Manik Vishwa, Geetha and Ramya, driven by a shared " +
             "passion for music, entertainment, and bringing people together."
     },
     {
