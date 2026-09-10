@@ -19,8 +19,8 @@ import "./Contact.css";
 
 const CORE_MEMBERS = [
     { name: "Manik", photo: manikPhoto },
-    { name: "Geetha", photo: geethaPhoto },
     { name: "Ramya", photo: ramyaPhoto },
+    { name: "Geetha", photo: geethaPhoto },
     { name: "Advaith", photo: advaithPhoto },
     { name: "Vignesh", photo: vigneshPhoto },
     { name: "Anand", photo: anandPhoto },
