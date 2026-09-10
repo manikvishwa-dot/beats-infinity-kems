@@ -255,9 +255,73 @@ const logout = async () => {
 };
 
 
+// ==========================================================
+// LIST ADMIN ACCOUNTS - SUPER ADMIN ONLY
+// ==========================================================
+
+const listAdminUsers = async () => {
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/users`,
+
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+
+    );
+
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
+// CHANGE ADMIN PASSWORD - SUPER ADMIN ONLY
+// ==========================================================
+
+const changeAdminPassword = async (
+    accountId,
+    newPassword,
+    currentPassword
+) => {
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/users/${accountId}/password`,
+
+        {
+
+            method: "PUT",
+
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+
+            body: JSON.stringify({
+                new_password: newPassword,
+                current_password: currentPassword || undefined
+            })
+
+        }
+
+    );
+
+
+    return handleResponse(response);
+
+};
+
+
 export {
     login,
     logout,
     getSession,
-    getAuthHeader
+    getAuthHeader,
+    listAdminUsers,
+    changeAdminPassword
 };

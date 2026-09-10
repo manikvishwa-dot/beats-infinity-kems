@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
+import PasswordToggleInput from "../components/common/PasswordToggleInput";
 import { getEvents, getFinanceSummary, createExpense, deleteExpense } from "../services/eventService";
+import { getSession, logout, listAdminUsers, changeAdminPassword } from "../services/adminService";
 
 import "../styles/adminTheme.css";
 import "./SuperAdminDashboard.css";
@@ -36,7 +39,11 @@ const formatDate = value => {
 
 const EMPTY_EXPENSE_FORM = { description: "", amount: "", category: "" };
 
+const EMPTY_PASSWORD_FORM = { currentPassword: "", newPassword: "", confirmPassword: "" };
+
 function SuperAdminDashboard() {
+
+    const navigate = useNavigate();
 
     const [events, setEvents] = useState([]);
     const [selectedEventId, setSelectedEventId] = useState("");
@@ -46,6 +53,15 @@ function SuperAdminDashboard() {
 
     const [expenseForm, setExpenseForm] = useState(EMPTY_EXPENSE_FORM);
     const [savingExpense, setSavingExpense] = useState(false);
+
+    // Change Password
+    const session = getSession();
+    const [accounts, setAccounts] = useState([]);
+    const [selectedAccountId, setSelectedAccountId] = useState("");
+    const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
+    const [savingPassword, setSavingPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState("");
+    const [passwordSuccess, setPasswordSuccess] = useState("");
 
     const loadEvents = useCallback(async () => {
 
@@ -114,6 +130,28 @@ function SuperAdminDashboard() {
 
     }, [selectedEventId, loadFinance]);
 
+    useEffect(() => {
+
+        listAdminUsers()
+            .then(result => {
+
+                const users = result.users || [];
+                setAccounts(users);
+
+                setSelectedAccountId(current =>
+                    current || session?.admin?.id || users[0]?.id || ""
+                );
+
+            })
+            .catch(requestError => {
+
+                console.error("Load admin accounts error:", requestError);
+
+            });
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleAddExpense = async event => {
 
         event.preventDefault();
@@ -174,6 +212,82 @@ function SuperAdminDashboard() {
 
             console.error("Delete expense error:", requestError);
             setError(requestError.message || "Unable to delete expense.");
+
+        }
+
+    };
+
+    const isOwnAccount = selectedAccountId === session?.admin?.id;
+
+    const handleChangePassword = async event => {
+
+        event.preventDefault();
+
+        setPasswordError("");
+        setPasswordSuccess("");
+
+        if (!selectedAccountId) {
+
+            setPasswordError("Please select an account.");
+            return;
+
+        }
+
+        if (!passwordForm.newPassword || passwordForm.newPassword.length < 6) {
+
+            setPasswordError("New password must be at least 6 characters.");
+            return;
+
+        }
+
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+
+            setPasswordError("New password and confirmation do not match.");
+            return;
+
+        }
+
+        if (isOwnAccount && !passwordForm.currentPassword) {
+
+            setPasswordError("Please enter your current password.");
+            return;
+
+        }
+
+        setSavingPassword(true);
+
+        try {
+
+            const result = await changeAdminPassword(
+                selectedAccountId,
+                passwordForm.newPassword,
+                isOwnAccount ? passwordForm.currentPassword : undefined
+            );
+
+            setPasswordSuccess(result.message || "Password updated.");
+            setPasswordForm(EMPTY_PASSWORD_FORM);
+
+            if (result.forced_logout) {
+
+                setTimeout(async () => {
+
+                    await logout();
+                    navigate("/superadmin/login");
+
+                }, 1800);
+
+            }
+
+        }
+        catch (requestError) {
+
+            console.error("Change password error:", requestError);
+            setPasswordError(requestError.message || "Unable to change password.");
+
+        }
+        finally {
+
+            setSavingPassword(false);
 
         }
 
@@ -359,6 +473,76 @@ function SuperAdminDashboard() {
                         </div>
                     </>
                 )}
+
+                <div className="finance-section">
+                    <h2>🔐 Change Password</h2>
+
+                    {passwordError && <div className="finance-error">⚠️ {passwordError}</div>}
+                    {passwordSuccess && (
+                        <div className="finance-error password-success">
+                            ✅ {passwordSuccess}
+                            {isOwnAccount && " Redirecting to login..."}
+                        </div>
+                    )}
+
+                    <form className="finance-expense-form" onSubmit={handleChangePassword}>
+
+                        <div className="finance-expense-field finance-expense-field-wide">
+                            <label>Account</label>
+                            <select
+                                value={selectedAccountId}
+                                onChange={event => {
+                                    setSelectedAccountId(event.target.value);
+                                    setPasswordForm(EMPTY_PASSWORD_FORM);
+                                    setPasswordError("");
+                                    setPasswordSuccess("");
+                                }}
+                            >
+                                {accounts.map(account => (
+                                    <option key={account.id} value={account.id}>
+                                        {account.full_name || account.username}
+                                        {" "}({account.role === "super_admin" ? "Super Admin" : "Admin"})
+                                        {account.id === session?.admin?.id ? " — You" : ""}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {isOwnAccount && (
+                            <div className="finance-expense-field finance-expense-field-wide">
+                                <label>Current Password</label>
+                                <PasswordToggleInput
+                                    value={passwordForm.currentPassword}
+                                    onChange={event => setPasswordForm(current => ({ ...current, currentPassword: event.target.value }))}
+                                    autoComplete="current-password"
+                                />
+                            </div>
+                        )}
+
+                        <div className="finance-expense-field">
+                            <label>New Password</label>
+                            <PasswordToggleInput
+                                value={passwordForm.newPassword}
+                                onChange={event => setPasswordForm(current => ({ ...current, newPassword: event.target.value }))}
+                                autoComplete="new-password"
+                            />
+                        </div>
+
+                        <div className="finance-expense-field">
+                            <label>Confirm New Password</label>
+                            <PasswordToggleInput
+                                value={passwordForm.confirmPassword}
+                                onChange={event => setPasswordForm(current => ({ ...current, confirmPassword: event.target.value }))}
+                                autoComplete="new-password"
+                            />
+                        </div>
+
+                        <button type="submit" className="admin-btn admin-btn-primary" disabled={savingPassword}>
+                            {savingPassword ? "Updating..." : "Update Password"}
+                        </button>
+
+                    </form>
+                </div>
             </div>
         </div>
     );

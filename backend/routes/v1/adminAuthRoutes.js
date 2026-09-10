@@ -10,11 +10,14 @@ const router = express.Router();
 const {
     login,
     logout,
-    me
+    me,
+    listAdminUsers,
+    changeAdminPassword
 } = require("../../controllers/v1/adminAuthController");
 
 const {
-    requireAdmin
+    requireAdmin,
+    requireSuperAdmin
 } = require("../../middleware/requireAdminAuth");
 
 
@@ -56,6 +59,32 @@ router.get(
 );
 
 
+// ==========================================================
+// LIST ADMIN ACCOUNTS - SUPER ADMIN ONLY
+//
+// GET /api/v1/admin/users
+// ==========================================================
+
+router.get(
+    "/users",
+    requireSuperAdmin,
+    listAdminUsers
+);
+
+
+// ==========================================================
+// CHANGE ADMIN PASSWORD - SUPER ADMIN ONLY
+//
+// PUT /api/v1/admin/users/:id/password
+// ==========================================================
+
+router.put(
+    "/users/:id/password",
+    requireSuperAdmin,
+    changeAdminPassword
+);
+
+
 console.log(
     "✅ Admin auth routes loaded successfully"
 );
@@ -70,6 +99,14 @@ console.log(
 
 console.log(
     "GET    /api/v1/admin/me"
+);
+
+console.log(
+    "GET    /api/v1/admin/users"
+);
+
+console.log(
+    "PUT    /api/v1/admin/users/:id/password"
 );
 
 

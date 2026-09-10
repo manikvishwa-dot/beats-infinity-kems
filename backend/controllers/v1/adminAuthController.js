@@ -354,8 +354,274 @@ const me = async (req, res) => {
 };
 
 
+// ==========================================================
+// LIST ADMIN ACCOUNTS - SUPER ADMIN ONLY
+//
+// GET /api/v1/admin/users
+//
+// Just the two fixed accounts (admin, super_admin) - no
+// password data, purely for the Super Admin "Change Password"
+// section to know which account it's targeting.
+// ==========================================================
+
+const listAdminUsers = async (req, res) => {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
+
+            .from("admin_users")
+
+            .select("id,username,full_name,role")
+
+            .order("role", { ascending: true });
+
+
+        if (error) {
+
+            console.error("LIST ADMIN USERS:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: "Unable to load admin accounts.",
+                error: error.message
+            });
+
+        }
+
+
+        return res.status(200).json({
+
+            success: true,
+
+            users:
+                data || []
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error("LIST ADMIN USERS EXCEPTION:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error.",
+            error: error.message
+        });
+
+    }
+
+};
+
+
+// ==========================================================
+// CHANGE PASSWORD - SUPER ADMIN ONLY
+//
+// PUT /api/v1/admin/users/:id/password
+//
+// Body: { new_password, current_password }
+//
+// current_password is required and verified ONLY when changing
+// your OWN account (req.admin.id === :id) - a super admin resetting
+// the OTHER account's password doesn't need to know its old one,
+// their super_admin session is authority enough. Either way, the
+// target account's active session is invalidated afterward so a
+// changed password takes effect immediately.
+// ==========================================================
+
+const MIN_PASSWORD_LENGTH = 6;
+
+const changeAdminPassword = async (req, res) => {
+
+    try {
+
+        const targetId = req.params.id;
+
+        const {
+            new_password,
+            current_password
+        } = req.body || {};
+
+
+        if (!targetId) {
+
+            return res.status(400).json({
+                success: false,
+                message: "Account ID is required."
+            });
+
+        }
+
+
+        if (!new_password || String(new_password).length < MIN_PASSWORD_LENGTH) {
+
+            return res.status(400).json({
+                success: false,
+                message: `New password must be at least ${MIN_PASSWORD_LENGTH} characters.`
+            });
+
+        }
+
+
+        const {
+            data: target,
+            error: lookupError
+        } = await supabase
+
+            .from("admin_users")
+
+            .select("id,username,role,password_hash")
+
+            .eq("id", targetId)
+
+            .maybeSingle();
+
+
+        if (lookupError) {
+
+            console.error("CHANGE PASSWORD - LOOKUP:", lookupError);
+
+            return res.status(500).json({
+                success: false,
+                message: "Unable to load account.",
+                error: lookupError.message
+            });
+
+        }
+
+
+        if (!target) {
+
+            return res.status(404).json({
+                success: false,
+                message: "Account not found."
+            });
+
+        }
+
+
+        const isOwnAccount =
+            target.id === req.admin.id;
+
+
+        if (isOwnAccount) {
+
+            if (!current_password) {
+
+                return res.status(400).json({
+                    success: false,
+                    message: "Current password is required to change your own password."
+                });
+
+            }
+
+            const currentMatches =
+                await bcrypt.compare(
+                    String(current_password),
+                    target.password_hash
+                );
+
+            if (!currentMatches) {
+
+                return res.status(401).json({
+                    success: false,
+                    message: "Current password is incorrect."
+                });
+
+            }
+
+        }
+
+
+        const newHash =
+            await bcrypt.hash(String(new_password), 10);
+
+
+        const {
+            error: updateError
+        } = await supabase
+
+            .from("admin_users")
+
+            .update({
+
+                password_hash:
+                    newHash,
+
+                // Force re-login on the target account - an old
+                // session token shouldn't survive a password change.
+                session_token:
+                    null,
+
+                session_expires_at:
+                    null
+
+            })
+
+            .eq("id", targetId);
+
+
+        if (updateError) {
+
+            console.error("CHANGE PASSWORD - UPDATE:", updateError);
+
+            return res.status(500).json({
+                success: false,
+                message: "Unable to update password.",
+                error: updateError.message
+            });
+
+        }
+
+
+        console.log(
+            "🔑 Password changed for:",
+            target.username,
+            `(${target.role})`,
+            isOwnAccount ? "[self]" : `[by ${req.admin.username}]`
+        );
+
+
+        return res.status(200).json({
+
+            success: true,
+
+            message:
+                isOwnAccount
+                    ? "Your password has been updated. Please log in again."
+                    : `Password updated for ${target.username}.`,
+
+            forced_logout:
+                isOwnAccount
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error("CHANGE PASSWORD EXCEPTION:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error.",
+            error: error.message
+        });
+
+    }
+
+};
+
+
 module.exports = {
     login,
     logout,
-    me
+    me,
+    listAdminUsers,
+    changeAdminPassword
 };
