@@ -16,6 +16,8 @@
 
     font-size: 20px;
 
+    text-align: center;
+
 }
 
 .pairing-status-list {
@@ -44,6 +46,8 @@
 
     border: 1px solid rgba(76,175,80,0.3);
 
+    text-align: left;
+
 }
 
 .pairing-status-card.pending {
@@ -67,6 +71,14 @@
     font-size: 30px;
 
     flex-shrink: 0;
+
+}
+
+.pairing-status-body {
+
+    flex: 1;
+
+    min-width: 0;
 
 }
 
@@ -101,5 +113,65 @@
     color: #DDDDDD;
 
     font-size: 14px;
+
+}
+
+.pairing-status-partner {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: flex-end;
+
+    text-align: right;
+
+    flex-shrink: 0;
+
+    gap: 4px;
+
+    padding-left: 16px;
+
+}
+
+.partner-name {
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 17px;
+
+    font-weight: 600;
+
+    color: #4CAF50;
+
+}
+
+.partner-wish {
+
+    font-size: 13px;
+
+    color: #DDDDDD;
+
+}
+
+@media (max-width: 560px) {
+
+    .pairing-status-card {
+
+        flex-wrap: wrap;
+
+    }
+
+    .pairing-status-partner {
+
+        align-items: flex-start;
+
+        text-align: left;
+
+        padding-left: 48px;
+
+        width: 100%;
+
+    }
 
 }

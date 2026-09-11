@@ -107,16 +107,8 @@ function PairingStatus({ singerId }) {
                                 {meta.icon}
                             </div>
 
-                            <div>
+                            <div className="pairing-status-body">
                                 <h3>{song.song_title}</h3>
-
-                                {song.status === "Paired" && (
-                                    <p>
-                                        You have been paired with{" "}
-                                        <strong>{song.partner_name}</strong>{" "}
-                                        for this song.
-                                    </p>
-                                )}
 
                                 {song.status === "Pending" && (
                                     <p>Pairing decision pending - check back soon.</p>
@@ -129,6 +121,13 @@ function PairingStatus({ singerId }) {
                                     </p>
                                 )}
                             </div>
+
+                            {song.status === "Paired" && (
+                                <div className="pairing-status-partner">
+                                    <span className="partner-name">{song.partner_name}</span>
+                                    <span className="partner-wish">Wish you a Happy Singing</span>
+                                </div>
+                            )}
 
                         </div>
 
