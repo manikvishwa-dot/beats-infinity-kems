@@ -131,6 +131,12 @@
     color: #999;
 }
 
+.status-row-total.revenue-total {
+    font-size: 18px;
+    font-weight: 800;
+    color: #39EF79;
+}
+
 .status-segment-track {
     display: flex;
     width: 100%;

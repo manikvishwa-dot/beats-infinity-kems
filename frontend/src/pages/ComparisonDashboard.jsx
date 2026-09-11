@@ -1,17 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ResponsiveContainer,
-    BarChart,
-    Bar,
-    ComposedChart,
-    Line,
     PieChart,
     Pie,
-    XAxis,
-    YAxis,
-    CartesianGrid,
     Tooltip,
-    Legend,
     Cell
 } from "recharts";
 
@@ -192,6 +184,42 @@ function StatusSegmentBar({ event, selected, onClick }) {
 
 }
 
+// Same row layout as StatusSegmentBar, for money instead of headcount -
+// a thin track split into what was kept as Profit vs spent as Expenses,
+// with the Revenue total as the headline number. Avoids handing a
+// single sparse category to a full Recharts BarChart, which has no
+// good way to size a bar sensibly when there's only one or two events.
+function RevenueBar({ event, selected, onClick }) {
+
+    const total = event.revenue;
+    const [grown, setGrown] = useState(false);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setGrown(true));
+        return () => cancelAnimationFrame(frame);
+    }, []);
+
+    const pct = n => total > 0 ? (n / total) * 100 : 0;
+
+    return (
+        <button type="button" className={selected ? "status-row selected" : "status-row"} onClick={onClick}>
+            <div className="status-row-top">
+                <span className="status-row-name">{event.event_name}</span>
+                <span className="status-row-total revenue-total">{formatCurrency(total)}</span>
+            </div>
+            <div className="status-segment-track">
+                <div className="status-segment" style={{ width: grown ? `${pct(event.balance)}%` : 0, background: COLOR.gold }} title={`Profit: ${formatCurrency(event.balance)}`} />
+                <div className="status-segment" style={{ width: grown ? `${pct(event.expenses)}%` : 0, background: COLOR.red }} title={`Expenses: ${formatCurrency(event.expenses)}`} />
+            </div>
+            <div className="status-row-counts">
+                <span style={{ color: COLOR.gold }}>{formatCurrency(event.balance)} Profit</span>
+                <span style={{ color: COLOR.red }}>{formatCurrency(event.expenses)} Expenses</span>
+            </div>
+        </button>
+    );
+
+}
+
 // Circular progress ring with a big percentage centered inside -
 // stroke-dashoffset animates from empty to the target on mount.
 function RadialRing({ percent, color, size = 190 }) {
@@ -306,12 +334,6 @@ function ComparisonDashboard() {
 
     const handleDownload = () => {
         exportToExcel(ANALYTICS_COLUMNS, events, "beats-infinity-event-analytics");
-    };
-
-    const handleBarClick = data => {
-        if (data?.activePayload?.[0]?.payload?.event_id) {
-            setSelectedEventId(data.activePayload[0].payload.event_id);
-        }
     };
 
     return (
@@ -430,54 +452,22 @@ function ComparisonDashboard() {
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "revenue" ? "block" : "none" }}>
                                     <h2>Revenue By Event</h2>
-                                    <p className="comparison-chart-subhint">Each bar is total Revenue, split into what was spent and what was kept as Profit.</p>
 
                                     <div className="status-legend-row">
                                         <span><i style={{ background: COLOR.gold }} /> Profit</span>
                                         <span><i style={{ background: COLOR.red }} /> Expenses</span>
                                     </div>
 
-                                    <ResponsiveContainer width="100%" height={340}>
-                                        <BarChart data={chartData} margin={{ top: 30, right: 20, left: 0, bottom: 10 }} onClick={handleBarClick} barCategoryGap="40%">
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                                            <XAxis dataKey="event_name" stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
-                                            <YAxis stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
-                                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                                            <Bar
-                                                dataKey="expenses"
-                                                name="Expenses"
-                                                stackId="revenue"
-                                                fill={COLOR.red}
-                                                barSize={30}
-                                                cursor="pointer"
-                                            >
-                                                {events.map(e => (
-                                                    <Cell key={e.event_id} fillOpacity={e.event_id === selectedEventId ? 1 : 0.55} />
-                                                ))}
-                                            </Bar>
-                                            <Bar
-                                                dataKey="balance"
-                                                name="Profit"
-                                                stackId="revenue"
-                                                fill={COLOR.gold}
-                                                radius={[8, 8, 0, 0]}
-                                                barSize={30}
-                                                cursor="pointer"
-                                                label={(props) => {
-                                                    const total = chartData[props.index]?.revenue;
-                                                    return (
-                                                        <text x={props.x + props.width / 2} y={props.y - 10} textAnchor="middle" fill={COLOR.greenBright} fontSize={13} fontWeight={700}>
-                                                            {formatCurrency(total)}
-                                                        </text>
-                                                    );
-                                                }}
-                                            >
-                                                {events.map(e => (
-                                                    <Cell key={e.event_id} fillOpacity={e.event_id === selectedEventId ? 1 : 0.55} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                    <div className="status-bar-list">
+                                        {chartData.map(e => (
+                                            <RevenueBar
+                                                key={e.event_id}
+                                                event={e}
+                                                selected={e.event_id === selectedEventId}
+                                                onClick={() => setSelectedEventId(e.event_id)}
+                                            />
+                                        ))}
+                                    </div>
                                 </section>
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "singers" ? "block" : "none" }}>
