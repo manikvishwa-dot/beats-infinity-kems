@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ResponsiveContainer,
     BarChart,
     Bar,
     ComposedChart,
     Line,
+    PieChart,
+    Pie,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -36,6 +38,7 @@ const COLOR = {
     gold: "#FFD54A",
     red: "#ff6b6b",
     blue: "#4FC3F7",
+    teal: "#4DD0C4",
     ink: "#ccc",
     muted: "#999"
 };
@@ -80,11 +83,75 @@ function ChartTooltip({ active, payload, label, formatter = formatCurrency }) {
 
 }
 
-function KpiTile({ label, value, tone }) {
+// Animates a number counting up from 0 to `value` whenever `value`
+// changes - purely cosmetic, the underlying number is always correct
+// even if a viewer's browser skips the animation (prefers-reduced-motion).
+function CountUp({ value, duration = 700, formatter = v => v }) {
+
+    const [display, setDisplay] = useState(0);
+    const startRef = useRef(null);
+
+    useEffect(() => {
+
+        if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+            setDisplay(value);
+            return;
+        }
+
+        startRef.current = null;
+        let frame;
+
+        const step = timestamp => {
+            if (startRef.current === null) startRef.current = timestamp;
+            const progress = Math.min((timestamp - startRef.current) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setDisplay(value * eased);
+            if (progress < 1) frame = requestAnimationFrame(step);
+        };
+
+        frame = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(frame);
+
+    }, [value, duration]);
+
+    return formatter(display);
+
+}
+
+function KpiTile({ label, value, tone, raw, formatter }) {
     return (
         <div className="comparison-summary-card">
             <span>{label}</span>
-            <strong className={tone}>{value}</strong>
+            <strong className={tone}>
+                {raw !== undefined ? <CountUp value={raw} formatter={formatter} /> : value}
+            </strong>
+        </div>
+    );
+}
+
+// Vertical capsule gauge - fills from the bottom to `percent`, with the
+// number bold above and the label below, matching the "battery level"
+// style used for at-a-glance percentage metrics elsewhere in reporting
+// decks. Animates its own fill height on mount/update.
+function GaugeBar({ percent, label, color }) {
+
+    const clamped = Math.max(0, Math.min(100, percent));
+    const [filled, setFilled] = useState(0);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setFilled(clamped));
+        return () => cancelAnimationFrame(frame);
+    }, [clamped]);
+
+    return (
+        <div className="gauge">
+            <div className="gauge-percent" style={{ color }}>
+                <CountUp value={clamped} formatter={v => `${Math.round(v)}%`} />
+            </div>
+            <div className="gauge-capsule">
+                <div className="gauge-fill" style={{ height: `${filled}%`, background: color }} />
+            </div>
+            <div className="gauge-label">{label}</div>
         </div>
     );
 }
@@ -188,12 +255,33 @@ function ComparisonDashboard() {
                 ) : (
                     <>
                         <div className="comparison-summary-row">
-                            <KpiTile label="Total Singers (Paid)" value={totals.totalSingers} />
-                            <KpiTile label="Total Revenue" value={formatCurrency(totals.totalRevenue)} tone="positive" />
-                            <KpiTile label="Total Expenses" value={formatCurrency(totals.totalExpenses)} tone="negative" />
-                            <KpiTile label="Avg. Profit Margin" value={formatPct(totals.avgMargin)} tone={totals.avgMargin >= 0 ? "positive" : "negative"} />
-                            <KpiTile label="Pairing Completion" value={formatPct(totals.pairingRate)} />
+                            <KpiTile label="Total Singers (Paid)" raw={totals.totalSingers} formatter={v => Math.round(v)} />
+                            <KpiTile label="Total Revenue" raw={totals.totalRevenue} formatter={formatCurrency} tone="positive" />
+                            <KpiTile label="Total Expenses" raw={totals.totalExpenses} formatter={formatCurrency} tone="negative" />
                         </div>
+
+                        {selectedEvent && (
+                            <section className="finance-section comparison-gauge-card">
+                                <div className="comparison-gauge-header">
+                                    <h2>📊 {selectedEvent.event_name} — Event Health</h2>
+                                    <span className="comparison-gauge-hint">Updates when you select a different event below</span>
+                                </div>
+                                <div className="gauge-row">
+                                    <GaugeBar percent={selectedEvent.profit_margin_pct} label="Profit Margin" color={COLOR.gold} />
+                                    <GaugeBar percent={selectedEvent.pairing_completion_pct} label="Pairing Completion" color={COLOR.green} />
+                                    <GaugeBar
+                                        percent={selectedEvent.song_count > 0 ? Math.round((selectedEvent.karaoke_available_count / selectedEvent.song_count) * 1000) / 10 : 0}
+                                        label="Karaoke Coverage"
+                                        color={COLOR.blue}
+                                    />
+                                    <GaugeBar
+                                        percent={selectedEvent.singer_count > 0 ? Math.round((selectedEvent.payment_breakdown.paid / selectedEvent.singer_count) * 1000) / 10 : 0}
+                                        label="Payment Confirmed"
+                                        color={COLOR.teal}
+                                    />
+                                </div>
+                            </section>
+                        )}
 
                         <div className="comparison-tabs">
                             {TABS.map(tab => (
@@ -302,18 +390,64 @@ function ComparisonDashboard() {
                                 </section>
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "gender" ? "block" : "none" }}>
-                                    <h2>Gender Split By Event (Paid Singers)</h2>
-                                    <ResponsiveContainer width="100%" height={340}>
-                                        <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }} onClick={handleBarClick}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-                                            <XAxis dataKey="event_name" stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
-                                            <YAxis stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} allowDecimals={false} />
-                                            <Tooltip content={<ChartTooltip formatter={v => v} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                                            <Legend wrapperStyle={{ color: COLOR.ink }} />
-                                            <Bar dataKey="male" name="Male" fill={COLOR.green} radius={[4, 4, 0, 0]} cursor="pointer" />
-                                            <Bar dataKey="female" name="Female" fill={COLOR.blue} radius={[4, 4, 0, 0]} cursor="pointer" />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                    <h2>Gender Split - {selectedEvent ? selectedEvent.event_name : "Select an event"}</h2>
+
+                                    {selectedEvent && (selectedEvent.gender_breakdown.Male + selectedEvent.gender_breakdown.Female) > 0 ? (
+
+                                        <div className="gender-donut-layout">
+
+                                            <ResponsiveContainer width="100%" height={320}>
+                                                <PieChart>
+                                                    <Tooltip content={<ChartTooltip formatter={v => v} />} />
+                                                    <Pie
+                                                        data={[
+                                                            { name: "Male", value: selectedEvent.gender_breakdown.Male },
+                                                            { name: "Female", value: selectedEvent.gender_breakdown.Female }
+                                                        ]}
+                                                        dataKey="value"
+                                                        nameKey="name"
+                                                        innerRadius={80}
+                                                        outerRadius={130}
+                                                        paddingAngle={3}
+                                                        cornerRadius={6}
+                                                        isAnimationActive={true}
+                                                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                                                            const radius = innerRadius + (outerRadius - innerRadius) / 2;
+                                                            const angle = -midAngle * (Math.PI / 180);
+                                                            const x = cx + radius * Math.cos(angle);
+                                                            const y = cy + radius * Math.sin(angle);
+                                                            return (
+                                                                <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fill="#ffffff" fontSize={16} fontWeight={700}>
+                                                                    {Math.round(percent * 100)}%
+                                                                </text>
+                                                            );
+                                                        }}
+                                                        labelLine={false}
+                                                    >
+                                                        <Cell fill={COLOR.green} stroke="none" />
+                                                        <Cell fill={COLOR.blue} stroke="none" />
+                                                    </Pie>
+                                                </PieChart>
+                                            </ResponsiveContainer>
+
+                                            <div className="gender-donut-legend">
+                                                <div className="gender-donut-stat">
+                                                    <span className="dot" style={{ background: COLOR.green }} />
+                                                    Male
+                                                    <strong>{selectedEvent.gender_breakdown.Male}</strong>
+                                                </div>
+                                                <div className="gender-donut-stat">
+                                                    <span className="dot" style={{ background: COLOR.blue }} />
+                                                    Female
+                                                    <strong>{selectedEvent.gender_breakdown.Female}</strong>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                    ) : (
+                                        <div className="finance-empty">No paid singers yet for this event.</div>
+                                    )}
                                 </section>
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "songs" ? "block" : "none" }}>
