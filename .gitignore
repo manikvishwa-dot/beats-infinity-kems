@@ -52,3 +52,7 @@ docs/*.tmp
 # built JS bundle, not a secret), and needs to be committed since
 # Render's static-site build doesn't inject dashboard env vars.
 !frontend/.env.production
+
+# Generated output from the data integrity audit script - a fresh
+# copy every run, not something to version.
+backend/scripts/last-audit-result.json
