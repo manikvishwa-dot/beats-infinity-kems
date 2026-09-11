@@ -251,7 +251,8 @@ function LoginForm() {
                 // ------------------------------------------------
 
                 navigate(
-                    "/singer-dashboard"
+                    "/singer-dashboard",
+                    { replace: true }
                 );
 
                 return;

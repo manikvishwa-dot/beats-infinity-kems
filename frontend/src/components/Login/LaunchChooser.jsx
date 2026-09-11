@@ -35,7 +35,7 @@ function LaunchChooser() {
                     <button
                         type="button"
                         className="chooser-btn chooser-btn-primary"
-                        onClick={() => navigate("/login")}
+                        onClick={() => navigate("/login", { replace: true })}
                     >
                         🎤 I'm a Singer
                     </button>
@@ -43,7 +43,7 @@ function LaunchChooser() {
                     <button
                         type="button"
                         className="chooser-btn chooser-btn-secondary"
-                        onClick={() => navigate("/admin/login")}
+                        onClick={() => navigate("/admin/login", { replace: true })}
                     >
                         🔐 Admin / Super Admin
                     </button>
