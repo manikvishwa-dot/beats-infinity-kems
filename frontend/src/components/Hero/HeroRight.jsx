@@ -3,7 +3,8 @@ import {
     FaCalendarAlt,
     FaMapMarkerAlt,
     FaClock,
-    FaCheckCircle
+    FaCheckCircle,
+    FaDirections
 } from "react-icons/fa";
 
 import { useNavigate } from "react-router-dom";
@@ -133,28 +134,11 @@ function HeroRight() {
 
             <div className="event-card">
 
-                <div className="event-poster-wrap">
-
-                    <img
-                        src={event.image}
-                        alt={event.title}
-                        className="event-poster"
-                    />
-
-                    <a
-                        href={VENUE_MAP_LINK}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="map-link-btn"
-                        title="Get directions to the venue"
-                        aria-label="Open venue location in Google Maps"
-                    >
-
-                        <FaMapMarkerAlt />
-
-                    </a>
-
-                </div>
+                <img
+                    src={event.image}
+                    alt={event.title}
+                    className="event-poster"
+                />
 
                 <div className="event-content">
 
@@ -182,11 +166,25 @@ function HeroRight() {
 
                         </div>
 
-                        <div className="event-row">
+                        <div className="event-row venue-row">
 
                             <FaMapMarkerAlt />
 
                             <span>{event.venue}</span>
+
+                            <a
+                                href={VENUE_MAP_LINK}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="navigate-link"
+                                aria-label="Open venue location in Google Maps"
+                            >
+
+                                <FaDirections />
+
+                                <span>Click to Navigate</span>
+
+                            </a>
 
                         </div>
 
