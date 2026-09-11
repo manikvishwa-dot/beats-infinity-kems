@@ -29,6 +29,7 @@ old-root-project/
 # Personal / Sensitive Files
 creds.xlsx
 ~$*
+Project Scope document.pdf
 
 # Temporary documentation
 docs/*.tmp
