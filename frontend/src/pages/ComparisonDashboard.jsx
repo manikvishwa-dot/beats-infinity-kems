@@ -3,6 +3,14 @@ import {
     ResponsiveContainer,
     PieChart,
     Pie,
+    BarChart,
+    Bar,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Legend,
     Tooltip,
     Cell
 } from "recharts";
@@ -220,6 +228,59 @@ function RevenueBar({ event, selected, onClick }) {
 
 }
 
+function RevenueKpiCard({ icon, iconBg, label, raw, formatter = formatCurrency, text, highlight, sub }) {
+    return (
+        <div className={highlight ? "revenue-kpi-card highlight" : "revenue-kpi-card"}>
+            <span className="revenue-kpi-icon" style={{ background: iconBg }}>{icon}</span>
+            <div className="revenue-kpi-body">
+                <span className="revenue-kpi-label">{label}</span>
+                <strong className="revenue-kpi-value">
+                    {text !== undefined ? text : raw !== undefined ? <CountUp value={raw} formatter={formatter} /> : "—"}
+                </strong>
+                {sub && <span className="revenue-kpi-sub">{sub}</span>}
+            </div>
+        </div>
+    );
+}
+
+// Three thin bars for one event - Revenue in, Expenses out, Net Profit
+// left over. Plain divs rather than a Recharts chart, same reasoning
+// as RevenueBar: a 3-category chart in a wide card has no good default
+// sizing, a fixed-width custom layout does.
+function FinancialFlowMini({ event }) {
+
+    const [grown, setGrown] = useState(false);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setGrown(true));
+        return () => cancelAnimationFrame(frame);
+    }, []);
+
+    const max = Math.max(event.revenue, event.expenses, event.balance, 1);
+    const heightPct = v => grown ? `${Math.max((v / max) * 100, 4)}%` : "0%";
+
+    const bars = [
+        { label: "Total Revenue", value: event.revenue, display: formatCurrency(event.revenue), color: COLOR.green },
+        { label: "Expenses", value: event.expenses, display: `-${formatCurrency(event.expenses)}`, color: COLOR.red },
+        { label: "Net Profit", value: event.balance, display: formatCurrency(event.balance), color: COLOR.blue }
+    ];
+
+    return (
+        <div className="flow-mini">
+            {bars.map(bar => (
+                <div className="flow-mini-col" key={bar.label}>
+                    <span className="flow-mini-value" style={{ color: bar.color }}>{bar.display}</span>
+                    <div className="flow-mini-track">
+                        <div className="flow-mini-fill" style={{ height: heightPct(bar.value), background: bar.color }} />
+                    </div>
+                    <span className="flow-mini-label">{bar.label}</span>
+                </div>
+            ))}
+        </div>
+    );
+
+}
+
 // Polar-to-cartesian helper for the speedometer below. 0deg = right,
 // 90deg = straight up, 180deg = left - a standard math angle, just
 // flipped to SVG's y-down coordinate system so the dome opens upward.
@@ -323,6 +384,7 @@ function ComparisonDashboard() {
     const [activeTab, setActiveTab] = useState("revenue");
     const [selectedEventId, setSelectedEventId] = useState(null);
     const [showTable, setShowTable] = useState(false);
+    const [revenueScope, setRevenueScope] = useState("all");
 
     useEffect(() => {
 
@@ -372,6 +434,30 @@ function ComparisonDashboard() {
         female: e.gender_breakdown.Female
     })), [events]);
 
+    // "All Events" or one specific event, via the scope dropdown on the
+    // Revenue tab - drives the KPI row and the Profit vs Expenses chart.
+    const revenueScopedData = useMemo(
+        () => revenueScope === "all" ? chartData : chartData.filter(e => e.event_id === revenueScope),
+        [chartData, revenueScope]
+    );
+
+    const revenueTotals = useMemo(() => {
+        const revenue = revenueScopedData.reduce((sum, e) => sum + e.revenue, 0);
+        const expenses = revenueScopedData.reduce((sum, e) => sum + e.expenses, 0);
+        return { revenue, expenses, profit: revenue - expenses };
+    }, [revenueScopedData]);
+
+    const mostProfitableEvent = useMemo(
+        () => chartData.reduce((best, e) => (!best || e.balance > best.balance ? e : best), null),
+        [chartData]
+    );
+
+    // Same events, oldest first - a trend line only reads left-to-right
+    // as "over time" if the x-axis is chronological.
+    const trendData = useMemo(
+        () => [...chartData].sort((a, b) => new Date(a.event_date) - new Date(b.event_date)),
+        [chartData]
+    );
 
     const selectedEvent = events.find(e => e.event_id === selectedEventId) || null;
 
@@ -493,25 +579,207 @@ function ComparisonDashboard() {
                                     front sidesteps the ordering dependency entirely.
                                 ================================================== */}
 
-                                <section className="finance-section comparison-chart-card" style={{ display: activeTab === "revenue" ? "block" : "none" }}>
-                                    <h2>Revenue By Event</h2>
+                                <div className="revenue-dash" style={{ display: activeTab === "revenue" ? "block" : "none" }}>
 
-                                    <div className="status-legend-row">
-                                        <span><i style={{ background: COLOR.gold }} /> Profit</span>
-                                        <span><i style={{ background: COLOR.red }} /> Expenses</span>
+                                    <div className="revenue-dash-header">
+                                        <div className="revenue-dash-header-icon">📊</div>
+                                        <div>
+                                            <h2>Revenue by Event</h2>
+                                            <p>A quick view of revenue, expenses and profit across all events</p>
+                                        </div>
+                                        <select
+                                            className="revenue-scope-select"
+                                            value={revenueScope}
+                                            onChange={event => setRevenueScope(event.target.value)}
+                                        >
+                                            <option value="all">All Events</option>
+                                            {chartData.map(e => (
+                                                <option key={e.event_id} value={e.event_id}>{e.event_name}</option>
+                                            ))}
+                                        </select>
                                     </div>
 
-                                    <div className="status-bar-list">
-                                        {chartData.map(e => (
-                                            <RevenueBar
-                                                key={e.event_id}
-                                                event={e}
-                                                selected={e.event_id === selectedEventId}
-                                                onClick={() => setSelectedEventId(e.event_id)}
+                                    <div className="revenue-kpi-row">
+                                        <RevenueKpiCard icon="💰" iconBg="rgba(79,195,247,0.18)" label="Total Revenue" raw={revenueTotals.revenue} />
+                                        <RevenueKpiCard icon="💸" iconBg="rgba(255,107,107,0.18)" label="Total Expenses" raw={revenueTotals.expenses} />
+                                        <RevenueKpiCard icon="📈" iconBg="rgba(29,185,84,0.18)" label="Total Profit" raw={revenueTotals.profit} />
+                                        {mostProfitableEvent && (
+                                            <RevenueKpiCard
+                                                icon="⭐"
+                                                iconBg="rgba(255,213,74,0.18)"
+                                                label="Most Profitable Event"
+                                                text={mostProfitableEvent.event_name}
+                                                sub={`Profit ${formatCurrency(mostProfitableEvent.balance)}`}
+                                                highlight
                                             />
-                                        ))}
+                                        )}
                                     </div>
-                                </section>
+
+                                    <div className="revenue-dash-row two-col">
+
+                                        <section className="finance-section comparison-chart-card">
+                                            <h2>Profit vs Expenses by Event</h2>
+
+                                            <div className="status-legend-row">
+                                                <span><i style={{ background: COLOR.gold }} /> Profit</span>
+                                                <span><i style={{ background: COLOR.red }} /> Expenses</span>
+                                            </div>
+
+                                            <ResponsiveContainer width="100%" height={300}>
+                                                <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 10 }} maxBarSize={54} barGap={4}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                                    <XAxis dataKey="event_name" stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 11 }} />
+                                                    <YAxis stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} tickFormatter={v => `₹${v / 1000}K`} />
+                                                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                                                    <Bar
+                                                        dataKey="balance"
+                                                        name="Profit"
+                                                        fill={COLOR.gold}
+                                                        radius={[6, 6, 0, 0]}
+                                                        cursor="pointer"
+                                                        onClick={d => setSelectedEventId(d.event_id)}
+                                                        label={{ position: "top", fill: COLOR.gold, fontSize: 11, fontWeight: 700, formatter: formatCurrency }}
+                                                    />
+                                                    <Bar
+                                                        dataKey="expenses"
+                                                        name="Expenses"
+                                                        fill={COLOR.red}
+                                                        radius={[6, 6, 0, 0]}
+                                                        cursor="pointer"
+                                                        onClick={d => setSelectedEventId(d.event_id)}
+                                                        label={{ position: "top", fill: COLOR.red, fontSize: 11, fontWeight: 700, formatter: formatCurrency }}
+                                                    />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </section>
+
+                                        <section className="finance-section comparison-chart-card">
+                                            <div className="revenue-panel-header">
+                                                <div>
+                                                    <h2>{selectedEvent ? selectedEvent.event_name : "Select an event"}</h2>
+                                                    <span className="comparison-chart-subhint">Revenue Breakdown</span>
+                                                </div>
+                                                <select
+                                                    className="revenue-scope-select"
+                                                    value={selectedEventId || ""}
+                                                    onChange={event => setSelectedEventId(event.target.value)}
+                                                >
+                                                    {chartData.map(e => (
+                                                        <option key={e.event_id} value={e.event_id}>{e.event_name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {selectedEvent && selectedEvent.revenue > 0 ? (
+                                                <div className="gender-donut-layout">
+                                                    <div className="donut-wrap">
+                                                    <ResponsiveContainer width={260} height={260}>
+                                                        <PieChart>
+                                                            <Tooltip content={<ChartTooltip formatter={formatCurrency} />} />
+                                                            <Pie
+                                                                data={[
+                                                                    { name: "Expenses", value: selectedEvent.expenses },
+                                                                    { name: "Profit", value: selectedEvent.balance }
+                                                                ]}
+                                                                dataKey="value"
+                                                                nameKey="name"
+                                                                innerRadius={70}
+                                                                outerRadius={110}
+                                                                paddingAngle={3}
+                                                                cornerRadius={6}
+                                                                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                                                                    const radius = innerRadius + (outerRadius - innerRadius) / 2;
+                                                                    const angle = -midAngle * (Math.PI / 180);
+                                                                    const x = cx + radius * Math.cos(angle);
+                                                                    const y = cy + radius * Math.sin(angle);
+                                                                    return (
+                                                                        <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fill="#ffffff" fontSize={13} fontWeight={700}>
+                                                                            {Math.round(percent * 100)}%
+                                                                        </text>
+                                                                    );
+                                                                }}
+                                                                labelLine={false}
+                                                            >
+                                                                <Cell fill={COLOR.red} stroke="none" />
+                                                                <Cell fill={COLOR.gold} stroke="none" />
+                                                            </Pie>
+                                                        </PieChart>
+                                                    </ResponsiveContainer>
+                                                    <div className="donut-center-total">
+                                                        <strong>{formatCurrency(selectedEvent.revenue)}</strong>
+                                                        <span>Total</span>
+                                                    </div>
+                                                    </div>
+
+                                                    <div className="gender-donut-legend">
+                                                        <div className="gender-donut-stat">
+                                                            <span className="dot" style={{ background: COLOR.red }} />
+                                                            Expenses
+                                                            <strong>{formatCurrency(selectedEvent.expenses)}</strong>
+                                                        </div>
+                                                        <div className="gender-donut-stat">
+                                                            <span className="dot" style={{ background: COLOR.gold }} />
+                                                            Profit
+                                                            <strong>{formatCurrency(selectedEvent.balance)}</strong>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="finance-empty">No revenue yet for this event.</div>
+                                            )}
+                                        </section>
+
+                                    </div>
+
+                                    <div className="revenue-dash-row three-col">
+
+                                        <section className="finance-section comparison-chart-card">
+                                            <h2>Revenue Trend</h2>
+                                            <div className="status-legend-row">
+                                                <span><i style={{ background: COLOR.green }} /> Revenue</span>
+                                                <span><i style={{ background: COLOR.red }} /> Expenses</span>
+                                                <span><i style={{ background: COLOR.gold }} /> Profit</span>
+                                            </div>
+                                            <ResponsiveContainer width="100%" height={230}>
+                                                <LineChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                                    <XAxis dataKey="event_name" stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 10 }} />
+                                                    <YAxis stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 11 }} tickFormatter={v => `₹${v / 1000}K`} />
+                                                    <Tooltip content={<ChartTooltip />} />
+                                                    <Line type="monotone" dataKey="revenue" name="Revenue" stroke={COLOR.green} strokeWidth={2} dot={{ r: 3 }} />
+                                                    <Line type="monotone" dataKey="expenses" name="Expenses" stroke={COLOR.red} strokeWidth={2} dot={{ r: 3 }} />
+                                                    <Line type="monotone" dataKey="balance" name="Profit" stroke={COLOR.gold} strokeWidth={2} dot={{ r: 3 }} />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        </section>
+
+                                        <section className="finance-section comparison-chart-card">
+                                            <h2>Total Revenue by Event</h2>
+                                            <div className="status-legend-row">
+                                                <span><i style={{ background: COLOR.gold }} /> Profit</span>
+                                                <span><i style={{ background: COLOR.red }} /> Expenses</span>
+                                            </div>
+                                            <div className="status-bar-list compact">
+                                                {chartData.map(e => (
+                                                    <RevenueBar
+                                                        key={e.event_id}
+                                                        event={e}
+                                                        selected={e.event_id === selectedEventId}
+                                                        onClick={() => setSelectedEventId(e.event_id)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </section>
+
+                                        <section className="finance-section comparison-chart-card">
+                                            <h2>Event Financial Flow</h2>
+                                            <p className="comparison-chart-subhint">{selectedEvent ? selectedEvent.event_name : "Select an event"}</p>
+                                            {selectedEvent && <FinancialFlowMini event={selectedEvent} />}
+                                        </section>
+
+                                    </div>
+
+                                </div>
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "singers" ? "block" : "none" }}>
                                     <h2>Singer Payment Status By Event</h2>
