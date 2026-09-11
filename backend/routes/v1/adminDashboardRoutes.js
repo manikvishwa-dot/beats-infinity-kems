@@ -16,7 +16,8 @@ const {
 
 const {
     getSingersPerEvent,
-    getFinanceByEvent
+    getFinanceByEvent,
+    getEventAnalytics
 } = require("../../controllers/v1/superAdminStatsController");
 
 const {
@@ -129,6 +130,19 @@ router.get(
 );
 
 
+// ==========================================================
+// SUPER ADMIN STATS - EVENT ANALYTICS (last 6 months)
+//
+// GET /api/v1/admin/stats/event-analytics
+// ==========================================================
+
+router.get(
+    "/stats/event-analytics",
+    requireSuperAdmin,
+    getEventAnalytics
+);
+
+
 console.log(
     "✅ Admin dashboard routes loaded successfully"
 );
@@ -163,6 +177,10 @@ console.log(
 
 console.log(
     "GET    /api/v1/admin/stats/finance-by-event"
+);
+
+console.log(
+    "GET    /api/v1/admin/stats/event-analytics"
 );
 
 

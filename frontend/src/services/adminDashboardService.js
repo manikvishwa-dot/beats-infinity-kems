@@ -254,6 +254,17 @@ const getSingersPerEvent = async () => {
 // SUPER ADMIN STATS - FINANCE BY EVENT (last 6 months)
 // ==========================================================
 
+const getEventAnalytics = async () => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/stats/event-analytics`,
+        { headers: { ...getAuthHeader() } }
+    );
+
+    return handleResponse(response);
+
+};
+
 const getFinanceByEvent = async () => {
 
     const response = await fetch(
@@ -328,6 +339,7 @@ export {
     bulkDecidePairings,
     getSingersPerEvent,
     getFinanceByEvent,
+    getEventAnalytics,
     getMaggieAudit,
     getMaggieAuditAllEvents
 };

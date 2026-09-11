@@ -1,8 +1,8 @@
 .comparison-summary-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-    margin-bottom: 32px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
 }
 
 .comparison-summary-card {
@@ -68,8 +68,156 @@
     color: #ffffff;
 }
 
+/* ==========================================================
+   TABS
+========================================================== */
+
+.comparison-tabs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.comparison-tab {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    color: #bbb;
+    padding: 9px 16px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: .2s;
+}
+
+.comparison-tab:hover {
+    border-color: #1DB954;
+    color: #fff;
+}
+
+.comparison-tab.active {
+    background: linear-gradient(135deg, #1DB954, #39EF79);
+    color: #fff;
+    border-color: transparent;
+}
+
+.comparison-tabs-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+
+/* ==========================================================
+   TABLE VIEW
+========================================================== */
+
+.comparison-table-wrap {
+    overflow-x: auto;
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.comparison-table th {
+    text-align: left;
+    color: #999;
+    font-weight: 600;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.comparison-table td {
+    padding: 10px 14px;
+    color: #ddd;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.comparison-table td.positive { color: #4CAF50; }
+.comparison-table td.negative { color: #ff6b6b; }
+
+.comparison-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+
+/* ==========================================================
+   DRILL-DOWN DETAIL PANEL
+========================================================== */
+
+.comparison-detail-card {
+    margin-top: 20px;
+    border-color: rgba(29, 185, 84, 0.25) !important;
+}
+
+.comparison-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-top: 12px;
+}
+
+.comparison-detail-group h3 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: #FFD54A;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.comparison-detail-group-wide {
+    grid-column: 1 / -1;
+}
+
+.comparison-detail-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+    font-size: 13.5px;
+}
+
+.comparison-detail-row span {
+    color: #999;
+}
+
+.comparison-detail-row strong {
+    color: #fff;
+}
+
+@media (max-width: 900px) {
+    .comparison-summary-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .comparison-detail-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
 @media (max-width: 720px) {
     .comparison-summary-row {
         grid-template-columns: 1fr;
+    }
+
+    .comparison-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .comparison-tabs-actions {
+        margin-left: 0;
+        width: 100%;
     }
 }
