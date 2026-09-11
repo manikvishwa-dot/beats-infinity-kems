@@ -220,43 +220,86 @@ function RevenueBar({ event, selected, onClick }) {
 
 }
 
-// Circular progress ring with a big percentage centered inside -
-// stroke-dashoffset animates from empty to the target on mount.
-function RadialRing({ percent, color, size = 190 }) {
+// Polar-to-cartesian helper for the speedometer below. 0deg = right,
+// 90deg = straight up, 180deg = left - a standard math angle, just
+// flipped to SVG's y-down coordinate system so the dome opens upward.
+function polarPoint(cx, cy, r, angleDeg) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+}
+
+function arcPath(cx, cy, r, startAngle, endAngle) {
+    const start = polarPoint(cx, cy, r, startAngle);
+    const end = polarPoint(cx, cy, r, endAngle);
+    const largeArcFlag = startAngle - endAngle >= 180 ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
+}
+
+// A car-dashboard-style speedometer: a half-circle dial from 0 to 100,
+// a colored arc filled to the current value, a needle that sweeps into
+// place on mount, and tick labels at the low/high ends.
+function SpeedometerGauge({ percent, label, color }) {
 
     const clamped = Math.max(0, Math.min(100, percent));
-    const stroke = 16;
-    const radius = (size - stroke) / 2;
-    const circumference = 2 * Math.PI * radius;
-
-    const [dash, setDash] = useState(circumference);
+    const [needleValue, setNeedleValue] = useState(0);
 
     useEffect(() => {
-        const frame = requestAnimationFrame(() => setDash(circumference - (clamped / 100) * circumference));
+        const frame = requestAnimationFrame(() => setNeedleValue(clamped));
         return () => cancelAnimationFrame(frame);
-    }, [clamped, circumference]);
+    }, [clamped]);
+
+    const width = 260;
+    const height = 150;
+    const cx = width / 2;
+    const cy = 128;
+    const radius = 95;
+    const stroke = 18;
+
+    // 180deg (left, value 0) sweeping down to 0deg (right, value 100)
+    const angleFor = value => 180 - (value / 100) * 180;
+
+    const needleAngleRad = (angleFor(needleValue) * Math.PI) / 180;
+    const needleLength = radius - 30;
+    const needleTip = {
+        x: cx + needleLength * Math.cos(needleAngleRad),
+        y: cy - needleLength * Math.sin(needleAngleRad)
+    };
 
     return (
-        <div className="radial-ring" style={{ width: size, height: size }}>
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-                <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
-                <circle
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
+        <div className="speedo-wrap">
+            <svg width={width} height={height + 10} viewBox={`0 0 ${width} ${height + 10}`}>
+
+                <path d={arcPath(cx, cy, radius, 180, 0)} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} strokeLinecap="round" />
+
+                <path
+                    d={arcPath(cx, cy, radius, 180, angleFor(needleValue))}
                     fill="none"
                     stroke={color}
                     strokeWidth={stroke}
                     strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={dash}
-                    transform={`rotate(-90 ${size / 2} ${size / 2})`}
-                    style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                    style={{ transition: "d 1s cubic-bezier(0.16, 1, 0.3, 1)" }}
                 />
+
+                <text x={polarPoint(cx, cy, radius + 18, 180).x} y={polarPoint(cx, cy, radius + 18, 180).y} textAnchor="middle" fontSize="11" fill="#777">0</text>
+                <text x={polarPoint(cx, cy, radius + 18, 0).x} y={polarPoint(cx, cy, radius + 18, 0).y} textAnchor="middle" fontSize="11" fill="#777">100</text>
+
+                <line
+                    x1={cx}
+                    y1={cy}
+                    x2={needleTip.x}
+                    y2={needleTip.y}
+                    stroke="#fff"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    style={{ transition: "x2 1s cubic-bezier(0.16, 1, 0.3, 1), y2 1s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                />
+                <circle cx={cx} cy={cy} r={8} fill="#fff" />
+                <circle cx={cx} cy={cy} r={4} fill="#111" />
+
             </svg>
-            <div className="radial-ring-center">
+            <div className="speedo-readout">
                 <strong style={{ color }}><CountUp value={clamped} formatter={v => `${Math.round(v)}%`} /></strong>
-                <span>Karaoke Coverage</span>
+                <span>{label}</span>
             </div>
         </div>
     );
@@ -559,8 +602,9 @@ function ComparisonDashboard() {
 
                                         <div className="songs-ring-layout">
 
-                                            <RadialRing
+                                            <SpeedometerGauge
                                                 percent={selectedEvent.song_count > 0 ? (selectedEvent.karaoke_available_count / selectedEvent.song_count) * 100 : 0}
+                                                label="Karaoke Coverage"
                                                 color={COLOR.gold}
                                             />
 
