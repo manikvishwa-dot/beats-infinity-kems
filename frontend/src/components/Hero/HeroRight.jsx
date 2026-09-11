@@ -15,6 +15,8 @@ import "./HeroRight.css";
 
 const FALLBACK_EVENT = journey[0];
 
+const VENUE_MAP_LINK = "https://maps.app.goo.gl/d57xm1WBpqnhWHGp6";
+
 const formatDate = value => {
 
     if (!value) {
@@ -131,11 +133,28 @@ function HeroRight() {
 
             <div className="event-card">
 
-                <img
-                    src={event.image}
-                    alt={event.title}
-                    className="event-poster"
-                />
+                <div className="event-poster-wrap">
+
+                    <img
+                        src={event.image}
+                        alt={event.title}
+                        className="event-poster"
+                    />
+
+                    <a
+                        href={VENUE_MAP_LINK}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="map-link-btn"
+                        title="Get directions to the venue"
+                        aria-label="Open venue location in Google Maps"
+                    >
+
+                        <FaMapMarkerAlt />
+
+                    </a>
+
+                </div>
 
                 <div className="event-content">
 
