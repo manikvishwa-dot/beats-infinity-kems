@@ -430,21 +430,47 @@ function ComparisonDashboard() {
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "revenue" ? "block" : "none" }}>
                                     <h2>Revenue By Event</h2>
-                                    <p className="comparison-chart-subhint">Expenses, profit and margin for the selected event are in the breakdown panel below.</p>
+                                    <p className="comparison-chart-subhint">Each bar is total Revenue, split into what was spent and what was kept as Profit.</p>
+
+                                    <div className="status-legend-row">
+                                        <span><i style={{ background: COLOR.gold }} /> Profit</span>
+                                        <span><i style={{ background: COLOR.red }} /> Expenses</span>
+                                    </div>
+
                                     <ResponsiveContainer width="100%" height={340}>
-                                        <BarChart data={chartData} margin={{ top: 24, right: 20, left: 0, bottom: 10 }} onClick={handleBarClick} barCategoryGap="35%">
+                                        <BarChart data={chartData} margin={{ top: 30, right: 20, left: 0, bottom: 10 }} onClick={handleBarClick} barCategoryGap="40%">
                                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                                             <XAxis dataKey="event_name" stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
                                             <YAxis stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
                                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
                                             <Bar
-                                                dataKey="revenue"
-                                                name="Revenue"
-                                                fill={COLOR.green}
-                                                radius={[10, 10, 10, 10]}
-                                                barSize={26}
+                                                dataKey="expenses"
+                                                name="Expenses"
+                                                stackId="revenue"
+                                                fill={COLOR.red}
+                                                barSize={30}
                                                 cursor="pointer"
-                                                label={{ position: "top", fill: COLOR.greenBright, fontSize: 13, fontWeight: 700, formatter: formatCurrency }}
+                                            >
+                                                {events.map(e => (
+                                                    <Cell key={e.event_id} fillOpacity={e.event_id === selectedEventId ? 1 : 0.55} />
+                                                ))}
+                                            </Bar>
+                                            <Bar
+                                                dataKey="balance"
+                                                name="Profit"
+                                                stackId="revenue"
+                                                fill={COLOR.gold}
+                                                radius={[8, 8, 0, 0]}
+                                                barSize={30}
+                                                cursor="pointer"
+                                                label={(props) => {
+                                                    const total = chartData[props.index]?.revenue;
+                                                    return (
+                                                        <text x={props.x + props.width / 2} y={props.y - 10} textAnchor="middle" fill={COLOR.greenBright} fontSize={13} fontWeight={700}>
+                                                            {formatCurrency(total)}
+                                                        </text>
+                                                    );
+                                                }}
                                             >
                                                 {events.map(e => (
                                                     <Cell key={e.event_id} fillOpacity={e.event_id === selectedEventId ? 1 : 0.55} />
