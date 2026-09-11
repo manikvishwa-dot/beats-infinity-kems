@@ -42,6 +42,10 @@ const handleResponse = async response => {
 
 // ==========================================================
 // GET MY PAIRING
+//
+// Returns { success, songs: [{ song_id, song_title, status,
+// partner_name }] } - one row per song the singer chose, status
+// is "Paired" | "Pending" | "Not Paired".
 // ==========================================================
 
 const getMyPairing = async singerId => {

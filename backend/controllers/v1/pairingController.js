@@ -1160,6 +1160,27 @@ const decidePairing = async (req, res) => {
 // SINGER-FACING - MY PAIRING
 //
 // GET /api/v1/pairings/my?singer_id=UUID
+//
+// Returns one row per song this singer chose (their latest
+// payment's selected_song_ids for the active event), each with
+// a per-song status:
+//
+//   - "Paired"     - an Approved pairing exists for this song's
+//                     title. partner_name is set.
+//   - "Pending"    - a same-titled opposite-gender singer exists
+//                     who hasn't been decided against yet (or
+//                     vice versa) - admin still might pair it.
+//                     This is the "TBD" state.
+//   - "Not Paired" - either nobody of the opposite gender ever
+//                     chose a matching title, or every candidate
+//                     that did has already been decided (none
+//                     Approved) - this song is settled as unpaired
+//                     for this event.
+//
+// The distinction between Pending and Not Paired matters: a
+// singer should only be told "this won't be paired" once there
+// is truly no one left to pair with, not just because the admin
+// hasn't gotten to it yet.
 // ==========================================================
 
 const getMyPairing = async (req, res) => {
@@ -1184,123 +1205,240 @@ const getMyPairing = async (req, res) => {
         }
 
 
-        // Scoped to the currently active event, so an Approved
-        // pairing from a past event doesn't linger on a singer's
+        // Scoped to the currently active event, so a singer's
+        // songs/pairings from a past event don't linger on their
         // dashboard forever once a new event cycle has started.
         const activeEventId =
             await getActiveEventId();
 
-        let pairingQuery =
+        const {
+            singers,
+            songMap,
+            selectionsBySinger
+        } = await loadSingerSongMap(activeEventId);
+
+        const singerById =
+            new Map(singers.map(singer => [singer.id, singer]));
+
+        const me =
+            singerById.get(singerId);
+
+        const mySelections =
+            selectionsBySinger.get(singerId) || [];
+
+        const myGender =
+            String(me?.gender || "").trim().toLowerCase();
+
+        if (
+            !me ||
+            mySelections.length === 0 ||
+            (myGender !== "male" && myGender !== "female")
+        ) {
+
+            return res.status(200).json({
+                success: true,
+                songs: []
+            });
+
+        }
+
+        const oppositeGender =
+            myGender === "male" ? "female" : "male";
+
+
+        // ----------------------------------------------------
+        // Opposite-gender singers, grouped by normalized title -
+        // who could theoretically be paired against each of my
+        // songs.
+        // ----------------------------------------------------
+
+        const oppositeByTitle =
+            new Map();
+
+        selectionsBySinger.forEach(
+            (selections, otherId) => {
+
+                if (otherId === singerId) {
+                    return;
+                }
+
+                const other =
+                    singerById.get(otherId);
+
+                if (
+                    String(other?.gender || "").trim().toLowerCase() !==
+                    oppositeGender
+                ) {
+                    return;
+                }
+
+                selections.forEach(({ title }) => {
+
+                    if (!title) {
+                        return;
+                    }
+
+                    const key =
+                        normalizeTitle(title);
+
+                    if (!oppositeByTitle.has(key)) {
+                        oppositeByTitle.set(key, []);
+                    }
+
+                    oppositeByTitle.get(key).push(otherId);
+
+                });
+
+            }
+        );
+
+
+        // ----------------------------------------------------
+        // Every decision (Approved or Rejected) already made
+        // involving me, in the active event, grouped by the
+        // song's normalized title.
+        // ----------------------------------------------------
+
+        let decidedQuery =
             supabase
-
                 .from("pairings")
+                .select("song_id,male_singer_id,female_singer_id,status")
+                .or(`male_singer_id.eq.${singerId},female_singer_id.eq.${singerId}`);
 
-                .select("*")
-
-                .eq(
-                    "status",
-                    "Approved"
-                )
-
-                .or(
-                    `male_singer_id.eq.${singerId},female_singer_id.eq.${singerId}`
-                );
-
-        pairingQuery =
+        decidedQuery =
             activeEventId
-                ? pairingQuery.eq("event_id", activeEventId)
-                : pairingQuery.is("event_id", null);
+                ? decidedQuery.eq("event_id", activeEventId)
+                : decidedQuery.is("event_id", null);
 
         const {
-            data: pairing,
-            error
-        } = await pairingQuery
+            data: decidedRows,
+            error: decidedError
+        } = await decidedQuery;
 
-            .order(
-                "updated_at",
-                { ascending: false }
-            )
-
-            .limit(1)
-
-            .maybeSingle();
-
-
-        if (error) {
+        if (decidedError) {
 
             console.error(
-                "GET MY PAIRING:",
-                error
+                "GET MY PAIRING - DECIDED:",
+                decidedError
             );
 
             return res.status(500).json({
-
                 success: false,
-
-                message:
-                    "Unable to load pairing status.",
-
-                error:
-                    error.message
-
+                message: "Unable to load pairing status.",
+                error: decidedError.message
             });
 
         }
 
+        const approvedPartnerByTitle =
+            new Map();
 
-        if (!pairing) {
+        const decidedPartnersByTitle =
+            new Map();
 
-            return res.status(200).json({
+        (decidedRows || []).forEach(row => {
 
-                success: true,
+            const title =
+                songMap.get(row.song_id)?.title;
 
-                pairing: null
-
-            });
-
-        }
-
-
-        const partnerId =
-            pairing.male_singer_id === singerId
-                ? pairing.female_singer_id
-                : pairing.male_singer_id;
-
-
-        const [
-            { data: partner },
-            { data: song }
-        ] = await Promise.all([
-
-            supabase
-                .from("singers")
-                .select("singer_name")
-                .eq("id", partnerId)
-                .maybeSingle(),
-
-            supabase
-                .from("songs")
-                .select("title,movie")
-                .eq("id", pairing.song_id)
-                .maybeSingle()
-
-        ]);
-
-
-        return res.status(200).json({
-
-            success: true,
-
-            pairing: {
-
-                song_title:
-                    song?.title || "Unknown Song",
-
-                partner_name:
-                    partner?.singer_name || "Unknown Singer"
-
+            if (!title) {
+                return;
             }
 
+            const key =
+                normalizeTitle(title);
+
+            const partnerId =
+                row.male_singer_id === singerId
+                    ? row.female_singer_id
+                    : row.male_singer_id;
+
+            if (row.status === "Approved") {
+                approvedPartnerByTitle.set(key, partnerId);
+            }
+
+            if (!decidedPartnersByTitle.has(key)) {
+                decidedPartnersByTitle.set(key, new Set());
+            }
+
+            decidedPartnersByTitle.get(key).add(partnerId);
+
+        });
+
+
+        // ----------------------------------------------------
+        // Partner names for anything Approved.
+        // ----------------------------------------------------
+
+        const approvedPartnerIds =
+            [...new Set(approvedPartnerByTitle.values())];
+
+        let partnerNameById =
+            new Map();
+
+        if (approvedPartnerIds.length > 0) {
+
+            const { data: partners } = await supabase
+                .from("singers")
+                .select("id,singer_name")
+                .in("id", approvedPartnerIds);
+
+            partnerNameById =
+                new Map((partners || []).map(p => [p.id, p.singer_name]));
+
+        }
+
+
+        // ----------------------------------------------------
+        // BUILD PER-SONG STATUS
+        // ----------------------------------------------------
+
+        const songs =
+            mySelections
+
+                .filter(({ title }) => Boolean(title))
+
+                .map(({ song_id, title }) => {
+
+                    const key =
+                        normalizeTitle(title);
+
+                    if (approvedPartnerByTitle.has(key)) {
+
+                        const partnerId =
+                            approvedPartnerByTitle.get(key);
+
+                        return {
+                            song_id,
+                            song_title: title,
+                            status: "Paired",
+                            partner_name:
+                                partnerNameById.get(partnerId) || "Unknown Singer"
+                        };
+
+                    }
+
+                    const candidateIds =
+                        oppositeByTitle.get(key) || [];
+
+                    const decidedIds =
+                        decidedPartnersByTitle.get(key) || new Set();
+
+                    const hasUndecidedCandidate =
+                        candidateIds.some(id => !decidedIds.has(id));
+
+                    return {
+                        song_id,
+                        song_title: title,
+                        status: hasUndecidedCandidate ? "Pending" : "Not Paired",
+                        partner_name: null
+                    };
+
+                });
+
+        return res.status(200).json({
+            success: true,
+            songs
         });
 
     }

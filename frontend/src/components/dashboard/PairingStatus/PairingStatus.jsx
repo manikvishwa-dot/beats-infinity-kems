@@ -4,9 +4,24 @@ import { getMyPairing } from "../../../services/pairingService";
 
 import "./PairingStatus.css";
 
+const STATUS_META = {
+    Paired: {
+        icon: "🎉",
+        className: "paired"
+    },
+    Pending: {
+        icon: "⏳",
+        className: "pending"
+    },
+    "Not Paired": {
+        icon: "💬",
+        className: "not-paired"
+    }
+};
+
 function PairingStatus({ singerId }) {
 
-    const [pairing, setPairing] = useState(null);
+    const [songs, setSongs] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -28,7 +43,7 @@ function PairingStatus({ singerId }) {
 
                 if (!cancelled) {
 
-                    setPairing(result.pairing || null);
+                    setSongs(Array.isArray(result.songs) ? result.songs : []);
 
                 }
 
@@ -63,7 +78,7 @@ function PairingStatus({ singerId }) {
 
     }, [singerId]);
 
-    if (loading || !pairing) {
+    if (loading || songs.length === 0) {
 
         return null;
 
@@ -71,20 +86,56 @@ function PairingStatus({ singerId }) {
 
     return (
 
-        <section className="pairing-status-card">
+        <section className="pairing-status-section">
 
-            <div className="pairing-status-icon">
-                🎉
-            </div>
+            <h2 className="pairing-status-heading">My Pairing Status</h2>
 
-            <div>
-                <h3>Pairing Available</h3>
+            <div className="pairing-status-list">
 
-                <p>
-                    You have been paired with{" "}
-                    <strong>{pairing.partner_name}</strong>{" "}
-                    for <strong>{pairing.song_title}</strong>.
-                </p>
+                {songs.map(song => {
+
+                    const meta = STATUS_META[song.status] || STATUS_META.Pending;
+
+                    return (
+
+                        <div
+                            className={`pairing-status-card ${meta.className}`}
+                            key={song.song_id}
+                        >
+
+                            <div className="pairing-status-icon">
+                                {meta.icon}
+                            </div>
+
+                            <div>
+                                <h3>{song.song_title}</h3>
+
+                                {song.status === "Paired" && (
+                                    <p>
+                                        You have been paired with{" "}
+                                        <strong>{song.partner_name}</strong>{" "}
+                                        for this song.
+                                    </p>
+                                )}
+
+                                {song.status === "Pending" && (
+                                    <p>Pairing decision pending - check back soon.</p>
+                                )}
+
+                                {song.status === "Not Paired" && (
+                                    <p>
+                                        Don't worry, these songs can be accommodated on
+                                        upcoming events if it fits the theme.
+                                    </p>
+                                )}
+                            </div>
+
+                        </div>
+
+                    );
+
+                })}
+
             </div>
 
         </section>
