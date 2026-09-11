@@ -156,6 +156,85 @@ function GaugeBar({ percent, label, color }) {
     );
 }
 
+// One row per event: a wide rounded pill divided into Paid/Pending/
+// Rejected segments proportional to their share, growing in on mount.
+// Clickable - ties into the same drill-down selection as the other tabs.
+function StatusSegmentBar({ event, selected, onClick }) {
+
+    const total = event.paid + event.pending + event.rejected;
+    const [grown, setGrown] = useState(false);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setGrown(true));
+        return () => cancelAnimationFrame(frame);
+    }, []);
+
+    const pct = n => total > 0 ? (n / total) * 100 : 0;
+
+    return (
+        <button type="button" className={selected ? "status-row selected" : "status-row"} onClick={onClick}>
+            <div className="status-row-top">
+                <span className="status-row-name">{event.event_name}</span>
+                <span className="status-row-total">{total} singer{total === 1 ? "" : "s"}</span>
+            </div>
+            <div className="status-segment-track">
+                <div className="status-segment" style={{ width: grown ? `${pct(event.paid)}%` : 0, background: COLOR.green }} title={`Paid: ${event.paid}`} />
+                <div className="status-segment" style={{ width: grown ? `${pct(event.pending)}%` : 0, background: COLOR.gold }} title={`Pending: ${event.pending}`} />
+                <div className="status-segment" style={{ width: grown ? `${pct(event.rejected)}%` : 0, background: COLOR.red }} title={`Rejected: ${event.rejected}`} />
+            </div>
+            <div className="status-row-counts">
+                <span style={{ color: COLOR.green }}>{event.paid} Paid</span>
+                <span style={{ color: COLOR.gold }}>{event.pending} Pending</span>
+                <span style={{ color: COLOR.red }}>{event.rejected} Rejected</span>
+            </div>
+        </button>
+    );
+
+}
+
+// Circular progress ring with a big percentage centered inside -
+// stroke-dashoffset animates from empty to the target on mount.
+function RadialRing({ percent, color, size = 190 }) {
+
+    const clamped = Math.max(0, Math.min(100, percent));
+    const stroke = 16;
+    const radius = (size - stroke) / 2;
+    const circumference = 2 * Math.PI * radius;
+
+    const [dash, setDash] = useState(circumference);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setDash(circumference - (clamped / 100) * circumference));
+        return () => cancelAnimationFrame(frame);
+    }, [clamped, circumference]);
+
+    return (
+        <div className="radial-ring" style={{ width: size, height: size }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={stroke}
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={dash}
+                    transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                    style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                />
+            </svg>
+            <div className="radial-ring-center">
+                <strong style={{ color }}><CountUp value={clamped} formatter={v => `${Math.round(v)}%`} /></strong>
+                <span>Karaoke Coverage</span>
+            </div>
+        </div>
+    );
+
+}
+
 function DetailRow({ label, value }) {
     return (
         <div className="comparison-detail-row">
@@ -350,43 +429,50 @@ function ComparisonDashboard() {
                                 ================================================== */}
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "revenue" ? "block" : "none" }}>
-                                    <h2>Revenue vs Expenses By Event</h2>
+                                    <h2>Revenue By Event</h2>
+                                    <p className="comparison-chart-subhint">Expenses, profit and margin for the selected event are in the breakdown panel below.</p>
                                     <ResponsiveContainer width="100%" height={340}>
-                                        <ComposedChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }} onClick={handleBarClick}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                                        <BarChart data={chartData} margin={{ top: 24, right: 20, left: 0, bottom: 10 }} onClick={handleBarClick} barCategoryGap="35%">
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                                             <XAxis dataKey="event_name" stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
                                             <YAxis stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
                                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                                            <Legend wrapperStyle={{ color: COLOR.ink }} />
-                                            <Bar dataKey="revenue" name="Revenue" fill={COLOR.green} radius={[4, 4, 0, 0]} cursor="pointer">
+                                            <Bar
+                                                dataKey="revenue"
+                                                name="Revenue"
+                                                fill={COLOR.green}
+                                                radius={[10, 10, 10, 10]}
+                                                barSize={26}
+                                                cursor="pointer"
+                                                label={{ position: "top", fill: COLOR.greenBright, fontSize: 13, fontWeight: 700, formatter: formatCurrency }}
+                                            >
                                                 {events.map(e => (
-                                                    <Cell key={e.event_id} fillOpacity={e.event_id === selectedEventId ? 1 : 0.65} />
+                                                    <Cell key={e.event_id} fillOpacity={e.event_id === selectedEventId ? 1 : 0.55} />
                                                 ))}
                                             </Bar>
-                                            <Bar dataKey="expenses" name="Expenses" fill={COLOR.red} radius={[4, 4, 0, 0]} cursor="pointer">
-                                                {events.map(e => (
-                                                    <Cell key={e.event_id} fillOpacity={e.event_id === selectedEventId ? 1 : 0.65} />
-                                                ))}
-                                            </Bar>
-                                            <Line type="monotone" dataKey="balance" name="Profit / Loss" stroke={COLOR.gold} strokeWidth={2} dot={{ r: 4 }} />
-                                        </ComposedChart>
+                                        </BarChart>
                                     </ResponsiveContainer>
                                 </section>
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "singers" ? "block" : "none" }}>
                                     <h2>Singer Payment Status By Event</h2>
-                                    <ResponsiveContainer width="100%" height={340}>
-                                        <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }} onClick={handleBarClick}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-                                            <XAxis dataKey="event_name" stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
-                                            <YAxis stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} allowDecimals={false} />
-                                            <Tooltip content={<ChartTooltip formatter={v => v} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                                            <Legend wrapperStyle={{ color: COLOR.ink }} />
-                                            <Bar dataKey="paid" name="Paid" stackId="s" fill={COLOR.green} cursor="pointer" />
-                                            <Bar dataKey="pending" name="Pending" stackId="s" fill={COLOR.gold} cursor="pointer" />
-                                            <Bar dataKey="rejected" name="Rejected" stackId="s" fill={COLOR.red} radius={[4, 4, 0, 0]} cursor="pointer" />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+
+                                    <div className="status-legend-row">
+                                        <span><i style={{ background: COLOR.green }} /> Paid</span>
+                                        <span><i style={{ background: COLOR.gold }} /> Pending</span>
+                                        <span><i style={{ background: COLOR.red }} /> Rejected</span>
+                                    </div>
+
+                                    <div className="status-bar-list">
+                                        {chartData.map(e => (
+                                            <StatusSegmentBar
+                                                key={e.event_id}
+                                                event={e}
+                                                selected={e.event_id === selectedEventId}
+                                                onClick={() => setSelectedEventId(e.event_id)}
+                                            />
+                                        ))}
+                                    </div>
                                 </section>
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "gender" ? "block" : "none" }}>
@@ -451,18 +537,39 @@ function ComparisonDashboard() {
                                 </section>
 
                                 <section className="finance-section comparison-chart-card" style={{ display: activeTab === "songs" ? "block" : "none" }}>
-                                    <h2>Songs &amp; Karaoke Availability By Event</h2>
-                                    <ResponsiveContainer width="100%" height={340}>
-                                        <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }} onClick={handleBarClick}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-                                            <XAxis dataKey="event_name" stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} />
-                                            <YAxis stroke={COLOR.muted} tick={{ fill: COLOR.ink, fontSize: 12 }} allowDecimals={false} />
-                                            <Tooltip content={<ChartTooltip formatter={v => v} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                                            <Legend wrapperStyle={{ color: COLOR.ink }} />
-                                            <Bar dataKey="song_count" name="Total Songs" fill={COLOR.gold} radius={[4, 4, 0, 0]} cursor="pointer" />
-                                            <Bar dataKey="karaoke_available_count" name="Karaoke Available" fill={COLOR.green} radius={[4, 4, 0, 0]} cursor="pointer" />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                    <h2>Songs &amp; Karaoke - {selectedEvent ? selectedEvent.event_name : "Select an event"}</h2>
+
+                                    {selectedEvent ? (
+
+                                        <div className="songs-ring-layout">
+
+                                            <RadialRing
+                                                percent={selectedEvent.song_count > 0 ? (selectedEvent.karaoke_available_count / selectedEvent.song_count) * 100 : 0}
+                                                color={COLOR.gold}
+                                            />
+
+                                            <div className="songs-ring-stats">
+                                                <div className="songs-stat">
+                                                    <span className="songs-stat-icon" style={{ background: COLOR.gold + "22", color: COLOR.gold }}>🎵</span>
+                                                    <div>
+                                                        <strong><CountUp value={selectedEvent.song_count} /></strong>
+                                                        <span>Total Songs</span>
+                                                    </div>
+                                                </div>
+                                                <div className="songs-stat">
+                                                    <span className="songs-stat-icon" style={{ background: COLOR.green + "22", color: COLOR.green }}>🎤</span>
+                                                    <div>
+                                                        <strong><CountUp value={selectedEvent.karaoke_available_count} /></strong>
+                                                        <span>Karaoke Available</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                    ) : (
+                                        <div className="finance-empty">No song data yet for this event.</div>
+                                    )}
                                 </section>
 
                         </div>
