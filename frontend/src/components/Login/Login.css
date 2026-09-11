@@ -311,3 +311,29 @@
     font-weight:700;
 
 }
+
+/* ==========================================================
+   ADMIN / SUPER ADMIN LINK
+========================================================== */
+
+.admin-login-link{
+
+    display:block;
+
+    margin-top:18px;
+
+    text-align:center;
+
+    color:#888888;
+
+    font-size:12.5px;
+
+    text-decoration:underline;
+
+}
+
+.admin-login-link:hover{
+
+    color:#FFD54A;
+
+}

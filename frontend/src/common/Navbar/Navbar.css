@@ -279,8 +279,28 @@
 }
 
 /* ==========================================================
-   MOBILE MENU TOGGLE (hamburger) - hidden on desktop
+   MOBILE LOGIN + MENU TOGGLE - hidden on desktop
    ========================================================== */
+
+.navbar-mobile-actions{
+
+    display:none;
+
+    align-items:center;
+
+    gap:10px;
+
+}
+
+.navbar-mobile-login{
+
+    padding:6px 16px !important;
+
+    min-width:0 !important;
+
+    font-size:13px !important;
+
+}
 
 .navbar-mobile-toggle{
 
@@ -417,11 +437,17 @@
 
     }
 
+    .navbar-mobile-actions{
+
+        display:flex !important;
+
+        margin-left:auto;
+
+    }
+
     .navbar-mobile-toggle{
 
         display:inline-flex !important;
-
-        margin-left:auto;
 
     }
 

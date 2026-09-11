@@ -283,18 +283,32 @@ function Navbar() {
 
 
                     {/* ==================================================
-                        MOBILE MENU TOGGLE
+                        MOBILE LOGIN + MENU TOGGLE
                     ================================================== */}
 
-                    <IconButton
-                        className="navbar-mobile-toggle"
-                        onClick={() => setMobileOpen(true)}
-                        aria-label="Open menu"
-                    >
+                    <Box className="navbar-mobile-actions">
 
-                        <MenuRoundedIcon />
+                        <Button
+                            component={Link}
+                            to="/login"
+                            className="login-button navbar-mobile-login"
+                        >
 
-                    </IconButton>
+                            Login
+
+                        </Button>
+
+                        <IconButton
+                            className="navbar-mobile-toggle"
+                            onClick={() => setMobileOpen(true)}
+                            aria-label="Open menu"
+                        >
+
+                            <MenuRoundedIcon />
+
+                        </IconButton>
+
+                    </Box>
 
 
                 </Toolbar>
