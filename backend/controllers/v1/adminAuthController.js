@@ -420,18 +420,19 @@ const listAdminUsers = async (req, res) => {
 
 
 // ==========================================================
-// CHANGE PASSWORD - SUPER ADMIN ONLY
+// CHANGE PASSWORD
 //
 // PUT /api/v1/admin/users/:id/password
 //
 // Body: { new_password, current_password }
 //
-// current_password is required and verified ONLY when changing
-// your OWN account (req.admin.id === :id) - a super admin resetting
-// the OTHER account's password doesn't need to know its old one,
-// their super_admin session is authority enough. Either way, the
-// target account's active session is invalidated afterward so a
-// changed password takes effect immediately.
+// Any admin (role "admin" or "super_admin") may change their OWN
+// password - current_password is required and verified in that
+// case. Changing a DIFFERENT account's password requires
+// super_admin; that account's old password doesn't need to be
+// known, their super_admin session is authority enough. Either
+// way, the target account's active session is invalidated
+// afterward so a changed password takes effect immediately.
 // ==========================================================
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -507,6 +508,16 @@ const changeAdminPassword = async (req, res) => {
 
         const isOwnAccount =
             target.id === req.admin.id;
+
+
+        if (!isOwnAccount && req.admin.role !== "super_admin") {
+
+            return res.status(403).json({
+                success: false,
+                message: "Only Super Admin can reset another account's password."
+            });
+
+        }
 
 
         if (isOwnAccount) {

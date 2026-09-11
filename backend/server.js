@@ -50,6 +50,9 @@ const eventRoutes =
 const journeyRoutes =
     require("./routes/v1/journeyRoutes");
 
+const maggieRoutes =
+    require("./routes/v1/maggieRoutes");
+
 
 // ==========================================================
 // EXPRESS APP
@@ -269,6 +272,15 @@ app.use(
 app.use(
     "/api/v1/admin",
     adminDashboardRoutes
+);
+
+// ----------------------------------------------------------
+// MAGGIE - DATA AUDIT ("test manager" for the admin dashboards)
+// ----------------------------------------------------------
+
+app.use(
+    "/api/v1/admin",
+    maggieRoutes
 );
 
 

@@ -73,14 +73,20 @@ router.get(
 
 
 // ==========================================================
-// CHANGE ADMIN PASSWORD - SUPER ADMIN ONLY
+// CHANGE ADMIN PASSWORD
 //
 // PUT /api/v1/admin/users/:id/password
+//
+// requireAdmin (not requireSuperAdmin) - an "admin"-role account
+// is allowed to change ITS OWN password (self-service). Resetting
+// a DIFFERENT account's password still requires super_admin; that
+// check happens inside changeAdminPassword itself, since it needs
+// to compare the target id against the caller's own id.
 // ==========================================================
 
 router.put(
     "/users/:id/password",
-    requireSuperAdmin,
+    requireAdmin,
     changeAdminPassword
 );
 

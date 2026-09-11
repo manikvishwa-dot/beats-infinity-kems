@@ -2,14 +2,21 @@
 description: Audits one event's singers/songs/pairings/payments for data problems the Admin and Super Admin dashboards would otherwise surface as broken or confusing rows - unpaired singers, duplicate pairings, same-gender song title collisions, paid-but-unpaired singers, and anything still Pending. Use when asked to check/verify/audit the pairing list, sanity-check an event's data, or QA the admin dashboards before or after an event.
 ---
 
-# Pairing & Event Data Audit
+# Pairing & Event Data Audit ("Maggie")
 
 Acts as a test manager for the data behind the Admin/Super Admin
 dashboards (Singers, Songs, Pairing, Payments, Finance) - not the UI
 itself, the data those screens read. Most "the dashboard looks wrong"
 reports trace back to a data problem this catches directly.
 
-## Running it
+This same audit is also surfaced live in the app itself, branded
+"Maggie", at `/admin/maggie` in the Admin and Super Admin dashboards -
+see "Where the logic lives" below. Use the CLI when you (or an agent)
+want a quick pass/fail check or a JSON dump to inspect; use the
+dashboard page when a human admin wants to browse findings with
+plain-language suggestions attached.
+
+## Running it (CLI)
 
 ```
 cd backend
@@ -22,6 +29,23 @@ The script is fully deterministic (no LLM involved in the checks
 themselves) and prints a severity-ranked report, then writes the full
 structured findings to `backend/scripts/last-audit-result.json`
 (gitignored - a fresh copy every run).
+
+## Running it (dashboard)
+
+Log into `/admin` or `/superadmin` and open the "Maggie" tab
+(`/admin/maggie`). Pick an event (defaults to the active one) and hit
+"Run Audit". Super Admin accounts additionally get an "All events"
+toggle, equivalent to `--all` above. Each finding is shown with a
+plain-language suggestion for what to actually do about it - see
+`SUGGESTIONS` in the service file below to change that wording.
+
+Backing endpoints (both `requireAdmin`; the all-events one is
+`requireSuperAdmin`):
+
+```
+GET /api/v1/admin/maggie/audit             # active event, or ?event_id=UUID
+GET /api/v1/admin/maggie/audit/all         # every event - Super Admin only
+```
 
 ## What it checks
 
@@ -65,11 +89,15 @@ structured findings to `backend/scripts/last-audit-result.json`
    by id not by gender-vs-slot), say so rather than treating every
    finding as automatically wrong.
 
-## Extending it
+## Where the logic lives
 
-The check logic lives entirely in
-`backend/scripts/verify-data-integrity.js` (`runChecks`) - add a new
-check there as another `add(severity, category, message, detail)`
-call. Keep checks event-scoped (singers are global, but
-songs/pairings/payments are all filtered by `event_id`) so running
-this against one event never gets confused by another event's data.
+The check logic is in `backend/services/dataAuditService.js`
+(`runChecks`) - both the CLI script and the dashboard's
+`maggieController.js` call into this same module, so they can never
+quietly disagree. Add a new check there as another
+`add(severity, category, message, detail)` call inside `runChecks`,
+and a matching entry in the `SUGGESTIONS` map so the dashboard shows
+sensible guidance for it. Keep checks event-scoped (singers are
+global, but songs/pairings/payments are all filtered by `event_id`)
+so running this against one event never gets confused by another
+event's data.

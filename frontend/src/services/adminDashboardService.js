@@ -274,6 +274,51 @@ const getFinanceByEvent = async () => {
 };
 
 
+// ==========================================================
+// MAGGIE - DATA AUDIT
+// ==========================================================
+
+const getMaggieAudit = async eventId => {
+
+    const query = eventId ? `?event_id=${encodeURIComponent(eventId)}` : "";
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/maggie/audit${query}`,
+
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+
+    );
+
+
+    return handleResponse(response);
+
+};
+
+const getMaggieAuditAllEvents = async () => {
+
+    const response = await fetch(
+
+        `${API_BASE_URL}/maggie/audit/all`,
+
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+
+    );
+
+
+    return handleResponse(response);
+
+};
+
+
 export {
     getAllSingers,
     getSingersOverview,
@@ -282,5 +327,7 @@ export {
     bulkUpdateSingers,
     bulkDecidePairings,
     getSingersPerEvent,
-    getFinanceByEvent
+    getFinanceByEvent,
+    getMaggieAudit,
+    getMaggieAuditAllEvents
 };

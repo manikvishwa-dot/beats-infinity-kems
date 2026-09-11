@@ -19,7 +19,9 @@ const NAV_ITEMS = [
 
     { label: "Payments", path: "/admin/payments", icon: "💳" },
 
-    { label: "Journey", path: "/admin/journey", icon: "🖼️" }
+    { label: "Journey", path: "/admin/journey", icon: "🖼️" },
+
+    { label: "Maggie", path: "/admin/maggie", icon: "🕵️" }
 
 ];
 
