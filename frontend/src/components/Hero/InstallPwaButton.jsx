@@ -4,6 +4,8 @@ import { Button } from "@mui/material";
 import GetAppRoundedIcon from "@mui/icons-material/GetAppRounded";
 import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
 
+import { isStandalone } from "../../utils/pwa";
+
 import "./InstallPwaButton.css";
 
 // iPadOS (13+) reports itself as a Mac desktop Safari in the user
@@ -26,10 +28,6 @@ const isIos = () => {
     );
 
 };
-
-const isStandalone = () =>
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true;
 
 // Shows an "Install App" pill at the top of the hero, always
 // visible for easy access, so both Android/desktop (real install

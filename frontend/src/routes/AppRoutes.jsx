@@ -5,7 +5,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
    PUBLIC PAGES
 ========================================================== */
 
-import Home from "../pages/Home";
+import AppEntryGate from "./AppEntryGate";
 import Events from "../pages/Events";
 import About from "../pages/About";
 import Gallery from "../pages/Gallery";
@@ -71,7 +71,7 @@ function AppRoutes() {
 
             <Route
                 path="/"
-                element={<Home />}
+                element={<AppEntryGate />}
             />
 
 
