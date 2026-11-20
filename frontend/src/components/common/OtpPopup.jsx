@@ -8,7 +8,14 @@
 //
 // Used by SingerRegistration (Join Beats Infinity) and
 // SingerLogin (Forgot PIN). Styles live in SingerLogin.css.
+//
+// Rendered into <body> through a portal: the login card uses
+// backdrop-filter, which traps position:fixed children inside
+// the card - on a laptop the popup would be squeezed into the
+// card instead of covering the screen.
 // ==========================================================
+
+import { createPortal } from "react-dom";
 
 import "../../pages/SingerLogin.css";
 
@@ -31,7 +38,7 @@ function OtpPopup({ otp, purpose = "registration", onUse }) {
 
     const text = TEXT[purpose] || TEXT.registration;
 
-    return (
+    return createPortal(
 
         <div
             className="otp-popup-overlay"
@@ -75,7 +82,9 @@ function OtpPopup({ otp, purpose = "registration", onUse }) {
 
             </div>
 
-        </div>
+        </div>,
+
+        document.body
 
     );
 

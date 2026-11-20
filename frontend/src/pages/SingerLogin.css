@@ -978,6 +978,8 @@
 
     animation: otpPopupFade .2s ease-out;
 
+    font-family: Inter, Arial, sans-serif;
+
 }
 
 .otp-popup {
