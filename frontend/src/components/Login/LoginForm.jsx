@@ -204,7 +204,7 @@ function LoginForm() {
 
             setError(
                 err?.message ||
-                "Fingerprint / Face ID login failed. Please use your PIN."
+                "Quick Login failed. Please use your PIN."
             );
 
         }
@@ -243,7 +243,7 @@ function LoginForm() {
                 prepared: pendingLogin.prepared
             });
 
-            toast.success("Fingerprint / Face ID login enabled.");
+            toast.success("Quick Login enabled on this phone.");
 
         }
         catch (err) {
@@ -258,7 +258,7 @@ function LoginForm() {
 
                 toast.error(
                     err?.message ||
-                    "Couldn't enable Fingerprint / Face ID. You can keep using your PIN."
+                    "Couldn't enable Quick Login. You can keep using your PIN."
                 );
             }
 
@@ -349,7 +349,7 @@ function LoginForm() {
         if (mobile.length !== 10 || pin.length !== 4) {
 
             setError(
-                "To set up Fingerprint / Face ID on this device, enter your mobile number and PIN, then tap the fingerprint button."
+                "To set up Quick Login on this device, enter your mobile number and PIN, then tap Quick Login."
             );
 
             return;
@@ -814,10 +814,10 @@ function LoginForm() {
                                 <FaFingerprint />
 
                                 {passkeyBusy
-                                    ? "Waiting for Fingerprint / Face ID..."
+                                    ? "Waiting for your phone..."
                                     : devicePasskey?.name
-                                        ? `Login as ${devicePasskey.name} with Fingerprint / Face ID`
-                                        : "Login with Fingerprint / Face ID"
+                                        ? `Quick Login as ${devicePasskey.name}`
+                                        : "Quick Login"
                                 }
 
                             </button>
@@ -969,12 +969,13 @@ function LoginForm() {
                         </div>
 
                         <h3 id="passkey-prompt-title">
-                            Enable Fingerprint / Face ID?
+                            Enable Quick Login?
                         </h3>
 
                         <p>
-                            Log in faster next time with your fingerprint
-                            or face on this phone. Your PIN will still work.
+                            Next time, log in with one tap using your phone's
+                            fingerprint, face, or screen lock (pattern / PIN).
+                            Your 4-digit PIN will still work.
                         </p>
 
                         <button

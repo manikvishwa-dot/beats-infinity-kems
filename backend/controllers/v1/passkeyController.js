@@ -141,7 +141,7 @@ const getRegistrationOptions = async (req, res) => {
         const rp = resolveRelyingParty(req);
 
         if (!rp) {
-            return fail(res, 400, "Fingerprint / Face ID login isn't available on this site address.");
+            return fail(res, 400, "Quick Login isn't available on this site address.");
         }
 
         const mobile = normalizeMobile(req.body.mobile);
@@ -196,7 +196,7 @@ const getRegistrationOptions = async (req, res) => {
 
         console.error("❌ Passkey register options error:", error);
 
-        return fail(res, 500, "Unable to start Fingerprint / Face ID setup.");
+        return fail(res, 500, "Unable to start Quick Login setup.");
 
     }
 
@@ -220,7 +220,7 @@ const verifyRegistration = async (req, res) => {
         const rp = resolveRelyingParty(req);
 
         if (!rp) {
-            return fail(res, 400, "Fingerprint / Face ID login isn't available on this site address.");
+            return fail(res, 400, "Quick Login isn't available on this site address.");
         }
 
         const mobile = normalizeMobile(req.body.mobile);
@@ -246,7 +246,7 @@ const verifyRegistration = async (req, res) => {
         });
 
         if (!verification.verified || !verification.registrationInfo) {
-            return fail(res, 400, "Fingerprint / Face ID could not be verified.");
+            return fail(res, 400, "Quick Login could not be verified.");
         }
 
         const { credential } = verification.registrationInfo;
@@ -268,7 +268,7 @@ const verifyRegistration = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Fingerprint / Face ID login enabled."
+            message: "Quick Login enabled."
         });
 
     }
@@ -276,7 +276,7 @@ const verifyRegistration = async (req, res) => {
 
         console.error("❌ Passkey register verify error:", error);
 
-        return fail(res, 500, "Unable to enable Fingerprint / Face ID login.");
+        return fail(res, 500, "Unable to enable Quick Login.");
 
     }
 
@@ -296,7 +296,7 @@ const getLoginOptions = async (req, res) => {
         const rp = resolveRelyingParty(req);
 
         if (!rp) {
-            return fail(res, 400, "Fingerprint / Face ID login isn't available on this site address.");
+            return fail(res, 400, "Quick Login isn't available on this site address.");
         }
 
         // No allowCredentials: the phone offers whichever Beats
@@ -320,7 +320,7 @@ const getLoginOptions = async (req, res) => {
 
         console.error("❌ Passkey login options error:", error);
 
-        return fail(res, 500, "Unable to start Fingerprint / Face ID login.");
+        return fail(res, 500, "Unable to start Quick Login.");
 
     }
 
@@ -342,13 +342,13 @@ const verifyLogin = async (req, res) => {
         const rp = resolveRelyingParty(req);
 
         if (!rp) {
-            return fail(res, 400, "Fingerprint / Face ID login isn't available on this site address.");
+            return fail(res, 400, "Quick Login isn't available on this site address.");
         }
 
         const response = req.body.response;
 
         if (!response || !response.id) {
-            return fail(res, 400, "Missing Fingerprint / Face ID response.");
+            return fail(res, 400, "Missing Quick Login response.");
         }
 
         const { data: passkey, error: passkeyError } = await supabase
@@ -360,7 +360,7 @@ const verifyLogin = async (req, res) => {
         if (passkeyError) throw passkeyError;
 
         if (!passkey) {
-            return fail(res, 404, "This device's Fingerprint / Face ID login was removed. Please log in with your PIN.");
+            return fail(res, 404, "Quick Login on this device was removed. Please log in with your PIN.");
         }
 
         const verification = await verifyAuthenticationResponse({
@@ -385,7 +385,7 @@ const verifyLogin = async (req, res) => {
         });
 
         if (!verification.verified) {
-            return fail(res, 401, "Fingerprint / Face ID could not be verified.");
+            return fail(res, 401, "Quick Login could not be verified.");
         }
 
         await supabase
@@ -423,7 +423,7 @@ const verifyLogin = async (req, res) => {
 
         console.error("❌ Passkey login verify error:", error);
 
-        return fail(res, 401, "Fingerprint / Face ID login failed. Please use your PIN.");
+        return fail(res, 401, "Quick Login failed. Please use your PIN.");
 
     }
 
