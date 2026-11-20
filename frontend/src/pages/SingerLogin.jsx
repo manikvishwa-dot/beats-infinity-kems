@@ -59,6 +59,9 @@ const SingerLogin = () => {
     const [success, setSuccess] = useState("");
     const [generatedOtp, setGeneratedOtp] = useState("");
 
+    // OTP popup - opens every time a new OTP is generated
+    const [showOtpPopup, setShowOtpPopup] = useState(false);
+
 
     // =====================================================
     // ARRIVED FROM "FORGOT PIN?" ON THE MAIN LOGIN FORM
@@ -483,6 +486,8 @@ const SingerLogin = () => {
                         String(result.otp)
                     );
 
+                    setShowOtpPopup(true);
+
                 }
 
 
@@ -887,6 +892,8 @@ const SingerLogin = () => {
                     setGeneratedOtp(
                         String(result.otp)
                     );
+
+                    setShowOtpPopup(true);
 
                 }
 
@@ -1427,36 +1434,17 @@ const SingerLogin = () => {
                 />
 
 
-                {generatedOtp && (
+                {generatedOtp && !showOtpPopup && (
 
-                    <div
-                        style={{
-                            marginTop: "15px",
-                            padding: "12px",
-                            borderRadius: "8px",
-                            textAlign: "center",
-                            background:
-                                "rgba(255,213,74,0.10)",
-                            border:
-                                "1px solid rgba(255,213,74,0.30)"
-                        }}
+                    <button
+                        type="button"
+                        className="otp-show-again"
+                        onClick={() => setShowOtpPopup(true)}
                     >
 
-                        Your OTP for User Creation is :
+                        Show OTP again
 
-                        <strong
-                            style={{
-                                color: "#FFD54A",
-                                marginLeft: "8px",
-                                letterSpacing: "3px"
-                            }}
-                        >
-
-                            {generatedOtp}
-
-                        </strong>
-
-                    </div>
+                    </button>
 
                 )}
 
@@ -1872,36 +1860,17 @@ const SingerLogin = () => {
                 />
 
 
-                {generatedOtp && (
+                {generatedOtp && !showOtpPopup && (
 
-                    <div
-                        style={{
-                            marginTop: "15px",
-                            padding: "12px",
-                            borderRadius: "8px",
-                            textAlign: "center",
-                            background:
-                                "rgba(255,213,74,0.10)",
-                            border:
-                                "1px solid rgba(255,213,74,0.30)"
-                        }}
+                    <button
+                        type="button"
+                        className="otp-show-again"
+                        onClick={() => setShowOtpPopup(true)}
                     >
 
-                        Your OTP for PIN Reset is :
+                        Show OTP again
 
-                        <strong
-                            style={{
-                                color: "#FFD54A",
-                                marginLeft: "8px",
-                                letterSpacing: "3px"
-                            }}
-                        >
-
-                            {generatedOtp}
-
-                        </strong>
-
-                    </div>
+                    </button>
 
                 )}
 
@@ -2205,6 +2174,70 @@ const SingerLogin = () => {
                 {screen === "forgot-pin-newpin" &&
                     renderForgotPinNewPin()
                 }
+
+
+                {/* OTP POPUP */}
+
+                {showOtpPopup && generatedOtp &&
+                    (screen === "registration-otp" || screen === "forgot-pin-otp") && (
+
+                    <div
+                        className="otp-popup-overlay"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="otp-popup-title"
+                    >
+
+                        <div className="otp-popup">
+
+                            <div className="otp-popup-icon">
+                                🔐
+                            </div>
+
+                            <h3 id="otp-popup-title">
+                                {screen === "registration-otp"
+                                    ? "Your OTP for User Creation"
+                                    : "Your OTP for PIN Reset"
+                                }
+                            </h3>
+
+                            <div className="otp-popup-code">
+                                {generatedOtp}
+                            </div>
+
+                            <p className="otp-popup-note">
+                                {screen === "registration-otp"
+                                    ? "After verifying, please create a 4-digit numeric PIN for further logins."
+                                    : "After verifying, please create a new 4-digit numeric PIN for further logins."
+                                }
+                            </p>
+
+                            <p className="otp-popup-expiry">
+                                Valid for 5 minutes.
+                            </p>
+
+                            <button
+                                type="button"
+                                className="primary-button"
+                                autoFocus
+                                onClick={() => {
+
+                                    setOtp(generatedOtp);
+
+                                    setShowOtpPopup(false);
+
+                                }}
+                            >
+
+                                USE THIS OTP
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                )}
 
 
                 <div className="footer-text">

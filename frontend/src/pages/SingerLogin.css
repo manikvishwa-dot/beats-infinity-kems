@@ -951,3 +951,157 @@
     }
 
 }
+
+/* ==========================================================
+   OTP POPUP
+   ========================================================== */
+
+.otp-popup-overlay {
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 1000;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(0, 0, 0, .72);
+
+    backdrop-filter: blur(4px);
+
+    animation: otpPopupFade .2s ease-out;
+
+}
+
+.otp-popup {
+
+    width: 100%;
+
+    max-width: 360px;
+
+    padding: 28px 24px 24px;
+
+    border-radius: 18px;
+
+    text-align: center;
+
+    color: #fff;
+
+    background: #16121f;
+
+    border: 1px solid rgba(255, 213, 74, .35);
+
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+
+    animation: otpPopupRise .25s ease-out;
+
+}
+
+.otp-popup-icon {
+
+    font-size: 34px;
+
+    margin-bottom: 6px;
+
+}
+
+.otp-popup h3 {
+
+    margin: 0 0 14px;
+
+    font-size: 18px;
+
+}
+
+.otp-popup-code {
+
+    padding: 14px 0;
+
+    border-radius: 12px;
+
+    font-size: 34px;
+
+    font-weight: 700;
+
+    letter-spacing: 10px;
+
+    color: #FFD54A;
+
+    background: rgba(255, 213, 74, .10);
+
+    border: 1px dashed rgba(255, 213, 74, .40);
+
+}
+
+.otp-popup-note {
+
+    margin: 16px 0 4px;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+
+    color: rgba(255, 255, 255, .85);
+
+}
+
+.otp-popup-expiry {
+
+    margin: 0;
+
+    font-size: 12px;
+
+    color: rgba(255, 255, 255, .55);
+
+}
+
+.otp-popup .primary-button {
+
+    margin-top: 18px;
+
+}
+
+.otp-show-again {
+
+    display: block;
+
+    margin: 12px auto 0;
+
+    padding: 4px 8px;
+
+    border: none;
+
+    background: none;
+
+    font-size: 13px;
+
+    color: #FFD54A;
+
+    text-decoration: underline;
+
+    cursor: pointer;
+
+}
+
+@keyframes otpPopupFade {
+
+    from { opacity: 0; }
+
+    to { opacity: 1; }
+
+}
+
+@keyframes otpPopupRise {
+
+    from { opacity: 0; transform: translateY(16px) scale(.97); }
+
+    to { opacity: 1; transform: none; }
+
+}
