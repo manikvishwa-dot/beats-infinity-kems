@@ -12,6 +12,7 @@ import {
 import "./SingerLogin.css";
 
 import PasswordToggleInput from "../components/common/PasswordToggleInput";
+import OtpPopup from "../components/common/OtpPopup";
 
 import logo from "../assets/logo/beats-infinity-logo.png";
 
@@ -2181,61 +2182,21 @@ const SingerLogin = () => {
                 {showOtpPopup && generatedOtp &&
                     (screen === "registration-otp" || screen === "forgot-pin-otp") && (
 
-                    <div
-                        className="otp-popup-overlay"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="otp-popup-title"
-                    >
+                    <OtpPopup
+                        otp={generatedOtp}
+                        purpose={
+                            screen === "registration-otp"
+                                ? "registration"
+                                : "reset"
+                        }
+                        onUse={() => {
 
-                        <div className="otp-popup">
+                            setOtp(generatedOtp);
 
-                            <div className="otp-popup-icon">
-                                🔐
-                            </div>
+                            setShowOtpPopup(false);
 
-                            <h3 id="otp-popup-title">
-                                {screen === "registration-otp"
-                                    ? "Your OTP for User Creation"
-                                    : "Your OTP for PIN Reset"
-                                }
-                            </h3>
-
-                            <div className="otp-popup-code">
-                                {generatedOtp}
-                            </div>
-
-                            <p className="otp-popup-note">
-                                {screen === "registration-otp"
-                                    ? "After verifying, please create a 4-digit numeric PIN for further logins."
-                                    : "After verifying, please create a new 4-digit numeric PIN for further logins."
-                                }
-                            </p>
-
-                            <p className="otp-popup-expiry">
-                                Valid for 5 minutes.
-                            </p>
-
-                            <button
-                                type="button"
-                                className="primary-button"
-                                autoFocus
-                                onClick={() => {
-
-                                    setOtp(generatedOtp);
-
-                                    setShowOtpPopup(false);
-
-                                }}
-                            >
-
-                                USE THIS OTP
-
-                            </button>
-
-                        </div>
-
-                    </div>
+                        }}
+                    />
 
                 )}
 

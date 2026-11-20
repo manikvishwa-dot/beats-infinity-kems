@@ -19,6 +19,7 @@ import {
 import "./SingerLogin.css";
 
 import PasswordToggleInput from "../components/common/PasswordToggleInput";
+import OtpPopup from "../components/common/OtpPopup";
 
 import logo from "../assets/logo/beats-infinity-logo.png";
 
@@ -111,6 +112,10 @@ const SingerRegistration = () => {
 
     const [otpExpiresAt, setOtpExpiresAt] =
         useState(null);
+
+    // OTP popup - opens every time a new OTP is generated
+    const [showOtpPopup, setShowOtpPopup] =
+        useState(false);
 
 
     // ======================================================
@@ -485,6 +490,8 @@ const SingerRegistration = () => {
                     )
                 );
 
+                setShowOtpPopup(true);
+
             }
 
 
@@ -784,6 +791,8 @@ const SingerRegistration = () => {
                         result.otp
                     )
                 );
+
+                setShowOtpPopup(true);
 
             }
 
@@ -1627,15 +1636,34 @@ const SingerRegistration = () => {
             </div>
 
 
-            {generatedOtp && (
+            {generatedOtp && !showOtpPopup && (
 
-                <div className="otp-development">
+                <button
+                    type="button"
+                    className="otp-show-again"
+                    onClick={() => setShowOtpPopup(true)}
+                >
 
-                    <strong>
-                        Your OTP for User Creation is : {generatedOtp}
-                    </strong>
+                    Show OTP again
 
-                </div>
+                </button>
+
+            )}
+
+
+            {generatedOtp && showOtpPopup && (
+
+                <OtpPopup
+                    otp={generatedOtp}
+                    purpose="registration"
+                    onUse={() => {
+
+                        setOtp(generatedOtp);
+
+                        setShowOtpPopup(false);
+
+                    }}
+                />
 
             )}
 
