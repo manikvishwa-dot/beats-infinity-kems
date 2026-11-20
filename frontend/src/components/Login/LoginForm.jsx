@@ -1,6 +1,6 @@
 import "./Login.css";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import {
@@ -9,8 +9,24 @@ import {
 } from "../../services/singerService";
 
 import {
+    clearDevicePasskey,
+    dismissPrompt,
+    enablePasskey,
+    getDevicePasskey,
+    isPasskeySupported,
+    isUserCancel,
+    loginWithPasskey,
+    prepareEnable,
+    prepareLogin,
+    wasPromptDismissed
+} from "../../services/passkeyService";
+
+import toast from "react-hot-toast";
+
+import {
     FaMobileAlt,
-    FaLock
+    FaLock,
+    FaFingerprint
 } from "react-icons/fa";
 
 import PasswordToggleInput from "../common/PasswordToggleInput";
@@ -36,6 +52,227 @@ function LoginForm() {
     const [error, setError] = useState("");
 
     const [success, setSuccess] = useState("");
+
+
+    // ==========================================================
+    // FINGERPRINT / FACE ID
+    // ==========================================================
+
+    // Device has biometric login enabled AND the phone supports it
+    const [devicePasskey, setDevicePasskey] = useState(null);
+
+    // PIN login succeeded; waiting on the "Enable?" prompt
+    const [pendingLogin, setPendingLogin] = useState(null);
+
+    const [passkeyBusy, setPasskeyBusy] = useState(false);
+
+    // Login options fetched ahead of the tap (see passkeyService)
+    const preparedLoginRef = useRef(null);
+
+    const prefetchLoginOptions = () => {
+
+        prepareLogin()
+            .then((prepared) => {
+                preparedLoginRef.current = prepared;
+            })
+            .catch(() => {
+                preparedLoginRef.current = null;
+            });
+
+    };
+
+    useEffect(() => {
+
+        const flag = getDevicePasskey();
+
+        if (!flag) {
+            return;
+        }
+
+        let cancelled = false;
+
+        isPasskeySupported().then((supported) => {
+
+            if (!cancelled && supported) {
+                setDevicePasskey(flag);
+                prefetchLoginOptions();
+            }
+
+        });
+
+        return () => {
+            cancelled = true;
+        };
+
+    }, []);
+
+
+    // ==========================================================
+    // SAVE LOGIN + GO TO DASHBOARD
+    //
+    // Shared by PIN login and Fingerprint / Face ID login - both
+    // return the same { success, singer } response.
+    // ==========================================================
+
+    const completeLogin = (loginResult) => {
+
+        localStorage.setItem(
+            "beatsInfinityLogin",
+            JSON.stringify(loginResult)
+        );
+
+        const singer = loginResult.singer;
+
+        if (singer) {
+
+            localStorage.setItem(
+                "beatsInfinitySinger",
+                JSON.stringify(singer)
+            );
+
+        }
+
+        const singerId =
+            singer?.id ||
+            singer?.singer_id ||
+            loginResult?.singer_id ||
+            loginResult?.id;
+
+        if (singerId) {
+
+            localStorage.setItem(
+                "beatsInfinitySingerId",
+                String(singerId)
+            );
+
+        }
+
+        navigate(
+            "/singer-dashboard",
+            { replace: true }
+        );
+
+    };
+
+
+    // ==========================================================
+    // LOGIN WITH FINGERPRINT / FACE ID
+    // ==========================================================
+
+    const handlePasskeyLogin = async () => {
+
+        setError("");
+        setSuccess("");
+        setPasskeyBusy(true);
+
+        try {
+
+            const prepared = preparedLoginRef.current;
+
+            // Each challenge is single-use
+            preparedLoginRef.current = null;
+
+            const loginResult = await loginWithPasskey(prepared);
+
+            setSuccess("Login successful.");
+
+            completeLogin(loginResult);
+
+        }
+        catch (err) {
+
+            if (isUserCancel(err)) {
+                return;
+            }
+
+            // Passkey removed on the server - stop offering it here
+            if (/removed/i.test(err?.message || "")) {
+                clearDevicePasskey();
+                setDevicePasskey(null);
+            }
+
+            setError(
+                err?.message ||
+                "Fingerprint / Face ID login failed. Please use your PIN."
+            );
+
+        }
+        finally {
+
+            setPasskeyBusy(false);
+
+            // Ready for another attempt
+            if (!preparedLoginRef.current) {
+                prefetchLoginOptions();
+            }
+
+        }
+
+    };
+
+
+    // ==========================================================
+    // ENABLE PROMPT - YES / NOT NOW
+    // ==========================================================
+
+    const handleEnablePasskey = async () => {
+
+        if (!pendingLogin) {
+            return;
+        }
+
+        setPasskeyBusy(true);
+
+        try {
+
+            await enablePasskey({
+                mobile: pendingLogin.mobile,
+                pin: pendingLogin.pin,
+                singerName: pendingLogin.result.singer?.singer_name,
+                prepared: pendingLogin.prepared
+            });
+
+            toast.success("Fingerprint / Face ID login enabled.");
+
+        }
+        catch (err) {
+
+            if (isUserCancel(err)) {
+
+                // Cancelled the phone's prompt = "Not now"
+                dismissPrompt(pendingLogin.mobile);
+
+            }
+            else {
+
+                toast.error(
+                    err?.message ||
+                    "Couldn't enable Fingerprint / Face ID. You can keep using your PIN."
+                );
+            }
+
+        }
+        finally {
+
+            setPasskeyBusy(false);
+
+            completeLogin(pendingLogin.result);
+
+        }
+
+    };
+
+    const handleSkipPasskey = () => {
+
+        if (!pendingLogin) {
+            return;
+        }
+
+        dismissPrompt(pendingLogin.mobile);
+
+        completeLogin(pendingLogin.result);
+
+    };
 
 
     // ==========================================================
@@ -188,72 +425,44 @@ function LoginForm() {
 
 
                 // ------------------------------------------------
-                // SAVE LOGIN RESPONSE
+                // OFFER FINGERPRINT / FACE ID ON THIS DEVICE
+                //
+                // Only once per mobile (unless enabled), and only
+                // if the phone actually supports it.
                 // ------------------------------------------------
 
-                localStorage.setItem(
-                    "beatsInfinityLogin",
-                    JSON.stringify(
-                        loginResult
-                    )
-                );
-
-
-                // ------------------------------------------------
-                // SAVE SINGER
-                // ------------------------------------------------
+                const deviceFlag = getDevicePasskey();
 
                 if (
-                    loginResult.singer
+                    deviceFlag?.mobile !== mobile &&
+                    !wasPromptDismissed(mobile) &&
+                    await isPasskeySupported()
                 ) {
 
-                    localStorage.setItem(
-                        "beatsInfinitySinger",
-                        JSON.stringify(
-                            loginResult.singer
-                        )
-                    );
+                    // Fetch setup options now so the tap on
+                    // "Yes, enable" opens the phone's prompt
+                    // directly (needed on iPhone / Safari).
+                    let prepared = null;
+
+                    try {
+                        prepared = await prepareEnable({ mobile, pin });
+                    } catch {
+                        prepared = null;
+                    }
+
+                    setPendingLogin({
+                        result: loginResult,
+                        mobile,
+                        pin,
+                        prepared
+                    });
+
+                    return;
 
                 }
 
 
-                // ------------------------------------------------
-                // FIND SINGER ID
-                // ------------------------------------------------
-
-                const singer =
-                    loginResult.singer;
-
-
-                const singerId =
-                    singer?.id ||
-                    singer?.singer_id ||
-                    loginResult?.singer_id ||
-                    loginResult?.id;
-
-
-                // ------------------------------------------------
-                // SAVE SINGER ID
-                // ------------------------------------------------
-
-                if (singerId) {
-
-                    localStorage.setItem(
-                        "beatsInfinitySingerId",
-                        String(singerId)
-                    );
-
-                }
-
-
-                // ------------------------------------------------
-                // GO TO DASHBOARD
-                // ------------------------------------------------
-
-                navigate(
-                    "/singer-dashboard",
-                    { replace: true }
-                );
+                completeLogin(loginResult);
 
                 return;
 
@@ -528,6 +737,34 @@ function LoginForm() {
 
 
                     {/* ==================================================
+                        LOGIN WITH FINGERPRINT / FACE ID
+                        Only on devices where it was enabled.
+                    ================================================== */}
+
+                    {devicePasskey && (
+
+                        <button
+                            type="button"
+                            className="passkey-login-btn"
+                            onClick={handlePasskeyLogin}
+                            disabled={passkeyBusy || loading}
+                        >
+
+                            <FaFingerprint />
+
+                            {passkeyBusy
+                                ? "Waiting for Fingerprint / Face ID..."
+                                : devicePasskey.name
+                                    ? `Login as ${devicePasskey.name} with Fingerprint / Face ID`
+                                    : "Login with Fingerprint / Face ID"
+                            }
+
+                        </button>
+
+                    )}
+
+
+                    {/* ==================================================
                         FORGOT PIN
                     ================================================== */}
 
@@ -619,6 +856,68 @@ function LoginForm() {
                 </div>
 
             </div>
+
+
+            {/* ==================================================
+                ENABLE FINGERPRINT / FACE ID PROMPT
+                Shown once after a PIN login on a supported phone.
+            ================================================== */}
+
+            {pendingLogin && (
+
+                <div
+                    className="passkey-prompt-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="passkey-prompt-title"
+                >
+
+                    <div className="passkey-prompt">
+
+                        <div className="passkey-prompt-icon">
+                            <FaFingerprint />
+                        </div>
+
+                        <h3 id="passkey-prompt-title">
+                            Enable Fingerprint / Face ID?
+                        </h3>
+
+                        <p>
+                            Log in faster next time with your fingerprint
+                            or face on this phone. Your PIN will still work.
+                        </p>
+
+                        <button
+                            type="button"
+                            className="login-btn"
+                            onClick={handleEnablePasskey}
+                            disabled={passkeyBusy}
+                            autoFocus
+                        >
+
+                            {passkeyBusy
+                                ? "Setting up..."
+                                : "YES, ENABLE"
+                            }
+
+                        </button>
+
+                        <button
+                            type="button"
+                            className="passkey-prompt-skip"
+                            onClick={handleSkipPasskey}
+                            disabled={passkeyBusy}
+                        >
+
+                            Not now
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            )}
 
         </section>
 

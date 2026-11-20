@@ -20,6 +20,7 @@
     "@fontsource/poppins": "^5.3.0",
     "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
+    "@simplewebauthn/browser": "^13.3.0",
     "axios": "^1.19.0",
     "dayjs": "^1.11.21",
     "exceljs": "^4.4.0",

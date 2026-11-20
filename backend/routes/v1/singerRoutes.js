@@ -153,6 +153,28 @@ router.post(
 
 
 // ==========================================================
+// PASSKEYS - FINGERPRINT / FACE ID LOGIN
+//
+// POST /api/v1/singers/passkeys/register/options
+// POST /api/v1/singers/passkeys/register/verify
+// POST /api/v1/singers/passkeys/login/options
+// POST /api/v1/singers/passkeys/login/verify
+// ==========================================================
+
+const {
+    getRegistrationOptions,
+    verifyRegistration,
+    getLoginOptions,
+    verifyLogin
+} = require("../../controllers/v1/passkeyController");
+
+router.post("/passkeys/register/options", getRegistrationOptions);
+router.post("/passkeys/register/verify", verifyRegistration);
+router.post("/passkeys/login/options", getLoginOptions);
+router.post("/passkeys/login/verify", verifyLogin);
+
+
+// ==========================================================
 // UPDATE SINGER PROFILE
 //
 // PUT
