@@ -57,9 +57,18 @@ export const isUserCancel = (error) =>
 
 export const isPasskeySupported = async () => {
 
+    // Some browsers never answer platformAuthenticatorIsAvailable();
+    // treat no answer within 3 seconds as "not available".
+    const timeout = new Promise((resolve) => {
+        setTimeout(() => resolve(false), 3000);
+    });
+
     try {
         return browserSupportsWebAuthn() &&
-            await platformAuthenticatorIsAvailable();
+            await Promise.race([
+                platformAuthenticatorIsAvailable(),
+                timeout
+            ]);
     } catch {
         return false;
     }

@@ -66,6 +66,9 @@ function LoginForm() {
 
     const [passkeyBusy, setPasskeyBusy] = useState(false);
 
+    // null = still checking, true / false = can this device do it
+    const [passkeySupport, setPasskeySupport] = useState(null);
+
     // Login options fetched ahead of the tap (see passkeyService)
     const preparedLoginRef = useRef(null);
 
@@ -83,17 +86,19 @@ function LoginForm() {
 
     useEffect(() => {
 
-        const flag = getDevicePasskey();
-
-        if (!flag) {
-            return;
-        }
-
         let cancelled = false;
 
         isPasskeySupported().then((supported) => {
 
-            if (!cancelled && supported) {
+            if (cancelled) {
+                return;
+            }
+
+            setPasskeySupport(supported);
+
+            const flag = getDevicePasskey();
+
+            if (supported && flag) {
                 setDevicePasskey(flag);
                 prefetchLoginOptions();
             }
@@ -316,12 +321,50 @@ function LoginForm() {
 
 
     // ==========================================================
+    // FINGERPRINT / FACE ID BUTTON
+    //
+    // Set up on this device  -> log in with it.
+    // Not set up yet         -> PIN login, then the enable prompt.
+    // ==========================================================
+
+    const handleFingerprintButton = () => {
+
+        setError("");
+        setSuccess("");
+
+        if (devicePasskey) {
+
+            handlePasskeyLogin();
+
+            return;
+
+        }
+
+        if (mobile.length !== 10 || pin.length !== 4) {
+
+            setError(
+                "To set up Fingerprint / Face ID on this device, enter your mobile number and PIN, then tap the fingerprint button."
+            );
+
+            return;
+
+        }
+
+        handleLogin(null, { forcePasskeySetup: true });
+
+    };
+
+
+    // ==========================================================
     // LOGIN
     // ==========================================================
 
-    const handleLogin = async (event) => {
+    // options.forcePasskeySetup - from the fingerprint button on a
+    // device where it isn't set up yet: after the PIN login, always
+    // offer setup, even if "Not now" was tapped before.
+    const handleLogin = async (event, options = {}) => {
 
-        event.preventDefault();
+        event?.preventDefault();
 
         setError("");
 
@@ -433,9 +476,15 @@ function LoginForm() {
 
                 const deviceFlag = getDevicePasskey();
 
+                const shouldOffer =
+                    options.forcePasskeySetup ||
+                    (
+                        deviceFlag?.mobile !== mobile &&
+                        !wasPromptDismissed(mobile)
+                    );
+
                 if (
-                    deviceFlag?.mobile !== mobile &&
-                    !wasPromptDismissed(mobile) &&
+                    shouldOffer &&
                     await isPasskeySupported()
                 ) {
 
@@ -741,25 +790,52 @@ function LoginForm() {
                         Only on devices where it was enabled.
                     ================================================== */}
 
-                    {devicePasskey && (
+                    {passkeySupport !== null && (
 
-                        <button
-                            type="button"
-                            className="passkey-login-btn"
-                            onClick={handlePasskeyLogin}
-                            disabled={passkeyBusy || loading}
-                        >
+                        <div className="passkey-login">
 
-                            <FaFingerprint />
+                            <button
+                                type="button"
+                                className="passkey-login-btn"
+                                onClick={handleFingerprintButton}
+                                disabled={
+                                    !passkeySupport ||
+                                    passkeyBusy ||
+                                    loading
+                                }
+                            >
 
-                            {passkeyBusy
-                                ? "Waiting for Fingerprint / Face ID..."
-                                : devicePasskey.name
-                                    ? `Login as ${devicePasskey.name} with Fingerprint / Face ID`
-                                    : "Login with Fingerprint / Face ID"
-                            }
+                                <FaFingerprint />
 
-                        </button>
+                                {passkeyBusy
+                                    ? "Waiting for Fingerprint / Face ID..."
+                                    : devicePasskey?.name
+                                        ? `Login as ${devicePasskey.name} with Fingerprint / Face ID`
+                                        : "Login with Fingerprint / Face ID"
+                                }
+
+                            </button>
+
+                            {!passkeySupport && (
+
+                                <p className="passkey-login-hint">
+                                    Not available on this device or browser.
+                                    Please log in with your PIN.
+                                </p>
+
+                            )}
+
+                            {passkeySupport && !devicePasskey && (
+
+                                <p className="passkey-login-hint">
+                                    First time on this device? Enter your mobile
+                                    number and PIN, then tap the button above to
+                                    set it up.
+                                </p>
+
+                            )}
+
+                        </div>
 
                     )}
 
