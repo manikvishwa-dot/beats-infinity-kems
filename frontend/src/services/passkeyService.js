@@ -55,25 +55,56 @@ export const isUserCancel = (error) =>
 // DEVICE SUPPORT
 // ----------------------------------------------------------
 
-export const isPasskeySupported = async () => {
+// Returns { supported, code }.
+//
+// supported - the browser has the WebAuthn (passkey) API at all.
+//             The phone's own Face ID / fingerprint prompt has the
+//             final say, so the button is usable whenever this is
+//             true.
+// code      - what the platform-authenticator check said, shown
+//             on the login page to diagnose "not available":
+//               ok          platform authenticator available
+//               no-webauthn browser has no passkey API (in-app
+//                           browsers, very old browsers)
+//               no-platform browser says no Face ID / fingerprint
+//               timeout     browser never answered (3s)
+//               error       the check threw
+export const checkPasskeySupport = async () => {
+
+    if (!browserSupportsWebAuthn()) {
+        return { supported: false, code: "no-webauthn" };
+    }
 
     // Some browsers never answer platformAuthenticatorIsAvailable();
-    // treat no answer within 3 seconds as "not available".
+    // treat no answer within 3 seconds as "timeout".
     const timeout = new Promise((resolve) => {
-        setTimeout(() => resolve(false), 3000);
+        setTimeout(() => resolve("timeout"), 3000);
     });
 
     try {
-        return browserSupportsWebAuthn() &&
-            await Promise.race([
-                platformAuthenticatorIsAvailable(),
-                timeout
-            ]);
+
+        const answer = await Promise.race([
+            platformAuthenticatorIsAvailable(),
+            timeout
+        ]);
+
+        if (answer === "timeout") {
+            return { supported: true, code: "timeout" };
+        }
+
+        return { supported: true, code: answer ? "ok" : "no-platform" };
+
     } catch {
-        return false;
+
+        return { supported: true, code: "error" };
+
     }
 
 };
+
+export const isPasskeySupported = async () =>
+    (await checkPasskeySupport()).supported;
+
 
 
 // ----------------------------------------------------------

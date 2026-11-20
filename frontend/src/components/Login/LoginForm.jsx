@@ -13,6 +13,7 @@ import {
     dismissPrompt,
     enablePasskey,
     getDevicePasskey,
+    checkPasskeySupport,
     isPasskeySupported,
     isUserCancel,
     loginWithPasskey,
@@ -69,6 +70,9 @@ function LoginForm() {
     // null = still checking, true / false = can this device do it
     const [passkeySupport, setPasskeySupport] = useState(null);
 
+    // Diagnostic code from the support check (see passkeyService)
+    const [passkeyCode, setPasskeyCode] = useState("");
+
     // Login options fetched ahead of the tap (see passkeyService)
     const preparedLoginRef = useRef(null);
 
@@ -88,13 +92,15 @@ function LoginForm() {
 
         let cancelled = false;
 
-        isPasskeySupported().then((supported) => {
+        checkPasskeySupport().then(({ supported, code }) => {
 
             if (cancelled) {
                 return;
             }
 
             setPasskeySupport(supported);
+
+            setPasskeyCode(code);
 
             const flag = getDevicePasskey();
 
@@ -821,6 +827,9 @@ function LoginForm() {
                                 <p className="passkey-login-hint">
                                     Not available on this device or browser.
                                     Please log in with your PIN.
+                                    <span className="passkey-login-code">
+                                        ({passkeyCode})
+                                    </span>
                                 </p>
 
                             )}
@@ -831,6 +840,11 @@ function LoginForm() {
                                     First time on this device? Enter your mobile
                                     number and PIN, then tap the button above to
                                     set it up.
+                                    {passkeyCode && passkeyCode !== "ok" && (
+                                        <span className="passkey-login-code">
+                                            ({passkeyCode})
+                                        </span>
+                                    )}
                                 </p>
 
                             )}

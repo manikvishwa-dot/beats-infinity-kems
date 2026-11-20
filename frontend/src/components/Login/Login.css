@@ -509,3 +509,13 @@
     color: #999999;
 
 }
+
+.passkey-login-code {
+
+    margin-left: 4px;
+
+    font-family: monospace;
+
+    color: #777777;
+
+}
