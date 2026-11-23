@@ -16,13 +16,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import ASSETS from "../config/assets";
 import { getActiveEvent } from "../services/eventService";
 import { getJourneyEvents } from "../services/journeyService";
 import statistics from "../components/Statistics/statisticsData";
 import whyJoin from "../components/WhyJoin/whyJoinData";
 
 import featuredPoster from "../assets/featured/cinematic-monarch.jpg";
+import logoMark from "../assets/branding/logo-mark.png";
 
 import "./Landing.css";
 
@@ -207,7 +207,7 @@ function Landing() {
 
             <header className="bil-nav">
                 <a href="#top" className="bil-brand" onClick={closeMenu}>
-                    <img src={ASSETS.logo} alt="" />
+                    <img src={logoMark} alt="" />
                     <span>BEATS <em>∞</em> INFINITY</span>
                 </a>
 
@@ -217,10 +217,11 @@ function Landing() {
                     <a href="#how" onClick={closeMenu}>How It Works</a>
                     <a href="#crew" onClick={closeMenu}>Crew</a>
                     <Link to="/login" className="bil-link-login">Singer Login</Link>
+                    <Link to="/singer-registration" className="bil-link-join">Join Now</Link>
                 </nav>
 
                 <div className="bil-nav-actions">
-                    <Link to="/singer-registration" className="bil-btn bil-btn-solid bil-btn-sm">Join Now</Link>
+                    <Link to="/singer-registration" className="bil-btn bil-btn-solid bil-btn-sm bil-nav-join">Join Now</Link>
                     <button
                         type="button"
                         className="bil-burger"

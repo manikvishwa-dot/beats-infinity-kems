@@ -105,9 +105,9 @@
 }
 
 .bil-btn-sm {
-    height: 40px;
-    padding: 0 18px;
-    font-size: 12px;
+    height: 46px;
+    padding: 0 22px;
+    font-size: 13px;
 }
 
 .bil-btn-block {
@@ -125,7 +125,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 14px clamp(16px, 4vw, 56px);
+    padding: 18px clamp(16px, 4vw, 56px);
     background: rgba(7, 6, 11, 0.72);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
@@ -135,17 +135,25 @@
 .bil-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
     font-family: var(--bil-display);
-    font-size: 20px;
+    font-size: 30px;
     letter-spacing: 0.06em;
     white-space: nowrap;
 }
 
 .bil-brand img {
-    width: 38px;
-    height: 38px;
-    object-fit: contain;
+    height: 54px;
+    width: auto;
+}
+
+/* Join Now inside the menu - phones only */
+.bil-links .bil-link-join {
+    display: none;
+}
+
+.bil-btn {
+    white-space: nowrap;
 }
 
 .bil-brand em {
@@ -156,8 +164,8 @@
 .bil-links {
     display: flex;
     align-items: center;
-    gap: 28px;
-    font-size: 14px;
+    gap: 34px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--bil-muted);
 }
@@ -174,8 +182,8 @@
 
 .bil-burger {
     display: none;
-    width: 40px;
-    height: 40px;
+    width: 46px;
+    height: 46px;
     border-radius: 12px;
     border: 1px solid var(--bil-line);
     background: transparent;
@@ -200,9 +208,10 @@
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
-    align-items: center;
+    /* headline starts at the top, not centred against the poster */
+    align-items: start;
     gap: clamp(28px, 5vw, 72px);
-    padding: clamp(48px, 8vw, 110px) clamp(16px, 4vw, 56px) clamp(56px, 7vw, 96px);
+    padding: clamp(28px, 4vw, 56px) clamp(16px, 4vw, 56px) clamp(56px, 7vw, 96px);
     isolation: isolate;
     overflow: hidden;
 }
@@ -247,6 +256,10 @@
 @keyframes bil-float {
     0%, 100% { transform: translate(0, 0) scale(1); }
     50% { transform: translate(40px, -30px) scale(1.08); }
+}
+
+.bil-hero-inner {
+    padding-top: 0;
 }
 
 .bil-kicker {
@@ -877,6 +890,23 @@
 
 /* ---------------- responsive ---------------- */
 
+@media (max-width: 1100px) {
+
+    .bil-links {
+        gap: 22px;
+        font-size: 15px;
+    }
+
+    .bil-brand {
+        font-size: 24px;
+    }
+
+    .bil-brand img {
+        height: 44px;
+    }
+
+}
+
 @media (max-width: 1024px) {
 
     .bil-steps,
@@ -946,8 +976,38 @@
 
 @media (max-width: 560px) {
 
+    .bil-nav {
+        padding: 12px 14px;
+        gap: 8px;
+    }
+
+    .bil-brand {
+        gap: 8px;
+    }
+
+    .bil-brand img {
+        height: 40px;
+    }
+
     .bil-brand span {
-        font-size: 16px;
+        font-size: 23px;
+    }
+
+    /* no room on a phone - Join Now moves into the menu
+       (the big hero button is right below anyway) */
+    .bil-nav .bil-nav-join {
+        display: none;
+    }
+
+    .bil-links .bil-link-join {
+        display: block;
+        color: var(--bil-gold);
+        font-weight: 800;
+    }
+
+    .bil-burger {
+        width: 40px;
+        height: 40px;
     }
 
     .bil-steps,
