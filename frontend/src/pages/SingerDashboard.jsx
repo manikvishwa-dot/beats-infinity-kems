@@ -11,6 +11,9 @@ import PairingStatus
 import MySongs
     from "../components/dashboard/MySongs/MySongs";
 
+import DobPrompt
+    from "../components/dashboard/DobPrompt/DobPrompt";
+
 
 function SingerDashboard() {
 
@@ -78,6 +81,8 @@ function SingerDashboard() {
     return (
 
         <main className="singer-dashboard">
+
+            <DobPrompt />
 
             <DashboardWelcome />
 

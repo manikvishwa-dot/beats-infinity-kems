@@ -402,6 +402,28 @@ const updateSingerProfile = async (
 
 
 // ==========================================================
+// CONFIRM DATE OF BIRTH (one-time, needs the PIN)
+//
+// POST /api/v1/singers/:id/confirm-dob
+// ==========================================================
+
+const confirmDob = async (singerId, pin, dateOfBirth) => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/${encodeURIComponent(singerId)}/confirm-dob`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin, date_of_birth: dateOfBirth })
+        }
+    );
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
 // EXPORT
 // ==========================================================
 
@@ -420,6 +442,8 @@ export {
     resetPin,
 
     updateSingerProfile,
+
+    confirmDob,
 
     logout
 

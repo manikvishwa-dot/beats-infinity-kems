@@ -2183,6 +2183,129 @@ const resetPin = async (req, res) => {
 //
 // ==========================================================
 
+// ==========================================================
+// CONFIRM DATE OF BIRTH
+//
+// POST /api/v1/singers/:id/confirm-dob
+// Body: { pin: "1234", date_of_birth: "1990-05-21" }
+//
+// One-time prompt for singers imported with the placeholder
+// 2000-01-01. Needs the singer's PIN, and only replaces the
+// placeholder - a real date can't be overwritten here.
+// Wrong PINs share the 5-per-hour limit with date guesses.
+// ==========================================================
+
+const confirmDob = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+        const pin = String(req.body.pin || "").trim();
+        const dob = normalizeDob(req.body.date_of_birth);
+
+        if (!id || !isValidPin(pin)) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter your 4-digit PIN."
+            });
+        }
+
+        const year = Number(dob.slice(0, 4));
+
+        if (
+            !dob ||
+            Number.isNaN(new Date(dob).getTime()) ||
+            year < 1930 ||
+            new Date(dob).getTime() > Date.now()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid date of birth."
+            });
+        }
+
+        const { data: singer, error } = await supabase
+            .from("singers")
+            .select("id,mobile_number,date_of_birth,pin_hash")
+            .eq("id", id)
+            .maybeSingle();
+
+        if (error || !singer) {
+            return res.status(404).json({
+                success: false,
+                message: "Singer not found."
+            });
+        }
+
+        if (recentWrongDobTries(singer.mobile_number).length >= MAX_DOB_TRIES) {
+            return res.status(429).json({
+                success: false,
+                message: "Too many wrong PINs. Please try again in an hour."
+            });
+        }
+
+        const pinOk =
+            singer.pin_hash &&
+            await bcrypt.compare(pin, singer.pin_hash);
+
+        if (!pinOk) {
+
+            const tries = recentWrongDobTries(singer.mobile_number);
+            tries.push(Date.now());
+            wrongDobTries.set(singer.mobile_number, tries);
+
+            return res.status(403).json({
+                success: false,
+                message: "Wrong PIN. Please try again."
+            });
+
+        }
+
+        if (normalizeDob(singer.date_of_birth) !== PLACEHOLDER_DOB) {
+            return res.status(409).json({
+                success: false,
+                message: "Your date of birth is already saved. Contact Beats Infinity to change it."
+            });
+        }
+
+        const { data: updated, error: updateError } = await supabase
+            .from("singers")
+            .update({
+                date_of_birth: dob,
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", singer.id)
+            .eq("date_of_birth", PLACEHOLDER_DOB)
+            .select("id,mobile_number,date_of_birth,singer_name,gender,created_at,updated_at")
+            .maybeSingle();
+
+        if (updateError || !updated) {
+            return res.status(500).json({
+                success: false,
+                message: "Unable to save your date of birth."
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Date of birth saved.",
+            singer: updated
+        });
+
+    } catch (error) {
+
+        console.error("❌ Confirm DOB:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to save your date of birth."
+        });
+
+    }
+
+};
+
+
 const updateSingerProfile = async (req, res) => {
 
     try {
@@ -2214,14 +2337,13 @@ const updateSingerProfile = async (req, res) => {
         // ALLOWED FIELDS
         // --------------------------------------------------
 
+        // date_of_birth is NOT editable here - this route has
+        // no login check, and the date protects Forgot PIN.
+        // Singers confirm it via POST /:id/confirm-dob (needs
+        // their PIN); admins edit it in Singer Management.
         const allowedFields = [
-
             "singer_name",
-
-            "gender",
-
-            "date_of_birth"
-
+            "gender"
         ];
 
 
@@ -2377,6 +2499,8 @@ module.exports = {
     loginWithPin,
 
     resetPin,
+
+    confirmDob,
 
     updateSingerProfile
 

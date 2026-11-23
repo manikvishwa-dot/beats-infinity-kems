@@ -1,0 +1,24 @@
+.dob-prompt {
+    text-align: left;
+    gap: 6px;
+}
+
+.dob-prompt h3,
+.dob-prompt .otp-popup-icon,
+.dob-prompt .otp-popup-note {
+    text-align: center;
+}
+
+.dob-prompt label {
+    margin-top: 8px;
+    font-size: 14px;
+    opacity: 0.85;
+}
+
+.dob-prompt input[type="date"] {
+    color-scheme: dark;
+}
+
+.dob-prompt .primary-button {
+    margin-top: 14px;
+}

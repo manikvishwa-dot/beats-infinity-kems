@@ -21,7 +21,9 @@ const {
 
     resetPin,
 
-    updateSingerProfile
+    updateSingerProfile,
+
+    confirmDob
 
 } = require("../../controllers/v1/singerController");
 
@@ -184,6 +186,18 @@ router.post("/passkeys/login/verify", verifyLogin);
 router.put(
     "/:id",
     updateSingerProfile
+);
+
+
+// ==========================================================
+// CONFIRM DATE OF BIRTH (needs the singer's PIN)
+//
+// POST /api/v1/singers/:id/confirm-dob
+// ==========================================================
+
+router.post(
+    "/:id/confirm-dob",
+    confirmDob
 );
 
 
