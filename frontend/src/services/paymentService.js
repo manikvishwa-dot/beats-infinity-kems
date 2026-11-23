@@ -33,9 +33,12 @@ const handleResponse = async (response) => {
 // CREATE / NOTIFY PAYMENT
 // ==========================================================
 
+// selectedSongIds - the duet songs (sent to pairing)
+// soloSongId      - optional solo (male singers only), or null
 const createPayment = async (
     singerId,
-    selectedSongIds
+    selectedSongIds,
+    soloSongId = null
 ) => {
     const response = await fetch(
         API_BASE_URL,
@@ -46,7 +49,8 @@ const createPayment = async (
             },
             body: JSON.stringify({
                 singer_id: singerId,
-                selected_song_ids: selectedSongIds
+                selected_song_ids: selectedSongIds,
+                solo_song_id: soloSongId
             })
         }
     );

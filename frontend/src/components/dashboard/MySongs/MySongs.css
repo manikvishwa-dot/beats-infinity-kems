@@ -457,3 +457,245 @@
     font-weight: 600;
 
 }
+
+
+/* ==========================================================
+   SONG PICKER - song name + movie + duet/solo
+   ========================================================== */
+
+.song-picker {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+}
+
+.song-picker-label {
+
+    margin-top: 8px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #cccccc;
+
+}
+
+.song-picker-hint {
+
+    font-weight: 400;
+
+    color: #888888;
+
+}
+
+.song-picker-hint.ok {
+
+    color: #37E977;
+
+}
+
+.song-picker-field {
+
+    position: relative;
+
+}
+
+.song-picker-suggestions {
+
+    position: absolute;
+
+    top: calc(100% + 4px);
+
+    left: 0;
+
+    right: 0;
+
+    z-index: 20;
+
+    margin: 0;
+
+    padding: 6px;
+
+    list-style: none;
+
+    max-height: 320px;
+
+    overflow-y: auto;
+
+    background: #1f1f1f;
+
+    border: 1px solid rgba(255,255,255,.12);
+
+    border-radius: 12px;
+
+    box-shadow: 0 12px 30px rgba(0,0,0,.5);
+
+}
+
+.song-picker-suggestion {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+
+    padding: 10px 12px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    color: #ffffff;
+
+}
+
+.song-picker-suggestion:hover,
+.song-picker-suggestion.active {
+
+    background: rgba(29,185,84,.18);
+
+}
+
+.song-picker-suggestion.muted {
+
+    color: #888888;
+
+    cursor: default;
+
+}
+
+.song-picker-suggestion-title {
+
+    font-size: 15px;
+
+}
+
+.song-picker-suggestion-movie {
+
+    font-size: 12.5px;
+
+    color: #9a9a9a;
+
+}
+
+.song-picker-movie-options {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    gap: 6px;
+
+    font-size: 12.5px;
+
+    color: #888888;
+
+}
+
+.song-picker-chip {
+
+    padding: 4px 10px;
+
+    border-radius: 999px;
+
+    border: 1px solid rgba(255,255,255,.18);
+
+    background: transparent;
+
+    color: #dddddd;
+
+    font-size: 12.5px;
+
+    cursor: pointer;
+
+}
+
+.song-picker-chip:hover {
+
+    border-color: #1DB954;
+
+    color: #ffffff;
+
+}
+
+.song-picker-kind {
+
+    display: flex;
+
+    gap: 8px;
+
+    margin-top: 10px;
+
+}
+
+.song-picker-kind-btn {
+
+    flex: 1;
+
+    min-height: 42px;
+
+    padding: 6px 10px;
+
+    border-radius: 12px;
+
+    border: 1px solid rgba(255,255,255,.15);
+
+    background: #0f0f0f;
+
+    color: #cccccc;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+}
+
+.song-picker-kind-btn.selected {
+
+    border-color: #1DB954;
+
+    background: rgba(29,185,84,.15);
+
+    color: #ffffff;
+
+    font-weight: 600;
+
+}
+
+.song-picker-kind-btn:disabled {
+
+    opacity: .5;
+
+    cursor: default;
+
+}
+
+.song-picker-add {
+
+    margin-top: 12px;
+
+}
+
+.my-songs-group-title {
+
+    margin: 14px 0 6px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    letter-spacing: .04em;
+
+    text-transform: uppercase;
+
+    color: #9a9a9a;
+
+}

@@ -10,7 +10,7 @@ import { updateSong } from "../services/songService";
 import "../styles/adminTheme.css";
 import "./AdminDashboard.css";
 
-const MAX_SONGS = 5;
+const MAX_SONGS = 6;
 
 // ==========================================================
 // PAYMENT STATUS DISPLAY
@@ -110,7 +110,7 @@ function AdminDashboard() {
 
     const handleMarkPaid = async paymentId => {
         const confirmed = window.confirm(
-            "Confirm that this payment has been received? This will submit the singer's 5 songs for pairing."
+            "Confirm that this payment has been received? This will submit the singer's duet songs for pairing."
         );
 
         if (!confirmed) {

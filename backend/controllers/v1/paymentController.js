@@ -7,7 +7,9 @@ const { getActiveEventId } = require("../../utils/activeEvent");
 //
 // PAYMENT FLOW
 //
-// Singer selects exactly 5 songs
+// Singer selects 6 duet songs (+ 1 optional solo for male
+// singers, stored separately in solo_song_id so pairing never
+// sees it)
 //       ↓
 // Singer sees QR code
 //       ↓
@@ -19,14 +21,14 @@ const { getActiveEventId } = require("../../utils/activeEvent");
 //       ↓
 // payment.status = "Paid"
 //       ↓
-// Exactly 5 song_requests are created as
-// "Submitted for Pairing"
+// One song_request per duet is created as
+// "Submitted for Pairing" (6, or 5 for older payments)
 //
 // No UTR is collected.
 // ==========================================================
 
 const PAYMENT_AMOUNT = 700;
-const REQUIRED_SONG_COUNT = 5;
+const REQUIRED_SONG_COUNT = 6;
 
 const VALID_STATUSES = [
     "Pending",
@@ -90,8 +92,11 @@ const createPayment = async (req, res) => {
     try {
         const {
             singer_id,
-            selected_song_ids
+            selected_song_ids,
+            solo_song_id
         } = req.body || {};
+
+        const soloSongId = cleanString(solo_song_id) || null;
 
         if (!singer_id) {
             return res.status(400).json({
@@ -124,7 +129,7 @@ const createPayment = async (req, res) => {
         } = await supabase
             .from("singers")
             .select(
-                "id,mobile_number,singer_name"
+                "id,mobile_number,singer_name,gender"
             )
             .eq("id", singer_id)
             .maybeSingle();
@@ -150,8 +155,34 @@ const createPayment = async (req, res) => {
         }
 
         // ------------------------------------------------------
-        // VERIFY ALL FIVE SONGS EXIST
+        // OPTIONAL SOLO - male singers only, not one of the duets
         // ------------------------------------------------------
+
+        if (soloSongId) {
+
+            if (String(singer.gender || "").toLowerCase() !== "male") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Solo songs are only for male singers."
+                });
+            }
+
+            if (songIds.includes(soloSongId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "The solo song can't also be one of the duets."
+                });
+            }
+
+        }
+
+        // ------------------------------------------------------
+        // VERIFY ALL SONGS EXIST
+        // ------------------------------------------------------
+
+        const allSongIds = soloSongId
+            ? [...songIds, soloSongId]
+            : songIds;
 
         const {
             data: songs,
@@ -159,7 +190,7 @@ const createPayment = async (req, res) => {
         } = await supabase
             .from("songs")
             .select("id,title,movie,thumbnail,provider")
-            .in("id", songIds);
+            .in("id", allSongIds);
 
         if (songsError) {
             console.error(
@@ -174,7 +205,7 @@ const createPayment = async (req, res) => {
             });
         }
 
-        if (!songs || songs.length !== songIds.length) {
+        if (!songs || songs.length !== allSongIds.length) {
             return res.status(400).json({
                 success: false,
                 message:
@@ -240,6 +271,7 @@ const createPayment = async (req, res) => {
                 payment_type: "Singer Registration",
                 status: "Pending",
                 selected_song_ids: songIds,
+                solo_song_id: soloSongId,
                 event_id: eventId
             })
             .select()
@@ -399,7 +431,7 @@ const removeSongFromPayment = async (req, res) => {
 //
 // Appends a song to a payment that already has between 1 and 4
 // songs (a singer who has already started but not yet reached the
-// 5-song limit). Rejects once the payment already has 5.
+// 6-duet limit). Rejects once the payment already has 6.
 // ==========================================================
 
 const addSongToPayment = async (req, res) => {
@@ -459,7 +491,7 @@ const addSongToPayment = async (req, res) => {
         if (currentIds.length >= REQUIRED_SONG_COUNT) {
             return res.status(400).json({
                 success: false,
-                message: "This singer already has 5 songs - replace one instead."
+                message: `This singer already has ${REQUIRED_SONG_COUNT} duet songs - replace one instead.`
             });
         }
 
@@ -676,7 +708,7 @@ const replaceSongInPayment = async (req, res) => {
 // Moves one song from one singer's selection to another's for
 // the same event. If the destination singer doesn't yet have a
 // payment for this event, one is created for them with just this
-// song (allowed since creation only requires 1-5 songs now).
+// song (allowed since creation only requires 1-6 songs now).
 // ==========================================================
 
 const reassignSongToSinger = async (req, res) => {
@@ -789,7 +821,7 @@ const reassignSongToSinger = async (req, res) => {
         if (destCurrentIds.length >= REQUIRED_SONG_COUNT) {
             return res.status(400).json({
                 success: false,
-                message: "Destination singer already has 5 songs - replace one first."
+                message: `Destination singer already has ${REQUIRED_SONG_COUNT} duet songs - replace one first.`
             });
         }
 
@@ -1071,11 +1103,12 @@ const getPayments = async (req, res) => {
 
         const songIds = [
             ...new Set(
-                rows.flatMap(payment =>
-                    normalizeSongIds(
+                rows.flatMap(payment => [
+                    ...normalizeSongIds(
                         payment.selected_song_ids
-                    )
-                )
+                    ),
+                    ...(payment.solo_song_id ? [payment.solo_song_id] : [])
+                ])
             )
         ];
 
@@ -1167,6 +1200,10 @@ const getPayments = async (req, res) => {
                             .filter(Boolean),
                     song_count:
                         selectedIds.length,
+                    solo_song:
+                        payment.solo_song_id
+                            ? songMap.get(payment.solo_song_id) || null
+                            : null,
                     event_name:
                         eventNameById.get(payment.event_id) || "—"
                 };
@@ -1200,7 +1237,7 @@ const getPayments = async (req, res) => {
 //
 // IMPORTANT:
 // The database RPC performs the payment confirmation and
-// creation of the five song_requests atomically.
+// creation of the duet song_requests atomically.
 // Supabase supports calling PostgreSQL functions through RPC.
 // ==========================================================
 
@@ -1278,7 +1315,7 @@ const markPaymentAsPaid = async (req, res) => {
         return res.status(200).json({
             success: true,
             message:
-                "Payment confirmed. The 5 songs have been submitted for pairing.",
+                "Payment confirmed. The duet songs have been submitted for pairing.",
             payment: payment || null,
             request_count:
                 rpcResult.request_count ||
@@ -1383,7 +1420,7 @@ const rejectPayment = async (req, res) => {
 //
 // Only a currently-Pending payment can transition, and only
 // to "Paid" (via the same atomic RPC used by the single mark-
-// paid endpoint, so the 5 songs still get submitted) or
+// paid endpoint, so the duet songs still get submitted) or
 // "Rejected". This deliberately does NOT allow overwriting an
 // already-decided payment's status via spreadsheet, since that
 // would bypass the song-submission side effect with no way to

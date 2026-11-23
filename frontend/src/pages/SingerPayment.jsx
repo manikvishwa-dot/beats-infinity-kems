@@ -26,6 +26,15 @@ import { logout } from "../services/singerService";
 import "./SingerPayment.css";
 
 const PAYMENT_AMOUNT = 700;
+const DUET_COUNT = 6;
+
+// Selection items are tagged kind "duet" or "solo" by My Songs.
+// Older saved selections have no kind - treat those as duets.
+const duetsOf = (selection) =>
+    (selection?.songs || []).filter(song => song.kind !== "solo");
+
+const soloOf = (selection) =>
+    (selection?.songs || []).find(song => song.kind === "solo") || null;
 const POLL_INTERVAL = 5000;
 const PENDING_SELECTION_KEY =
     "beatsInfinityPendingSongSelection";
@@ -171,7 +180,7 @@ const SingerPayment = () => {
 
         if (!pendingSelection) {
             setError(
-                "Your selected songs could not be found. Please return to My Songs and select 5 songs again."
+                `Your selected songs could not be found. Please return to My Songs and select ${DUET_COUNT} duet songs again.`
             );
             setLoading(false);
             return;
@@ -179,10 +188,10 @@ const SingerPayment = () => {
 
         if (
             !Array.isArray(pendingSelection.songs) ||
-            pendingSelection.songs.length !== 5
+            duetsOf(pendingSelection).length !== DUET_COUNT
         ) {
             setError(
-                "Exactly 5 selected songs are required."
+                `Exactly ${DUET_COUNT} duet songs are required. Please return to My Songs.`
             );
             setLoading(false);
             return;
@@ -260,10 +269,10 @@ const SingerPayment = () => {
 
         if (
             !Array.isArray(selection.songs) ||
-            selection.songs.length !== 5
+            duetsOf(selection).length !== DUET_COUNT
         ) {
             setError(
-                "Exactly 5 songs are required."
+                `Exactly ${DUET_COUNT} duet songs are required.`
             );
             return;
         }
@@ -278,16 +287,19 @@ const SingerPayment = () => {
         setSuccess("");
 
         try {
-            const songIds = selection.songs.map(
-                song => String(
-                    song.databaseSongId ||
-                    song.songId
-                )
+            const songIdOf = song => String(
+                song.databaseSongId ||
+                song.songId
             );
+
+            const songIds = duetsOf(selection).map(songIdOf);
+
+            const solo = soloOf(selection);
 
             const result = await createPayment(
                 singerId,
-                songIds
+                songIds,
+                solo ? songIdOf(solo) : null
             );
 
             setPayment(
@@ -508,7 +520,7 @@ const SingerPayment = () => {
                                 Payment Confirmed
                             </strong>
                             <p>
-                                Your payment has been verified and your 5 songs have been submitted for pairing.
+                                Your payment has been verified and your duet songs have been submitted for pairing.
                             </p>
                         </div>
                     )}
@@ -555,7 +567,7 @@ const SingerPayment = () => {
                         Need help? Contact Beats Infinity Support
                     </div>
 
-                    {selection?.songs?.length === 5 && (
+                    {duetsOf(selection).length === DUET_COUNT && (
                         <details className="selected-song-details">
                             <summary>
                                 View selected songs
@@ -570,6 +582,8 @@ const SingerPayment = () => {
                                             {item.title ||
                                                 item.song?.title ||
                                                 "Selected Song"}
+                                            {item.movie ? ` (${item.movie})` : ""}
+                                            {item.kind === "solo" ? " - Solo" : ""}
                                         </li>
                                     )
                                 )}

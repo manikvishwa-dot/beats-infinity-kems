@@ -19,6 +19,8 @@ import {
 import { API_V1_URL } from "../../../config/api";
 import { getActiveEvent } from "../../../services/eventService";
 
+import SongPicker from "./SongPicker";
+
 import "./MySongs.css";
 
 
@@ -26,8 +28,16 @@ const API_URL =
     API_V1_URL;
 
 
+// 6 duet songs are required (sent to pairing). Male singers may
+// also add 1 optional solo, which is stored separately and never
+// paired. Female singers have duets only.
 const MAX_SONGS =
-    5;
+    6;
+
+const isSolo = item => item?.kind === "solo";
+
+const songKey = (title, movie) =>
+    `${String(title || "").toLowerCase().replace(/[^a-z0-9]/g, "")}|${String(movie || "").toLowerCase().replace(/[^a-z0-9]/g, "")}`;
 
 
 function MySongs() {
@@ -70,18 +80,6 @@ function MySongs() {
     // STATE
     // ==========================================================
 
-    const [search, setSearch] =
-        useState("");
-
-    const [searchResults, setSearchResults] =
-        useState([]);
-
-    const [searching, setSearching] =
-        useState(false);
-
-    const [searchError, setSearchError] =
-        useState("");
-
 
     // ==========================================================
     // SELECTED SONGS
@@ -97,16 +95,13 @@ function MySongs() {
     const [selectedSongs, setSelectedSongs] =
         useState([]);
 
-    const [requestedSongs, setRequestedSongs] =
+    const [, setRequestedSongs] =
         useState([]);
 
 
     // ==========================================================
     // SONG ACTION STATE
     // ==========================================================
-
-    const [requestingSongId, setRequestingSongId] =
-        useState(null);
 
     const [removingRequestId, setRemovingRequestId] =
         useState(null);
@@ -139,13 +134,6 @@ function MySongs() {
     const [submissionError, setSubmissionError] =
         useState("");
 
-
-    // ==========================================================
-    // SEARCH TIMER
-    // ==========================================================
-
-    const searchTimer =
-        useRef(null);
 
 
     // ==========================================================
@@ -258,6 +246,30 @@ const objectKeys = [
             return null;
 
         };
+
+
+    // ==========================================================
+    // SINGER GENDER - solo songs are for male singers only
+    // ==========================================================
+
+    const [isMaleSinger] = useState(() => {
+
+        try {
+
+            const singer = JSON.parse(
+                localStorage.getItem("beatsInfinitySinger") || "null"
+            );
+
+            return String(singer?.gender || "").toLowerCase() === "male";
+
+        }
+        catch {
+
+            return false;
+
+        }
+
+    });
 
 
     // ==========================================================
@@ -437,7 +449,8 @@ const objectKeys = [
 
 
                 // ------------------------------------------------
-                // Only the final five are relevant.
+                // Submitted requests are the duets (6, or 5 for
+                // singers who submitted before the 6-duet rule).
                 // ------------------------------------------------
 
                 const finalRequests =
@@ -503,6 +516,9 @@ const objectKeys = [
                                         requestId:
                                             request.id,
 
+                                        kind:
+                                            "duet",
+
                                         songId:
                                             String(
                                                 request.song_id
@@ -555,6 +571,58 @@ const objectKeys = [
                     );
 
 
+                // ------------------------------------------------
+                // The optional solo lives on the payment, not in
+                // song_requests (so pairing never sees it).
+                // ------------------------------------------------
+
+                try {
+
+                    const paymentResponse =
+                        await fetch(
+                            `${API_URL}/payments/my?singer_id=${encodeURIComponent(singerId)}`
+                        );
+
+                    const paymentData =
+                        await paymentResponse.json();
+
+                    const soloSongId =
+                        paymentData?.payment?.status === "Paid"
+                            ? paymentData.payment.solo_song_id
+                            : null;
+
+                    if (soloSongId) {
+
+                        const soloResponse =
+                            await fetch(`${API_URL}/songs/${soloSongId}`);
+
+                        const soloData =
+                            await soloResponse.json();
+
+                        if (soloResponse.ok && soloData.song) {
+
+                            validSongs.push({
+                                requestId: `solo-${soloSongId}`,
+                                kind: "solo",
+                                songId: String(soloSongId),
+                                status: "Submitted",
+                                requestedAt: null,
+                                notes: null,
+                                song: normalizeSong(soloData.song)
+                            });
+
+                        }
+
+                    }
+
+                }
+                catch (soloError) {
+
+                    console.error("Unable to load solo song:", soloError);
+
+                }
+
+
                 setSelectedSongs(
                     validSongs
                 );
@@ -573,13 +641,12 @@ const objectKeys = [
 
 
                 // ------------------------------------------------
-                // If five final songs already exist, lock the
-                // selection.
+                // Any submitted songs mean the selection is final -
+                // lock it.
                 // ------------------------------------------------
 
                 if (
-                    validSongs.length ===
-                    MAX_SONGS
+                    validSongs.length > 0
                 ) {
 
                     setSubmissionComplete(
@@ -587,7 +654,7 @@ const objectKeys = [
                     );
 
                     setSubmissionMessage(
-                        "Your 5 songs have already been submitted for pairing."
+                        "Your songs have already been submitted for pairing."
                     );
 
                 }
@@ -656,7 +723,7 @@ const objectKeys = [
 
             if (
                 !Array.isArray(pending?.songs) ||
-                pending.songs.length !== MAX_SONGS
+                pending.songs.filter(item => item.kind !== "solo").length !== MAX_SONGS
             ) {
                 return false;
             }
@@ -687,6 +754,8 @@ const objectKeys = [
                         requestId:
                             item.requestId ||
                             `pending-${item.songId}`,
+                        kind:
+                            item.kind === "solo" ? "solo" : "duet",
                         songId:
                             String(item.songId),
                         databaseSongId:
@@ -746,407 +815,82 @@ const objectKeys = [
 
         loadSubmittedSongs();
 
-
-        return () => {
-
-            if (
-                searchTimer.current
-            ) {
-
-                clearTimeout(
-                    searchTimer.current
-                );
-
-            }
-
-        };
-
     }, []);
 
 
     // ==========================================================
-    // SEARCH
+    // ADD A PICKED SONG (from SongPicker)
+    //
+    // Local only - nothing is saved until Proceed to Payment.
+    // Returns an error message, or null when added.
     // ==========================================================
 
-    const performSearch =
-        async searchText => {
+    const addPickedSong =
+        ({ title, movie, kind }) => {
 
-            try {
-
-                setSearching(true);
-
-                setSearchError("");
-
-
-                const searchUrl =
-                    `${API_URL}/song-search?q=${encodeURIComponent(
-                        searchText
-                    )}`;
-
-
-                console.log(
-                    "🔎 Searching:",
-                    searchText
-                );
-
-
-                const response =
-                    await fetch(
-                        searchUrl
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                console.log(
-                    "📦 Search response:",
-                    data
-                );
-
-
-                if (
-                    !response.ok ||
-                    !data.success
-                ) {
-
-                    throw new Error(
-                        data.message ||
-                        "Song search failed."
-                    );
-
-                }
-
-
-                const songs =
-                    data.songs ||
-                    data.results ||
-                    data.data ||
-                    [];
-
-
-                const normalized =
-                    songs.map(
-                        normalizeSong
-                    );
-
-
-                setSearchResults(
-                    normalized
-                );
-
+            if (submissionComplete) {
+                return "Your songs are already submitted.";
             }
 
-            catch (
-                error
-            ) {
-
-                console.error(
-                    "❌ Search error:",
-                    error
-                );
-
-
-                setSearchResults([]);
-
-                setSearchError(
-                    error.message ||
-                    "Unable to search songs."
-                );
-
-            }
-
-            finally {
-
-                setSearching(false);
-
-            }
-
-        };
-
-
-    // --------------------------------------------------------
-    // SEARCH BUTTON CLICK
-    //
-    // Cancels any pending debounced search and runs
-    // immediately with the current input value.
-    // --------------------------------------------------------
-
-    const handleSearchClick =
-        () => {
-
-            const searchText =
-                search.trim();
-
+            const key = songKey(title, movie);
 
             if (
-                searchTimer.current
-            ) {
-
-                clearTimeout(
-                    searchTimer.current
-                );
-
-            }
-
-
-            if (
-                !searchText
-            ) {
-
-                setSearchResults([]);
-
-                setSearching(false);
-
-                setSearchError("");
-
-                return;
-
-            }
-
-
-            performSearch(
-                searchText
-            );
-
-        };
-
-
-    useEffect(() => {
-
-        const searchText =
-            search.trim();
-
-
-        if (
-            searchTimer.current
-        ) {
-
-            clearTimeout(
-                searchTimer.current
-            );
-
-        }
-
-
-        if (
-            !searchText
-        ) {
-
-            setSearchResults([]);
-
-            setSearching(false);
-
-            setSearchError("");
-
-            return;
-
-        }
-
-
-        searchTimer.current =
-            setTimeout(
-                () => {
-
-                    performSearch(
-                        searchText
-                    );
-
-                },
-
-                350
-
-            );
-
-
-        return () => {
-
-            if (
-                searchTimer.current
-            ) {
-
-                clearTimeout(
-                    searchTimer.current
-                );
-
-            }
-
-        };
-
-
-    }, [search]);
-
-
-
-    // ==========================================================
-    // SELECT SONG
-    //
-    // IMPORTANT:
-    //
-    // NO DATABASE REQUEST HERE.
-    //
-    // The song is stored only in React state.
-    // ==========================================================
-
-    const requestSong =
-        async song => {
-
-            if (
-                !song ||
-                !song.id
-            ) {
-
-                return;
-
-            }
-
-
-            if (
-                submissionComplete
-            ) {
-
-                return;
-
-            }
-
-
-            if (
-                requestingSongId
-            ) {
-
-                return;
-
-            }
-
-
-            const songId =
-                String(
-                    song.id
-                );
-
-
-            // --------------------------------------------------
-            // DUPLICATE
-            // --------------------------------------------------
-
-            if (
-                requestedSongs.includes(
-                    songId
+                selectedSongs.some(
+                    item => songKey(item.song?.title, item.song?.movie) === key
                 )
             ) {
+                return "You've already added this song.";
+            }
 
-                return;
+            const duetsSoFar =
+                selectedSongs.filter(item => !isSolo(item)).length;
+
+            if (kind === "solo") {
+
+                if (!isMaleSinger) {
+                    return "Solo songs are only for male singers.";
+                }
+
+                if (selectedSongs.some(isSolo)) {
+                    return "You've already added your solo song.";
+                }
+
+            }
+            else if (duetsSoFar >= MAX_SONGS) {
+
+                return `You've already added all ${MAX_SONGS} duet songs.`;
 
             }
 
+            const localId = `pick-${key}`;
 
-            // --------------------------------------------------
-            // MAXIMUM FIVE
-            // --------------------------------------------------
+            const song = {
+                id: localId,
+                title,
+                movie,
+                album: movie,
+                artist: "",
+                provider: "Beats Infinity",
+                thumbnail: "",
+                isDuet: kind !== "solo"
+            };
 
-            if (
-                selectedSongs.length >=
-                MAX_SONGS
-            ) {
+            setSelectedSongs(current => [
+                ...current,
+                {
+                    requestId: `local-${Date.now()}-${localId}`,
+                    songId: localId,
+                    kind,
+                    status: "Selected",
+                    requestedAt: null,
+                    notes: null,
+                    song
+                }
+            ]);
 
-                alert(
-                    "You can select a maximum of 5 songs."
-                );
+            setRequestedSongs(current => [...current, localId]);
 
-                return;
-
-            }
-
-
-            setRequestingSongId(
-                song.id
-            );
-
-
-            try {
-
-                // ------------------------------------------------
-                // LOCAL SELECTION ONLY
-                // ------------------------------------------------
-
-                const newSelectedSong = {
-
-                    requestId:
-                        `local-${Date.now()}-${songId}`,
-
-                    songId:
-                        songId,
-
-                    status:
-                        "Selected",
-
-                    requestedAt:
-                        null,
-
-                    notes:
-                        null,
-
-                    song:
-                        song
-
-                };
-
-
-                setSelectedSongs(
-                    current => [
-
-                        ...current,
-
-                        newSelectedSong
-
-                    ]
-                );
-
-
-                setRequestedSongs(
-                    current => [
-
-                        ...current,
-
-                        songId
-
-                    ]
-                );
-
-
-                console.log(
-                    "🎵 SONG SELECTED LOCALLY:",
-                    song.title
-                );
-
-
-            }
-
-            catch (
-                error
-            ) {
-
-                console.error(
-                    "Select song failed:",
-                    error
-                );
-
-
-                alert(
-                    error.message ||
-                    "Unable to select this song."
-                );
-
-            }
-
-            finally {
-
-                setRequestingSongId(
-                    null
-                );
-
-            }
+            return null;
 
         };
 
@@ -1283,7 +1027,7 @@ const objectKeys = [
     // ==========================================================
     // OPEN SUBMISSION DIALOG
     //
-    // EXACTLY FIVE REQUIRED.
+    // EXACTLY 6 DUETS REQUIRED (solo optional).
     // ==========================================================
 
     const openSubmitDialog =
@@ -1292,27 +1036,16 @@ const objectKeys = [
             setSubmissionError("");
 
 
+            const duetTotal =
+                selectedSongs.filter(item => !isSolo(item)).length;
+
             if (
-                selectedSongs.length <
+                duetTotal !==
                 MAX_SONGS
             ) {
 
                 setSubmissionError(
-                    `Please select all 5 songs before submitting. You currently have ${selectedSongs.length}/5.`
-                );
-
-                return;
-
-            }
-
-
-            if (
-                selectedSongs.length >
-                MAX_SONGS
-            ) {
-
-                setSubmissionError(
-                    "You can submit a maximum of 5 songs."
+                    `Please add all ${MAX_SONGS} duet songs before submitting. You currently have ${duetTotal}/${MAX_SONGS}.`
                 );
 
                 return;
@@ -1366,7 +1099,7 @@ const objectKeys = [
     //
     // Selecting songs does NOT create song_requests.
     //
-    // Here we only make sure the five songs exist in `songs`,
+    // Here we only make sure the selected songs exist in `songs`,
     // save their real database UUIDs locally, and open the
     // payment page.
     //
@@ -1376,11 +1109,14 @@ const objectKeys = [
     const submitSongsForPairing =
     async () => {
 
+        const duetTotal =
+            selectedSongs.filter(item => !isSolo(item)).length;
+
         if (
-            selectedSongs.length !== MAX_SONGS
+            duetTotal !== MAX_SONGS
         ) {
             setSubmissionError(
-                `Please select all 5 songs before continuing. You currently have ${selectedSongs.length}/${MAX_SONGS}.`
+                `Please add all ${MAX_SONGS} duet songs before continuing. You currently have ${duetTotal}/${MAX_SONGS}.`
             );
 
             return;
@@ -1483,9 +1219,11 @@ const objectKeys = [
                     theme_tags:
                         [],
                     is_duet:
-                        Boolean(
-                            song.isDuet
-                        ),
+                        !isSolo(selectedItem),
+                    song_type:
+                        isSolo(selectedItem)
+                            ? "Solo"
+                            : "Duet",
                     event_id:
                         activeEventId
                 };
@@ -1540,10 +1278,10 @@ const objectKeys = [
 
             if (
                 databaseSongs.length !==
-                MAX_SONGS
+                selectedSongs.length
             ) {
                 throw new Error(
-                    "Unable to validate the 5 selected songs."
+                    "Unable to save the selected songs."
                 );
             }
 
@@ -1563,6 +1301,10 @@ const objectKeys = [
                         (item, index) => ({
                             requestId:
                                 `payment-${Date.now()}-${index}`,
+                            kind:
+                                isSolo(item.localItem)
+                                    ? "solo"
+                                    : "duet",
                             songId:
                                 item.databaseSongId,
                             databaseSongId:
@@ -1593,7 +1335,7 @@ const objectKeys = [
 
 
             console.log(
-                "💳 Five songs prepared for payment:",
+                "💳 Songs prepared for payment:",
                 pendingSelection
             );
 
@@ -1626,8 +1368,11 @@ const objectKeys = [
     // RENDER
     // ==========================================================
 
-    const remaining = MAX_SONGS - selectedSongs.length;
-    const progressPercent = (selectedSongs.length / MAX_SONGS) * 100;
+    const duetSongs = selectedSongs.filter(item => !isSolo(item));
+    const soloSong = selectedSongs.find(isSolo) || null;
+
+    const remaining = Math.max(MAX_SONGS - duetSongs.length, 0);
+    const progressPercent = Math.min((duetSongs.length / MAX_SONGS) * 100, 100);
 
     const renderSongRow = (item, { onAction, actionLabel, actionBusy, actionDisabled, actionVariant, statusLabel }) => {
 
@@ -1646,8 +1391,9 @@ const objectKeys = [
                 <div className="song-row-info">
                     <div className="song-row-title">{song.title || "Unknown Song"}</div>
                     <div className="song-row-subtitle">
-                        {song.music_director || song.artist || "Unknown Artist"}
-                        {song.movie ? ` · ${song.movie}` : ""}
+                        {song.movie
+                            ? `Movie: ${song.movie}`
+                            : song.music_director || song.artist || ""}
                     </div>
                     {statusLabel && (
                         <div className="song-row-status">{statusLabel}</div>
@@ -1669,6 +1415,26 @@ const objectKeys = [
 
     };
 
+    const renderSelectedRow = item => {
+
+        const isRemoving = removingRequestId === item.requestId;
+        const isSubmitted =
+            item.status === "Submitted for Pairing" ||
+            item.status === "Submitted";
+
+        return renderSongRow(item, {
+            onAction: () => removeSelectedSong(item.requestId),
+            actionLabel: isRemoving ? "Removing" : "Remove",
+            actionBusy: isRemoving,
+            actionDisabled: submissionComplete || isRemoving,
+            actionVariant: "danger",
+            statusLabel: isSubmitted
+                ? isSolo(item) ? "Submitted (solo)" : "Submitted for pairing"
+                : "Added"
+        });
+
+    };
+
     return (
 
         <section className="my-songs-section">
@@ -1681,12 +1447,22 @@ const objectKeys = [
 
                 <div className="my-songs-panel-header">
                     <h2>My Songs</h2>
-                    <span className="my-songs-panel-count">{selectedSongs.length}/{MAX_SONGS}</span>
+                    <span className="my-songs-panel-count">
+                        {duetSongs.length}/{MAX_SONGS} duets
+                        {isMaleSinger ? ` · ${soloSong ? 1 : 0}/1 solo` : ""}
+                    </span>
                 </div>
 
                 <div className="songs-progress-track">
                     <div className="songs-progress-fill" style={{ width: `${progressPercent}%` }} />
                 </div>
+
+                <p className="song-search-hint">
+                    {isMaleSinger
+                        ? `Add ${MAX_SONGS} duet songs. You can also add 1 solo song (optional).`
+                        : `Add ${MAX_SONGS} duet songs.`}
+                    {" "}More choices help us find you the best duet partners.
+                </p>
 
                 {loadingSelectedSongs && (
                     <div className="no-songs-compact">Loading your songs...</div>
@@ -1694,31 +1470,35 @@ const objectKeys = [
 
                 {!loadingSelectedSongs && selectedSongs.length === 0 && (
                     <div className="no-songs-compact">
-                        No songs selected yet - search below to add your first one.
+                        No songs added yet - type a song name below to add your first one.
                     </div>
                 )}
 
-                {!loadingSelectedSongs && selectedSongs.length > 0 && (
+                {!loadingSelectedSongs && duetSongs.length > 0 && (
 
-                    <div className="song-row-list">
+                    <>
 
-                        {selectedSongs.map(item => {
+                        <h3 className="my-songs-group-title">Duet songs</h3>
 
-                            const isRemoving = removingRequestId === item.requestId;
-                            const isSubmitted = item.status === "Submitted for Pairing";
+                        <div className="song-row-list">
+                            {duetSongs.map(item => renderSelectedRow(item))}
+                        </div>
 
-                            return renderSongRow(item, {
-                                onAction: () => removeSelectedSong(item.requestId),
-                                actionLabel: isRemoving ? "Removing" : "Remove",
-                                actionBusy: isRemoving,
-                                actionDisabled: submissionComplete || isRemoving,
-                                actionVariant: "danger",
-                                statusLabel: isSubmitted ? "Submitted for pairing" : "Selected"
-                            });
+                    </>
 
-                        })}
+                )}
 
-                    </div>
+                {!loadingSelectedSongs && soloSong && (
+
+                    <>
+
+                        <h3 className="my-songs-group-title">Solo song (optional)</h3>
+
+                        <div className="song-row-list">
+                            {renderSelectedRow(soloSong)}
+                        </div>
+
+                    </>
 
                 )}
 
@@ -1742,11 +1522,11 @@ const objectKeys = [
                                 type="button"
                                 className="proceed-payment-btn"
                                 onClick={openSubmitDialog}
-                                disabled={submittingSongs || selectedSongs.length !== MAX_SONGS}
+                                disabled={submittingSongs || duetSongs.length !== MAX_SONGS}
                             >
-                                {selectedSongs.length === MAX_SONGS
+                                {duetSongs.length === MAX_SONGS
                                     ? "Proceed to Payment"
-                                    : `Select ${remaining} more song${remaining === 1 ? "" : "s"} to continue`}
+                                    : `Add ${remaining} more duet song${remaining === 1 ? "" : "s"} to continue`}
                             </button>
 
                         </>
@@ -1759,83 +1539,35 @@ const objectKeys = [
 
 
             {/* ==================================================
-                SEARCH SONGS
+                ADD A SONG
             ================================================== */}
 
-            <div className="song-search-section">
+            {!submissionComplete && !loadingSelectedSongs && (
 
-                <div className="my-songs-panel-header">
-                    <h2>Add a Song</h2>
-                </div>
+                <div className="song-search-section">
 
-                <div className="song-search-row">
-
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={event => setSearch(event.target.value)}
-                        onKeyDown={event => {
-                            if (event.key === "Enter") {
-                                handleSearchClick();
-                            }
-                        }}
-                        placeholder="Search song, singer or movie..."
-                        className="song-search-input"
-                        disabled={submissionComplete}
-                    />
-
-                </div>
-
-                {search && searching && (
-                    <div className="no-songs-compact">Searching...</div>
-                )}
-
-                {search && !searching && searchError && (
-                    <div className="no-songs-compact error">{searchError}</div>
-                )}
-
-                {search && !searching && !searchError && searchResults.length > 0 && (
-
-                    <div className="song-row-list">
-
-                        {searchResults.map(song => {
-
-                            const isRequesting = requestingSongId === song.id;
-                            const isRequested = requestedSongs.includes(String(song.id));
-
-                            return renderSongRow({ requestId: `search-${song.id}`, song }, {
-                                onAction: () => requestSong(song),
-                                actionLabel: isRequested
-                                    ? "Added"
-                                    : selectedSongs.length >= MAX_SONGS
-                                        ? "Full"
-                                        : "Add",
-                                actionBusy: isRequesting,
-                                actionDisabled:
-                                    submissionComplete ||
-                                    isRequesting ||
-                                    isRequested ||
-                                    selectedSongs.length >= MAX_SONGS,
-                                actionVariant: isRequested ? "added" : "primary"
-                            });
-
-                        })}
-
+                    <div className="my-songs-panel-header">
+                        <h2>Add a Song</h2>
                     </div>
 
-                )}
+                    <SongPicker
+                        isMale={isMaleSinger}
+                        duetCount={duetSongs.length}
+                        duetLimit={MAX_SONGS}
+                        hasSolo={Boolean(soloSong)}
+                        disabled={submittingSongs}
+                        onAdd={addPickedSong}
+                    />
 
-                {search && !searching && !searchError && searchResults.length === 0 && (
-                    <div className="no-songs-compact">No songs found - try another search.</div>
-                )}
+                    {duetSongs.length >= MAX_SONGS && (!isMaleSinger || soloSong) && (
+                        <p className="song-search-hint">
+                            ✅ All songs added - tap Proceed to Payment above.
+                        </p>
+                    )}
 
-                {!search && (
-                    <p className="song-search-hint">
-                        💡 Can't find your song? Try the singer, movie, or exact song name.
-                    </p>
-                )}
+                </div>
 
-            </div>
+            )}
 
 
             {/* ==================================================
@@ -1844,10 +1576,13 @@ const objectKeys = [
 
             <Dialog open={submitDialogOpen} onClose={closeSubmitDialog} fullWidth maxWidth="sm">
 
-                <DialogTitle>Confirm Your 5 Songs</DialogTitle>
+                <DialogTitle>Confirm Your Songs</DialogTitle>
 
                 <DialogContent>
-                    <p>You're about to lock in your {selectedSongs.length} songs for payment and pairing.</p>
+                    <p>
+                        You're about to lock in your {duetSongs.length} duet songs
+                        {soloSong ? " and 1 solo song" : ""} for payment and pairing.
+                    </p>
                     <p>Make sure your selection is correct - it can't be changed after this.</p>
 
                     {submissionError && (
@@ -1864,7 +1599,7 @@ const objectKeys = [
                     <Button
                         variant="contained"
                         onClick={submitSongsForPairing}
-                        disabled={submittingSongs || selectedSongs.length !== MAX_SONGS}
+                        disabled={submittingSongs || duetSongs.length !== MAX_SONGS}
                     >
                         {submittingSongs ? "Submitting..." : "Proceed to Payment"}
                     </Button>

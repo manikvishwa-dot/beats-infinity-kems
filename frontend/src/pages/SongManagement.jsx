@@ -593,8 +593,8 @@ function SongManagement() {
             if (existingRows.length === 0) {
                 await createPayment(addSingerId, [songResult.song.id]);
             }
-            else if (existingRows.length >= 5) {
-                throw new Error("This singer already has 5 songs - use Replace instead.");
+            else if (existingRows.length >= 6) {
+                throw new Error("This singer already has 6 duet songs - use Replace instead.");
             }
             else {
                 await addSongToPayment(existingRows[0].payment_id, songResult.song.id);

@@ -35,3 +35,64 @@ exports.searchSongs = async (req, res) => {
     }
 
 };
+
+// ==========================================================
+// SONG NAME SUGGESTIONS
+//
+// GET /api/v1/song-search/suggest?q=kadhalikkum
+// -> { success, suggestions: [{ title, movie }] }
+// ==========================================================
+
+const songSuggestService = require("../../services/v1/songSuggestService");
+
+exports.suggestSongs = async (req, res) => {
+
+    try {
+
+        const suggestions =
+            await songSuggestService.suggestSongs(req.query.q);
+
+        return res.status(200).json({ success: true, suggestions });
+
+    } catch (error) {
+
+        console.error("Song suggest error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to load song suggestions."
+        });
+
+    }
+
+};
+
+
+// ==========================================================
+// MOVIE LOOKUP
+//
+// GET /api/v1/song-search/movie?title=Kadhalikkum Pennin Kaigal
+// -> { success, movies: ["Kaadhalan"] }
+// ==========================================================
+
+exports.findMovies = async (req, res) => {
+
+    try {
+
+        const movies =
+            await songSuggestService.findMovies(req.query.title);
+
+        return res.status(200).json({ success: true, movies });
+
+    } catch (error) {
+
+        console.error("Movie lookup error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to look up the movie."
+        });
+
+    }
+
+};

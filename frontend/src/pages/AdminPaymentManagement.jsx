@@ -25,7 +25,8 @@ const PAYMENT_COLUMNS = [
     { key: "mobile_number", header: "Mobile Number", width: 18 },
     { key: "event_name", header: "Event", width: 22 },
     { key: "amount", header: "Amount", width: 12 },
-    { key: "song_count", header: "Songs Selected", width: 16 },
+    { key: "song_count", header: "Duet Songs", width: 14 },
+    { key: "solo_song", header: "Solo Song", width: 30 },
     { key: "status", header: "Status (Pending/Paid/Rejected)", width: 26 }
 ];
 
@@ -199,7 +200,7 @@ const AdminPaymentManagement = () => {
         paymentId
     ) => {
         const confirmed = window.confirm(
-            "Confirm that this payment has been received? The singer's 5 songs will then be submitted for pairing."
+            "Confirm that this payment has been received? The singer's duet songs will then be submitted for pairing."
         );
 
         if (!confirmed) {
@@ -277,6 +278,9 @@ const AdminPaymentManagement = () => {
             event_name: payment.event_name || "—",
             amount: payment.amount || 0,
             song_count: payment.song_count || 0,
+            solo_song: payment.solo_song
+                ? `${payment.solo_song.title}${payment.solo_song.movie ? ` (${payment.solo_song.movie})` : ""}`
+                : "",
             status: payment.status
         })),
         [payments]
@@ -333,7 +337,7 @@ const AdminPaymentManagement = () => {
                 rows={excelRows}
                 filename="beats-infinity-payments"
                 onImportRows={handleImportRows}
-                hint="Only rows changed to Paid or Rejected are applied, and only for payments still Pending - marking Paid still submits the singer's 5 songs for pairing. Other columns are for reference only."
+                hint="Only rows changed to Paid or Rejected are applied, and only for payments still Pending - marking Paid still submits the singer's duet songs for pairing. Other columns are for reference only."
             />
 
             <section className="payment-filter-row">
@@ -446,7 +450,8 @@ const AdminPaymentManagement = () => {
                                         </p>
 
                                         <p>
-                                            🎵 {payment.song_count || 0} Songs Selected
+                                            🎵 {payment.song_count || 0} Duet Songs
+                                            {payment.solo_song ? " + 1 Solo" : ""}
                                         </p>
                                     </div>
 
@@ -489,7 +494,8 @@ const AdminPaymentManagement = () => {
                                 {payment.songs?.length > 0 && (
                                     <details className="payment-song-details">
                                         <summary>
-                                            View 5 selected songs
+                                            View {payment.songs.length} duet songs
+                                            {payment.solo_song ? " + solo" : ""}
                                         </summary>
                                         <ol>
                                             {payment.songs.map(song => (
@@ -501,6 +507,15 @@ const AdminPaymentManagement = () => {
                                                 </li>
                                             ))}
                                         </ol>
+                                        {payment.solo_song && (
+                                            <p>
+                                                <strong>Solo:</strong>{" "}
+                                                {payment.solo_song.title}
+                                                {payment.solo_song.movie
+                                                    ? ` — ${payment.solo_song.movie}`
+                                                    : ""}
+                                            </p>
+                                        )}
                                     </details>
                                 )}
 
