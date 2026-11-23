@@ -20,6 +20,7 @@ import "./SingerLogin.css";
 
 import PasswordToggleInput from "../components/common/PasswordToggleInput";
 import OtpPopup from "../components/common/OtpPopup";
+import DobSelect from "../components/common/DobSelect";
 
 import logo from "../assets/logo/beats-infinity-logo.png";
 
@@ -347,10 +348,11 @@ const SingerRegistration = () => {
     // DOB CHANGE
     // ======================================================
 
-    const handleDateOfBirthChange = (event) => {
+    // DobSelect passes "YYYY-MM-DD" ("" until complete)
+    const handleDateOfBirthChange = (value) => {
 
         setDateOfBirth(
-            event.target.value
+            value
         );
 
         clearMessages();
@@ -1867,7 +1869,7 @@ const SingerRegistration = () => {
 
             <div className="form-group">
 
-                <label>
+                <label htmlFor="register-dob-day">
 
                     <FaCalendarAlt />
 
@@ -1876,8 +1878,8 @@ const SingerRegistration = () => {
                 </label>
 
 
-                <input
-                    type="date"
+                <DobSelect
+                    idPrefix="register-dob"
                     value={dateOfBirth}
                     onChange={
                         handleDateOfBirthChange
