@@ -8,6 +8,11 @@ import theme from "./theme/theme";
 
 import "./index.css";
 
+import startPwaAutoUpdate from "./pwaUpdate";
+
+// Refresh to the newest version after a deploy (see pwaUpdate.js)
+startPwaAutoUpdate();
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>

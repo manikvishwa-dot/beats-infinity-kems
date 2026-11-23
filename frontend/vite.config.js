@@ -7,6 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // New versions activate straight away; src/pwaUpdate.js
+      // picks a safe moment to refresh the page (never mid-typing).
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
@@ -39,9 +41,29 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,ico}'],
-        // A couple of banner images exceed Workbox's 2MB default -
-        // raise the cap so precaching doesn't fail the build.
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // Not installed up front (saves ~6MB of mobile data on the
+        // first visit and keeps updates light): the big background
+        // images and the admin-only Excel library. They still load
+        // normally and are cached the first time they're shown.
+        globIgnores: [
+          '**/hero-banner-*',
+          '**/Logo-*',
+          '**/concert-bg-*',
+          '**/exceljs*'
+        ],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) =>
+              url.origin === self.location.origin &&
+              (request.destination === 'image' || url.pathname.includes('exceljs')),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'bi-assets',
+              expiration: { maxEntries: 80, maxAgeSeconds: 30 * 24 * 60 * 60 }
+            }
+          }
+        ],
         // Never cache API calls - the app must always hit the live
         // backend, not a stale cached response.
         navigateFallbackDenylist: [/^\/api\//]
