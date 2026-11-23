@@ -95,7 +95,9 @@ const STEPS = [
     { no: "04", title: "Get paired & perform", text: "We pair duet partners from everyone's picks. You sing 3 duets - and a solo if time permits." }
 ];
 
-const MARQUEE = ["SING", "DUET", "PERFORM", "CHENNAI", "LIVE KARAOKE", "EVERY MONTH", "NO JUDGEMENT"];
+// Even count, so the outline / gradient alternation lines up
+// when the strip loops.
+const MARQUEE = ["SING", "DUET", "PERFORM", "CHENNAI", "LIVE KARAOKE", "EVERY MONTH", "NO JUDGEMENT", "MAKE FRIENDS"];
 
 
 // ---------- countdown ----------
@@ -323,7 +325,7 @@ function Landing() {
                     )}
 
                     <Link to="/singer-registration" className="bil-btn bil-btn-solid bil-btn-block">
-                        {upcoming ? "Book my spot" : "Join the community"}
+                        {upcoming ? "Book my slot" : "Join the community"}
                     </Link>
                 </aside>
 
@@ -337,7 +339,10 @@ function Landing() {
             <div className="bil-marquee" aria-hidden="true">
                 <div className="bil-marquee-track">
                     {[...MARQUEE, ...MARQUEE, ...MARQUEE].map((word, i) => (
-                        <span key={i}>{word}<i>✦</i></span>
+                        <span key={i}>
+                            <b className={i % 2 === 0 ? "bil-outline" : "bil-gradient-text"}>{word}</b>
+                            <i>♪</i>
+                        </span>
                     ))}
                 </div>
             </div>
