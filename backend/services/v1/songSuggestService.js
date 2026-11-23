@@ -320,6 +320,212 @@ const suggestSongs = async (rawQuery) => {
 
 };
 
+// ----------------------------------------------------------
+// PAST PICKS WITH A MOVIE - all of them, cached 10 minutes,
+// matched by sound-alike title (Nenjukkulla / Nenjukkule).
+// ----------------------------------------------------------
+
+let pastPicksCache = { rows: [], expiresAt: 0 };
+
+const getPastPicksWithMovies = async () => {
+
+    if (pastPicksCache.expiresAt > Date.now()) {
+        return pastPicksCache.rows;
+    }
+
+    const { data, error } = await supabase
+        .from("songs")
+        .select("title,movie")
+        .not("movie", "is", null)
+        .neq("movie", "")
+        .order("created_at", { ascending: false })
+        .limit(5000);
+
+    if (error) {
+        console.warn("Movie lookup - past picks:", error.message);
+        return pastPicksCache.rows;
+    }
+
+    pastPicksCache = {
+        rows: data || [],
+        expiresAt: Date.now() + 10 * 60 * 1000
+    };
+
+    return pastPicksCache.rows;
+
+};
+
+
+// ----------------------------------------------------------
+// YOUTUBE - read the movie out of video titles like
+//   "Kadhalenum Thervezhudhi 4K Video Song | Kadhalar Dhinam Songs | Kunal"
+//   "Nenjukkule Innarendru Video Song | Ponnumani Tamil Movie | Karthik"
+//   "Minnale - Vaseegara Official Video | Full HD | Harris Jayaraj"
+//
+// Each title is split into parts. A part scores for:
+//   - sitting right next to the song name           (+2)
+//   - a movie marker: "Movie", "Songs", "(1993)"... (+3)
+//   - appearing in several videos                    (+1 each)
+// Composers, labels and video words never count.
+// ----------------------------------------------------------
+
+const NOT_A_MOVIE = new RegExp(
+    "\\b(" + [
+        "a\\.?\\s?r\\.?\\s?rahman", "ilaiyaraa?ja", "ilayaraa?ja", "harris jayaraj",
+        "yuvan", "anirudh", "g\\.?\\s?v\\.?\\s?prakash", "deva", "vidyasagar",
+        "d\\.?\\s?imman", "santhosh narayanan", "hiphop tamizha", "vairamuthu",
+        "spb", "s\\.?\\s?p\\.?\\s?b", "chitra", "hariharan", "shreya ghoshal",
+        "sid sriram", "unni krishnan", "sujatha", "bombay jayashr?ee?",
+        "star music", "ap international", "pyramid", "think music", "sony music",
+        "saregama", "lahari", "divo", "u1", "music", "lyrics?", "lyrical", "karaoke",
+        "audio", "video", "jukebox", "hits", "melody", "love song", "status",
+        "cover", "flute", "piano", "slowed", "reverb", "remix", "version",
+        "full hd", "hd", "4k", "8k", "uhd", "high quality", "official",
+        "subscribe", "channel", "trending", "shorts", "whatsapp", "reels"
+    ].join("|") + ")\\b",
+    "i"
+);
+
+const MOVIE_MARKER = /\b(tamil\s+)?(movie|film)(\s+(video\s+)?songs?)?\b|\bsongs\b|\(\d{4}\)|^movie\s*:/i;
+
+const cleanMoviePart = (part) =>
+    String(part || "")
+        .replace(/^\s*movie\s*:\s*/i, "")
+        // "Jeans ft Prashanth" -> "Jeans"
+        .replace(/\s(ft|feat|featuring)\.?\s.*$/i, "")
+        .replace(/\(\d{4}\)/g, " ")
+        .replace(/\b(tamil\s+)?(movie|film)\b/gi, " ")
+        .replace(/\b(video\s+)?songs?\b/gi, " ")
+        .replace(/\b(official|video|hd|4k|8k|full|audio|lyrical|from the|from)\b/gi, " ")
+        .replace(/[^A-Za-z0-9&' ]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+const decodeHtml = (text) =>
+    String(text || "")
+        .replace(/&amp;/g, "&")
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, "\"");
+
+const youtubeTitles = (title) => cached(`y:${title.toLowerCase()}`, async () => {
+
+    const apiKey = process.env.YOUTUBE_API_KEY;
+
+    if (!apiKey) {
+        return [];
+    }
+
+    try {
+
+        const response = await axios.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            {
+                params: {
+                    key: apiKey,
+                    part: "snippet",
+                    q: `${title} song`,
+                    maxResults: 8,
+                    type: "video",
+                    regionCode: "IN"
+                },
+                timeout: 5000
+            }
+        );
+
+        return (response.data?.items || [])
+            .map((item) => decodeHtml(item.snippet?.title));
+
+    } catch (error) {
+
+        console.warn(
+            "Movie lookup - YouTube:",
+            error.response?.data?.error?.message || error.message
+        );
+        return [];
+
+    }
+
+});
+
+const youtubeMovieGuess = async (title) => {
+
+    const videoTitles = await youtubeTitles(title);
+
+    // skeleton -> { score, spellings: { "Chellame": 2 } }
+    const candidates = new Map();
+
+    for (const videoTitle of videoTitles) {
+
+        const parts = videoTitle
+            .split(/\s*[|]\s*|\s+[-–_]\s*|\s*[-–_]\s+|\s+from the movie\s+/i)
+            .map((part) => part.trim())
+            .filter(Boolean);
+
+        // Where is the song name in this title?
+        const songIndex = parts.findIndex((part) =>
+            titlesMatch(cleanMoviePart(part), title) ||
+            skeleton(part).includes(skeleton(title).slice(0, 6))
+        );
+
+        if (songIndex === -1) {
+            continue;
+        }
+
+        const seenInThisVideo = new Set();
+
+        parts.forEach((part, index) => {
+
+            if (index === songIndex) return;
+
+            const marker = MOVIE_MARKER.test(part);
+            const movie = cleanMoviePart(part);
+            const key = skeleton(movie);
+
+            if (!movie || movie.length < 2 || key.length < 2) return;
+            if (movie.split(/\s+/).length > 4) return;
+            if (NOT_A_MOVIE.test(movie)) return;
+            if (titlesMatch(movie, title)) return;
+            if (seenInThisVideo.has(key)) return;
+
+            seenInThisVideo.add(key);
+
+            let score = 1;
+            if (Math.abs(index - songIndex) === 1) score += 2;
+            if (marker) score += 3;
+
+            const entry = candidates.get(key) || { score: 0, spellings: {} };
+            entry.score += score;
+            entry.spellings[movie] = (entry.spellings[movie] || 0) + 1;
+            candidates.set(key, entry);
+
+        });
+
+    }
+
+    const ranked = [...candidates.values()]
+        .filter((entry) => entry.score >= 5)
+        .sort((a, b) => b.score - a.score);
+
+    if (ranked.length === 0) {
+        return [];
+    }
+
+    // Only the clear winner(s) - avoid listing actors as movies
+    const best = ranked[0].score;
+
+    return ranked
+        .filter((entry) => entry.score >= best * 0.6)
+        .slice(0, 2)
+        .map((entry) =>
+            titleCase(
+                Object.entries(entry.spellings)
+                    .sort((a, b) => b[1] - a[1])[0][0]
+            )
+        );
+
+};
+
+
 // Returns ["Movie A", "Movie B"] best first, [] when unknown.
 const findMovies = async (rawTitle) => {
 
@@ -338,16 +544,30 @@ const findMovies = async (rawTitle) => {
         }
     };
 
-    // 1. Songs singers already picked
-    const pastPicks = await searchPastPicks(title.split(/\s+/)[0]);
+    // 1. Songs singers already picked (spelling-tolerant)
+    const pastPicks = await getPastPicksWithMovies();
 
     pastPicks
-        .filter((song) => song.movie && titlesMatch(song.title, title))
+        .filter((song) => titlesMatch(song.title, title))
         .forEach((song) => add(song.movie));
 
-    // 2. Apple Music
-    const tracks = await itunesSearch(title);
+    // Singers already settled on a movie for this song - no need
+    // to ask anyone else (and no YouTube quota used).
+    if (movies.length > 0) {
+        return movies.slice(0, 4);
+    }
 
+    const [youtubeMovies, tracks] = await Promise.all([
+        youtubeMovieGuess(title),
+        itunesSearch(title)
+    ]);
+
+    // 2. YouTube video titles first - they reflect the song people
+    //    actually mean ("Kadhal Neethana" -> Time), even with
+    //    different spellings.
+    youtubeMovies.forEach(add);
+
+    // 3. Apple Music - other films with a song of the same name
     tracks
         .filter((track) => titlesMatch(track.trackName, title))
         .forEach((track) => add(cleanMovieName(track.collectionName, track.trackName)));
@@ -363,5 +583,6 @@ module.exports = {
     // exported for tests
     stripNoise,
     titlesMatch,
+    youtubeMovieGuess,
     cleanMovieName
 };
