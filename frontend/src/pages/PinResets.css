@@ -1,0 +1,96 @@
+.pin-resets-alert {
+    margin: 0 0 16px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.5);
+    color: #ffd666;
+    font-weight: 600;
+}
+
+.pin-resets-error {
+    margin: 0 0 16px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(255, 82, 82, 0.15);
+    border: 1px solid rgba(255, 82, 82, 0.5);
+    color: #ff8a8a;
+}
+
+.pin-resets-empty {
+    text-align: center;
+    opacity: 0.8;
+}
+
+.pin-resets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pin-resets-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.pin-resets-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.pin-resets-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.pin-resets-meta {
+    font-size: 0.85rem;
+    opacity: 0.75;
+}
+
+.pin-resets-status {
+    align-self: flex-start;
+    margin-top: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.pin-resets-status.waiting {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffd666;
+}
+
+.pin-resets-status.sent {
+    background: rgba(33, 150, 243, 0.2);
+    color: #8cc8ff;
+}
+
+.pin-resets-status.done {
+    background: rgba(76, 175, 80, 0.2);
+    color: #8fe39a;
+}
+
+.pin-resets-status.muted {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.pin-resets-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pin-resets-otp {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+}

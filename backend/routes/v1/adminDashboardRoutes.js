@@ -25,6 +25,11 @@ const {
     requireSuperAdmin
 } = require("../../middleware/requireAdminAuth");
 
+const {
+    listPinResets,
+    markPinResetSent
+} = require("../../controllers/v1/pinResetController");
+
 
 // ==========================================================
 // SINGERS OVERVIEW
@@ -181,6 +186,26 @@ console.log(
 
 console.log(
     "GET    /api/v1/admin/stats/event-analytics"
+);
+
+
+// ==========================================================
+// FORGOT PIN REQUESTS - admin sends the OTP on WhatsApp
+//
+// GET  /api/v1/admin/pin-resets
+// POST /api/v1/admin/pin-resets/:id/sent
+// ==========================================================
+
+router.get(
+    "/pin-resets",
+    requireAdmin,
+    listPinResets
+);
+
+router.post(
+    "/pin-resets/:id/sent",
+    requireAdmin,
+    markPinResetSent
 );
 
 

@@ -451,6 +451,49 @@ const sendOTP = async (req, res) => {
 
 
         // ==================================================
+        // FORGOT PIN - REUSE A PENDING REQUEST
+        //
+        // Reset OTPs are sent by an admin on WhatsApp, so a
+        // second tap on "Forgot PIN" must not replace the code
+        // the admin may already have sent.
+        // ==================================================
+
+        if (purpose === "reset_pin") {
+
+            const {
+                data: pendingReset
+            } = await supabase
+                .from("singer_otps")
+                .select("id,expires_at")
+                .eq("mobile_number", mobile)
+                .eq("purpose", "reset_pin")
+                .is("verified_at", null)
+                .gt("expires_at", new Date().toISOString())
+                // a request locked by 5 wrong tries gets a fresh OTP
+                .lt("attempts", 5)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (pendingReset) {
+
+                return res.status(200).json({
+                    success: true,
+                    existing: true,
+                    delivery: "admin_whatsapp",
+                    message:
+                        "Your request is already with Beats Infinity. You'll get the OTP on WhatsApp.",
+                    mobile,
+                    purpose,
+                    expiresAt: pendingReset.expires_at
+                });
+
+            }
+
+        }
+
+
+        // ==================================================
         // GENERATE OTP
         // ==================================================
 
@@ -459,13 +502,21 @@ const sendOTP = async (req, res) => {
 
 
         // --------------------------------------------------
-        // OTP EXPIRY - 5 MINUTES
+        // OTP EXPIRY
+        //
+        // Registration: 5 minutes (shown on screen).
+        // Forgot PIN: 2 hours - an admin sends it by hand on
+        // WhatsApp, which can take a while.
         // --------------------------------------------------
 
         const expiresAt =
             new Date(
                 Date.now() +
-                (5 * 60 * 1000)
+                (
+                    purpose === "reset_pin"
+                        ? 2 * 60 * 60 * 1000
+                        : 5 * 60 * 1000
+                )
             ).toISOString();
 
 
@@ -635,10 +686,17 @@ const sendOTP = async (req, res) => {
 
             expiresAt,
 
-            // Only present when WhatsApp delivery isn't configured
-            // or a send attempt failed - never sent alongside a
-            // real, successfully-delivered OTP.
-            ...(deliveredViaWhatsapp ? {} : { otp })
+            // Forgot PIN: NEVER returned - anyone can type any
+            // mobile number here. An admin sends it on WhatsApp.
+            ...(purpose === "reset_pin" && !deliveredViaWhatsapp
+                ? { delivery: "admin_whatsapp" }
+                : {}),
+
+            // Registration only: shown on screen while WhatsApp
+            // delivery isn't configured (or a send failed).
+            ...(deliveredViaWhatsapp || purpose === "reset_pin"
+                ? {}
+                : { otp })
 
         });
 
@@ -790,7 +848,7 @@ const verifyOTP = async (req, res) => {
             .from("singer_otps")
 
             .select(
-                "id,mobile_number,otp,purpose,expires_at,verified_at,created_at"
+                "id,mobile_number,otp,purpose,expires_at,verified_at,created_at,attempts"
             )
 
             .eq(
@@ -889,6 +947,32 @@ const verifyOTP = async (req, res) => {
 
 
         // ==================================================
+        // TOO MANY WRONG TRIES
+        //
+        // Without a limit, a script could try all 1,000,000
+        // codes while the OTP is valid.
+        // ==================================================
+
+        const MAX_OTP_ATTEMPTS = 5;
+
+        const attemptsSoFar =
+            Number(otpRecord.attempts) || 0;
+
+        if (attemptsSoFar >= MAX_OTP_ATTEMPTS) {
+
+            return res.status(429).json({
+
+                success: false,
+
+                message:
+                    "Too many wrong tries. Please request a new OTP."
+
+            });
+
+        }
+
+
+        // ==================================================
         // CHECK OTP
         // ==================================================
 
@@ -897,12 +981,22 @@ const verifyOTP = async (req, res) => {
             String(otp)
         ) {
 
+            await supabase
+                .from("singer_otps")
+                .update({ attempts: attemptsSoFar + 1 })
+                .eq("id", otpRecord.id);
+
+            const triesLeft =
+                MAX_OTP_ATTEMPTS - (attemptsSoFar + 1);
+
             return res.status(400).json({
 
                 success: false,
 
                 message:
-                    "Invalid OTP."
+                    triesLeft > 0
+                        ? `Invalid OTP. ${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left.`
+                        : "Too many wrong tries. Please request a new OTP."
 
             });
 
@@ -1814,7 +1908,13 @@ const resetPin = async (req, res) => {
             .from("singer_otps")
 
             .select(
-                "id,mobile_number,purpose,expires_at,verified_at"
+                "id,mobile_number,purpose,expires_at,verified_at,used_at"
+            )
+
+            // Each OTP resets the PIN once only
+            .is(
+                "used_at",
+                null
             )
 
             .eq(
@@ -1886,11 +1986,13 @@ const resetPin = async (req, res) => {
         // CHECK OTP EXPIRY
         // --------------------------------------------------
 
+        // The new PIN must be set within 15 minutes of entering
+        // the OTP (the OTP itself is valid for 2 hours).
         if (
             Date.now() >
             new Date(
-                verifiedOTP.expires_at
-            ).getTime()
+                verifiedOTP.verified_at
+            ).getTime() + 15 * 60 * 1000
         ) {
 
             return res.status(403).json({
@@ -1900,6 +2002,33 @@ const resetPin = async (req, res) => {
                 message:
                     "OTP verification has expired. Please request a new OTP."
 
+            });
+
+        }
+
+
+        // ==================================================
+        // USE UP THE OTP - before changing the PIN, so two
+        // requests at the same moment can't both use it.
+        // ==================================================
+
+        const {
+            data: claimedOTP,
+            error: claimError
+        } = await supabase
+            .from("singer_otps")
+            .update({ used_at: new Date().toISOString() })
+            .eq("id", verifiedOTP.id)
+            .is("used_at", null)
+            .select("id")
+            .maybeSingle();
+
+        if (claimError || !claimedOTP) {
+
+            return res.status(403).json({
+                success: false,
+                message:
+                    "This OTP has already been used. Please request a new OTP."
             });
 
         }

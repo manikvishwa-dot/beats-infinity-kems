@@ -887,20 +887,16 @@ const SingerLogin = () => {
                 }
 
 
-                // DEVELOPMENT ONLY - Supabase-generated OTP
-                if (result.otp) {
-
-                    setGeneratedOtp(
-                        String(result.otp)
-                    );
-
-                    setShowOtpPopup(true);
-
-                }
-
+                // Forgot PIN OTPs are never shown on screen -
+                // anyone could type someone else's number here.
+                // Beats Infinity sends it on WhatsApp to the
+                // registered number.
+                setGeneratedOtp("");
+                setShowOtpPopup(false);
 
                 setSuccess(
-                    "OTP generated successfully."
+                    result.message ||
+                    "Request sent. Beats Infinity will WhatsApp you the OTP shortly."
                 );
 
                 setScreen(
@@ -1026,19 +1022,6 @@ const SingerLogin = () => {
             }
 
         };
-
-
-    // =====================================================
-    // FORGOT PIN - RESEND OTP
-    // =====================================================
-
-    const handleResendResetOtp = () => {
-
-        setOtp("");
-
-        handleSendResetOtp({ preventDefault: () => {} });
-
-    };
 
 
     // =====================================================
@@ -1833,7 +1816,9 @@ const SingerLogin = () => {
 
 
                 <p className="subtitle">
-                    Enter the 6-digit OTP sent for your mobile number.
+                    Beats Infinity will send a 6-digit OTP on WhatsApp
+                    to your registered number. Enter it below - it's
+                    valid for 2 hours.
                 </p>
 
 
@@ -1861,21 +1846,6 @@ const SingerLogin = () => {
                 />
 
 
-                {generatedOtp && !showOtpPopup && (
-
-                    <button
-                        type="button"
-                        className="otp-show-again"
-                        onClick={() => setShowOtpPopup(true)}
-                    >
-
-                        Show OTP again
-
-                    </button>
-
-                )}
-
-
                 <button
                     type="submit"
                     className="primary-button"
@@ -1886,20 +1856,6 @@ const SingerLogin = () => {
                         ? "Verifying..."
                         : "VERIFY OTP"
                     }
-
-                </button>
-
-
-                <button
-                    type="button"
-                    className="back-button"
-                    onClick={
-                        handleResendResetOtp
-                    }
-                    disabled={loading}
-                >
-
-                    ↻ Resend OTP
 
                 </button>
 
