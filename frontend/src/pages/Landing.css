@@ -585,6 +585,33 @@
     padding: clamp(24px, 4vw, 48px);
 }
 
+/* show banner inside the ticket - shown whole, never cropped */
+.bil-pass.has-banner {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
+}
+
+.bil-pass-banner {
+    display: flex;
+    align-items: center;
+    padding: clamp(14px, 2vw, 22px);
+    padding-right: 0;
+}
+
+.bil-pass-banner img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 18px;
+    box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.35), 0 18px 50px rgba(255, 122, 26, 0.25);
+}
+
+.bil-pass-show {
+    margin: 8px 0 0;
+    color: var(--bil-gold);
+    font-weight: 700;
+    font-size: 15px;
+}
+
 .bil-pass-main h3 {
     font-family: var(--bil-display);
     font-weight: 400;
@@ -907,6 +934,20 @@
 
 }
 
+@media (max-width: 1100px) {
+
+    /* banner on top, details + stub below */
+    .bil-pass.has-banner {
+        grid-template-columns: 1fr auto;
+    }
+
+    .bil-pass-banner {
+        grid-column: 1 / -1;
+        padding: clamp(14px, 2vw, 22px) clamp(14px, 2vw, 22px) 0;
+    }
+
+}
+
 @media (max-width: 1024px) {
 
     .bil-steps,
@@ -1015,7 +1056,8 @@
         grid-template-columns: 1fr;
     }
 
-    .bil-pass {
+    .bil-pass,
+    .bil-pass.has-banner {
         grid-template-columns: 1fr;
     }
 

@@ -22,6 +22,7 @@ import statistics from "../components/Statistics/statisticsData";
 import whyJoin from "../components/WhyJoin/whyJoinData";
 
 import featuredPoster from "../assets/featured/cinematic-monarch.jpg";
+import featuredBanner from "../assets/featured/cinematic-monarch-wide.jpg";
 import logoMark from "../assets/branding/logo-mark.png";
 
 import "./Landing.css";
@@ -38,7 +39,9 @@ const FEATURED_SHOW = {
     event_date: "2026-12-06",
     event_time: "09:30",
     venue: "Art Stash Rehearsal Studio",
-    poster: featuredPoster
+    poster: featuredPoster,
+    // wide version, shown inside the "Block Your Slot" ticket
+    banner: featuredBanner
 };
 
 const showTime = (show) => {
@@ -180,7 +183,10 @@ function Landing() {
             return {
                 ...activeEvent,
                 poster: activeEvent.banner_image_url ||
-                    (activeEvent.event_date === FEATURED_SHOW.event_date ? FEATURED_SHOW.poster : null)
+                    (activeEvent.event_date === FEATURED_SHOW.event_date ? FEATURED_SHOW.poster : null),
+                banner: activeEvent.event_date === FEATURED_SHOW.event_date
+                    ? FEATURED_SHOW.banner
+                    : activeEvent.banner_image_url || null
             };
         }
         if (showTime(FEATURED_SHOW) > now) {
@@ -357,9 +363,22 @@ function Landing() {
                     <h2>One ticket. <span className="bil-outline">Your stage.</span></h2>
                 </div>
 
-                <div className="bil-pass">
+                <div className={upcoming && event?.banner ? "bil-pass has-banner" : "bil-pass"}>
+
+                    {upcoming && event?.banner && (
+                        <div className="bil-pass-banner">
+                            <img src={event.banner} alt={`${event.name} - show banner`} loading="lazy" />
+                        </div>
+                    )}
+
                     <div className="bil-pass-main">
-                        <h3>Singer Pass</h3>
+                        <h3>Block Your Slot</h3>
+                        {upcoming && (
+                            <p className="bil-pass-show">
+                                {event.name} · {formatDate(event.event_date)}
+                                {event.event_time && <> · {formatTime(event.event_time)}</>}
+                            </p>
+                        )}
                         <p className="bil-pass-price"><strong>₹700</strong> per show</p>
                         <ul>
                             <li>3 duets on stage, paired with a partner who picked the same songs</li>
@@ -367,7 +386,7 @@ function Landing() {
                             <li>Choose 6 duets so we can find you the best partners</li>
                             <li>Live crowd, real mic, friendly community</li>
                         </ul>
-                        <Link to="/singer-registration" className="bil-btn bil-btn-solid">Get my pass</Link>
+                        <Link to="/singer-registration" className="bil-btn bil-btn-solid">Block my slot</Link>
                     </div>
                     <div className="bil-pass-stub">
                         <span>ADMIT ONE</span>
