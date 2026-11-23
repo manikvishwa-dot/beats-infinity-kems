@@ -1,0 +1,36 @@
+.dob-select {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1.3fr;
+    gap: 8px;
+    width: 100%;
+}
+
+.dob-select select {
+    width: 100%;
+    height: 48px;
+    min-width: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    padding: 0 10px;
+    font-size: 15px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    /* small arrow so it reads as a dropdown on iPhone too */
+    background-image: linear-gradient(45deg, transparent 50%, #ffc107 50%),
+        linear-gradient(135deg, #ffc107 50%, transparent 50%);
+    background-position: calc(100% - 16px) 21px, calc(100% - 11px) 21px;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.dob-select select:focus {
+    border-color: #ffc107;
+}
+
+.dob-select option {
+    color: #111111;
+    background: #ffffff;
+}

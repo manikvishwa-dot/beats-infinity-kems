@@ -19,6 +19,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 
 import PasswordToggleInput from "../../common/PasswordToggleInput";
+import DobSelect from "../../common/DobSelect";
 import { confirmDob } from "../../../services/singerService";
 
 import "../../../pages/SingerLogin.css";
@@ -122,16 +123,13 @@ function DobPrompt() {
                     you reset a forgotten PIN. You only need to do this once.
                 </p>
 
-                <label htmlFor="dob-prompt-date">Date of Birth</label>
+                <label htmlFor="dob-prompt-day">Date of Birth</label>
 
-                <input
-                    id="dob-prompt-date"
-                    type="date"
+                <DobSelect
+                    idPrefix="dob-prompt"
                     value={dob}
-                    max={new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => setDob(e.target.value)}
+                    onChange={setDob}
                     disabled={saving}
-                    autoFocus
                 />
 
                 <label htmlFor="dob-prompt-pin">Your 4-digit PIN</label>

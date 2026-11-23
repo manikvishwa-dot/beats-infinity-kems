@@ -13,6 +13,7 @@ import "./SingerLogin.css";
 
 import PasswordToggleInput from "../components/common/PasswordToggleInput";
 import OtpPopup from "../components/common/OtpPopup";
+import DobSelect from "../components/common/DobSelect";
 
 import logo from "../assets/logo/beats-infinity-logo.png";
 
@@ -1789,18 +1790,15 @@ const SingerLogin = () => {
                 </div>
 
 
-                <label htmlFor="reset-dob">
+                <label htmlFor="reset-dob-day">
                     Date of Birth
                 </label>
 
 
-                <input
-                    id="reset-dob"
-                    type="date"
-                    className="reset-dob-input"
+                <DobSelect
+                    idPrefix="reset-dob"
                     value={resetDob}
-                    max={new Date().toISOString().slice(0, 10)}
-                    onChange={(event) => setResetDob(event.target.value)}
+                    onChange={setResetDob}
                     disabled={loading}
                 />
 
