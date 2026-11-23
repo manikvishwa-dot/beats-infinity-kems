@@ -22,7 +22,30 @@ import { getJourneyEvents } from "../services/journeyService";
 import statistics from "../components/Statistics/statisticsData";
 import whyJoin from "../components/WhyJoin/whyJoinData";
 
+import featuredPoster from "../assets/featured/cinematic-monarch.jpg";
+
 import "./Landing.css";
+
+
+// ---------- featured show (hero, top right) ----------
+// Used until the show is added in Admin -> Events - once an
+// upcoming event exists there, its name/date/venue/seats and
+// banner take over automatically.
+
+const FEATURED_SHOW = {
+    name: "Cinematic Monarch",
+    tagline: "Four Legends... One Stage!",
+    event_date: "2026-12-06",
+    event_time: "09:30",
+    venue: "Art Stash Rehearsal Studio",
+    poster: featuredPoster
+};
+
+const showTime = (show) => {
+    if (!show?.event_date) return null;
+    const time = show.event_time ? String(show.event_time).slice(0, 5) : "18:00";
+    return new Date(`${show.event_date}T${time}:00`).getTime();
+};
 
 
 // ---------- posters: "Beats Kondattam - September.png" ----------
@@ -100,6 +123,12 @@ const useCountdown = (target) => {
 
 const pad = (n) => String(n).padStart(2, "0");
 
+// "09:30" / "09:30:00" -> "9:30 AM"
+const formatTime = (time) => {
+    const [h, m] = String(time).split(":").map(Number);
+    return `${h % 12 || 12}:${pad(m || 0)} ${h < 12 ? "AM" : "PM"}`;
+};
+
 const formatDate = (iso) =>
     new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", {
         weekday: "short", day: "numeric", month: "long", year: "numeric"
@@ -108,7 +137,8 @@ const formatDate = (iso) =>
 
 function Landing() {
 
-    const [event, setEvent] = useState(null);
+    const [activeEvent, setActiveEvent] = useState(null);
+    const [loadedAt] = useState(() => Date.now());
     const [posters, setPosters] = useState(fallbackPosters);
     const [menuOpen, setMenuOpen] = useState(false);
 
@@ -138,15 +168,28 @@ function Landing() {
 
     useEffect(() => {
         getActiveEvent()
-            .then((result) => setEvent(result?.event || null))
-            .catch(() => setEvent(null));
+            .then((result) => setActiveEvent(result?.event || null))
+            .catch(() => setActiveEvent(null));
     }, []);
 
-    const target = useMemo(() => {
-        if (!event?.event_date) return null;
-        const time = event.event_time ? String(event.event_time).slice(0, 5) : "18:00";
-        return new Date(`${event.event_date}T${time}:00`).getTime();
-    }, [event]);
+    // Upcoming event from Admin -> Events wins; otherwise the
+    // featured show above (while its date is still ahead).
+    const event = useMemo(() => {
+        const now = loadedAt;
+        if (activeEvent && showTime(activeEvent) > now) {
+            return {
+                ...activeEvent,
+                poster: activeEvent.banner_image_url ||
+                    (activeEvent.event_date === FEATURED_SHOW.event_date ? FEATURED_SHOW.poster : null)
+            };
+        }
+        if (showTime(FEATURED_SHOW) > now) {
+            return FEATURED_SHOW;
+        }
+        return null;
+    }, [activeEvent, loadedAt]);
+
+    const target = useMemo(() => showTime(event), [event]);
 
     const countdown = useCountdown(target);
     const upcoming = Boolean(countdown);
@@ -221,6 +264,14 @@ function Landing() {
 
                 </div>
 
+                <div className={event?.poster ? "bil-feature has-poster" : "bil-feature"}>
+
+                {event?.poster && (
+                    <a href="#show" className="bil-feature-poster" aria-label={`${event.name} poster`}>
+                        <img src={event.poster} alt={`${event.name} poster`} />
+                    </a>
+                )}
+
                 <aside className="bil-ticket">
                     <div className="bil-ticket-top">
                         <span className="bil-chip">{upcoming ? "NEXT SHOW" : "COMING SOON"}</span>
@@ -232,6 +283,7 @@ function Landing() {
                     {upcoming && event?.event_date && (
                         <p className="bil-ticket-meta">
                             📅 {formatDate(event.event_date)}
+                            {event.event_time && <> · {formatTime(event.event_time)}</>}
                             {event.venue && <><br />📍 {event.venue}</>}
                         </p>
                     )}
@@ -267,6 +319,8 @@ function Landing() {
                         {upcoming ? "Book my spot" : "Join the community"}
                     </Link>
                 </aside>
+
+                </div>
 
             </section>
 

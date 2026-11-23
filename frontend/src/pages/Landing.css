@@ -294,6 +294,45 @@
 }
 
 
+/* featured poster + ticket (hero, right) */
+
+.bil-feature {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    justify-self: end;
+}
+
+.bil-feature-poster {
+    display: block;
+    border-radius: 24px;
+    overflow: hidden;
+    transform: rotate(3deg);
+    box-shadow:
+        0 0 0 2px rgba(255, 193, 7, 0.55),
+        0 30px 80px rgba(255, 122, 26, 0.35),
+        0 0 120px rgba(255, 46, 136, 0.25);
+    transition: transform 0.4s ease;
+}
+
+.bil-feature-poster:hover {
+    transform: rotate(1deg) scale(1.02);
+}
+
+.bil-feature-poster img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* ticket overlaps the bottom of the poster */
+.bil-feature.has-poster .bil-ticket {
+    width: 88%;
+    margin: -90px 0 0 -6%;
+    z-index: 2;
+}
+
+
 /* ticket card */
 
 .bil-ticket {
@@ -884,6 +923,15 @@
 
     .bil-ticket {
         transform: none;
+    }
+
+    .bil-feature {
+        justify-self: center;
+    }
+
+    .bil-feature.has-poster .bil-ticket {
+        width: 94%;
+        margin: -70px auto 0;
     }
 
     .bil-stats {
