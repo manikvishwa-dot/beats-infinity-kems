@@ -88,6 +88,38 @@ const isValidPin = (pin) => {
 // GENERATE 6 DIGIT OTP
 // ----------------------------------------------------------
 
+// ==========================================================
+// FORGOT PIN - DATE OF BIRTH CHECK
+//
+// The Forgot PIN OTP is shown on screen, so the date of birth
+// stops a stranger who only knows the mobile number.
+//
+// Singers imported on 2026-09-10 have the placeholder
+// 2000-01-01 (they never entered a date) - for them the check
+// is skipped until an admin fills in the real date.
+//
+// Wrong dates: max 5 per mobile number per hour, so the date
+// can't be found by trying every day of every year.
+// ==========================================================
+
+const PLACEHOLDER_DOB = "2000-01-01";
+const MAX_DOB_TRIES = 5;
+const DOB_WINDOW_MS = 60 * 60 * 1000;
+const wrongDobTries = new Map(); // mobile -> [timestamps]
+
+const recentWrongDobTries = (mobile) => {
+    const since = Date.now() - DOB_WINDOW_MS;
+    const tries = (wrongDobTries.get(mobile) || []).filter((t) => t > since);
+    wrongDobTries.set(mobile, tries);
+    return tries;
+};
+
+const normalizeDob = (value) => {
+    const text = String(value || "").trim().slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
+};
+
+
 const generateOTP = () => {
 
     return Math.floor(
@@ -400,7 +432,7 @@ const sendOTP = async (req, res) => {
                 .from("singers")
 
                 .select(
-                    "id,mobile_number,singer_name"
+                    "id,mobile_number,singer_name,date_of_birth"
                 )
 
                 .eq(
@@ -447,48 +479,56 @@ const sendOTP = async (req, res) => {
 
             }
 
-        }
 
+            // ---------------- DATE OF BIRTH ----------------
 
-        // ==================================================
-        // FORGOT PIN - REUSE A PENDING REQUEST
-        //
-        // Reset OTPs are sent by an admin on WhatsApp, so a
-        // second tap on "Forgot PIN" must not replace the code
-        // the admin may already have sent.
-        // ==================================================
+            if (recentWrongDobTries(mobile).length >= MAX_DOB_TRIES) {
 
-        if (purpose === "reset_pin") {
-
-            const {
-                data: pendingReset
-            } = await supabase
-                .from("singer_otps")
-                .select("id,expires_at")
-                .eq("mobile_number", mobile)
-                .eq("purpose", "reset_pin")
-                .is("verified_at", null)
-                .gt("expires_at", new Date().toISOString())
-                // a request locked by 5 wrong tries gets a fresh OTP
-                .lt("attempts", 5)
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (pendingReset) {
-
-                return res.status(200).json({
-                    success: true,
-                    existing: true,
-                    delivery: "admin_whatsapp",
+                return res.status(429).json({
+                    success: false,
                     message:
-                        "Your request is already with Beats Infinity. You'll get the OTP on WhatsApp.",
-                    mobile,
-                    purpose,
-                    expiresAt: pendingReset.expires_at
+                        "Too many wrong dates of birth. Please try again in an hour, or contact Beats Infinity."
                 });
 
             }
+
+            const enteredDob =
+                normalizeDob(req.body.date_of_birth);
+
+            if (!enteredDob) {
+
+                return res.status(400).json({
+                    success: false,
+                    message: "Please enter your date of birth."
+                });
+
+            }
+
+            const savedDob =
+                normalizeDob(existingSinger.date_of_birth);
+
+            const hasRealDob =
+                savedDob && savedDob !== PLACEHOLDER_DOB;
+
+            if (hasRealDob && enteredDob !== savedDob) {
+
+                const tries = recentWrongDobTries(mobile);
+                tries.push(Date.now());
+                wrongDobTries.set(mobile, tries);
+
+                const left = MAX_DOB_TRIES - tries.length;
+
+                return res.status(403).json({
+                    success: false,
+                    message:
+                        left > 0
+                            ? `Mobile number and date of birth don't match. ${left} ${left === 1 ? "try" : "tries"} left.`
+                            : "Too many wrong dates of birth. Please try again in an hour, or contact Beats Infinity."
+                });
+
+            }
+
+            wrongDobTries.delete(mobile);
 
         }
 
@@ -502,21 +542,13 @@ const sendOTP = async (req, res) => {
 
 
         // --------------------------------------------------
-        // OTP EXPIRY
-        //
-        // Registration: 5 minutes (shown on screen).
-        // Forgot PIN: 2 hours - an admin sends it by hand on
-        // WhatsApp, which can take a while.
+        // OTP EXPIRY - 5 MINUTES
         // --------------------------------------------------
 
         const expiresAt =
             new Date(
                 Date.now() +
-                (
-                    purpose === "reset_pin"
-                        ? 2 * 60 * 60 * 1000
-                        : 5 * 60 * 1000
-                )
+                (5 * 60 * 1000)
             ).toISOString();
 
 
@@ -686,17 +718,10 @@ const sendOTP = async (req, res) => {
 
             expiresAt,
 
-            // Forgot PIN: NEVER returned - anyone can type any
-            // mobile number here. An admin sends it on WhatsApp.
-            ...(purpose === "reset_pin" && !deliveredViaWhatsapp
-                ? { delivery: "admin_whatsapp" }
-                : {}),
-
-            // Registration only: shown on screen while WhatsApp
-            // delivery isn't configured (or a send failed).
-            ...(deliveredViaWhatsapp || purpose === "reset_pin"
-                ? {}
-                : { otp })
+            // Shown in the on-screen popup (registration and
+            // Forgot PIN) until WhatsApp delivery is set up -
+            // never sent alongside a delivered WhatsApp OTP.
+            ...(deliveredViaWhatsapp ? {} : { otp })
 
         });
 
@@ -1987,7 +2012,7 @@ const resetPin = async (req, res) => {
         // --------------------------------------------------
 
         // The new PIN must be set within 15 minutes of entering
-        // the OTP (the OTP itself is valid for 2 hours).
+        // the OTP.
         if (
             Date.now() >
             new Date(

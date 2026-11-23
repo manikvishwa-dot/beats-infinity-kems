@@ -47,7 +47,6 @@ import PairingManagement from "../pages/PairingManagement";
 import AdminPaymentManagement from "../pages/AdminPaymentManagement";
 import JourneyManagement from "../pages/JourneyManagement";
 import Maggie from "../pages/Maggie";
-import PinResets from "../pages/PinResets";
 import SuperAdminDashboard from "../pages/SuperAdminDashboard";
 import ComparisonDashboard from "../pages/ComparisonDashboard";
 import RequireAdminAuth from "../components/admin/RequireAdminAuth";
@@ -303,15 +302,6 @@ function AppRoutes() {
                 element={
                     <RequireAdminAuth>
                         <JourneyManagement />
-                    </RequireAdminAuth>
-                }
-            />
-
-            <Route
-                path="/admin/pin-resets"
-                element={
-                    <RequireAdminAuth>
-                        <PinResets />
                     </RequireAdminAuth>
                 }
             />

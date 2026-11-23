@@ -91,7 +91,8 @@ const checkSinger = async (mobile) => {
 
 const sendOTP = async (
     mobile,
-    purpose = "registration"
+    purpose = "registration",
+    dateOfBirth = ""
 ) => {
 
     const response = await fetch(
@@ -113,7 +114,10 @@ const sendOTP = async (
 
                 mobile,
 
-                purpose
+                purpose,
+
+                // Forgot PIN only - checked against registration
+                ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {})
 
             })
 

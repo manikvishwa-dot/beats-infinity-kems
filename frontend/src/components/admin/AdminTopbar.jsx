@@ -21,8 +21,6 @@ const NAV_ITEMS = [
 
     { label: "Journey", path: "/admin/journey", icon: "🖼️" },
 
-    { label: "PIN Resets", path: "/admin/pin-resets", icon: "🔑" },
-
     { label: "Maggie", path: "/admin/maggie", icon: "🕵️" }
 
 ];

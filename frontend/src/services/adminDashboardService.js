@@ -330,39 +330,7 @@ const getMaggieAuditAllEvents = async () => {
 };
 
 
-// ==========================================================
-// FORGOT PIN REQUESTS - admin sends the OTP on WhatsApp
-// ==========================================================
-
-const getPinResets = async () => {
-
-    const response = await fetch(
-        `${API_BASE_URL}/pin-resets`,
-        { headers: { ...getAuthHeader() } }
-    );
-
-    return handleResponse(response);
-
-};
-
-const markPinResetSent = async id => {
-
-    const response = await fetch(
-        `${API_BASE_URL}/pin-resets/${encodeURIComponent(id)}/sent`,
-        {
-            method: "POST",
-            headers: { ...getAuthHeader() }
-        }
-    );
-
-    return handleResponse(response);
-
-};
-
-
 export {
-    getPinResets,
-    markPinResetSent,
     getAllSingers,
     getSingersOverview,
     getPairingSuggestions,
