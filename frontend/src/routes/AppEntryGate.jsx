@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { isStandalone, hasSingerSession } from "../utils/pwa";
-import Home from "../pages/Home";
+import Landing from "../pages/Landing";
 import LaunchChooser from "../components/Login/LaunchChooser";
 
 // The installed PWA's start_url is "/" - without this, every launch
@@ -48,7 +48,7 @@ function AppEntryGate() {
         return <LaunchChooser />;
     }
 
-    return <Home />;
+    return <Landing />;
 
 }
 
