@@ -82,10 +82,20 @@ const crewFiles = import.meta.glob(
     { eager: true, import: "default" }
 );
 
-const crew = Object.entries(crewFiles).map(([path, src]) => {
-    const name = path.split("/").pop().replace(/\.[^.]+$/, "");
-    return { src, name: name.charAt(0).toUpperCase() + name.slice(1) };
-});
+// display order; anyone not listed goes at the end
+const CREW_ORDER = ["manik", "geetha", "ramya", "anand", "selva", "advaith", "vignesh"];
+
+const crewRank = (name) => {
+    const rank = CREW_ORDER.indexOf(name.toLowerCase());
+    return rank === -1 ? CREW_ORDER.length : rank;
+};
+
+const crew = Object.entries(crewFiles)
+    .map(([path, src]) => {
+        const name = path.split("/").pop().replace(/\.[^.]+$/, "");
+        return { src, name: name.charAt(0).toUpperCase() + name.slice(1) };
+    })
+    .sort((a, b) => crewRank(a.name) - crewRank(b.name));
 
 
 const STEPS = [
