@@ -23,7 +23,9 @@ const {
 
     updateSingerProfile,
 
-    confirmDob
+    confirmDob,
+
+    getBirthdayStatus
 
 } = require("../../controllers/v1/singerController");
 
@@ -182,6 +184,12 @@ router.post("/passkeys/login/verify", verifyLogin);
 // PUT
 // /api/v1/singers/:id
 // ==========================================================
+
+// GET /api/v1/singers/:id/birthday - is today their birthday?
+router.get(
+    "/:id/birthday",
+    getBirthdayStatus
+);
 
 router.put(
     "/:id",

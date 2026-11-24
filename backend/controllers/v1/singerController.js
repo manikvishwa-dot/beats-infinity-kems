@@ -1,3 +1,4 @@
+const { isBirthdayToday } = require("../../utils/birthday");
 const { supabase } = require("../../config/supabase");
 const bcrypt = require("bcryptjs");
 const { isWhatsappConfigured, sendOtpViaWhatsapp } = require("../../services/whatsappService");
@@ -2486,7 +2487,58 @@ const updateSingerProfile = async (req, res) => {
 // EXPORT
 // ==========================================================
 
+// ==========================================================
+// GET /api/v1/singers/:id/birthday
+//
+// The singer dashboard asks this to show a birthday greeting.
+// Returns only yes/no (and the first name) - no date of birth
+// or phone number leaves the server.
+// ==========================================================
+
+const getBirthdayStatus = async (req, res) => {
+
+    try {
+
+        const singerId = String(req.params.id || "");
+
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(singerId)) {
+            return res.status(400).json({ success: false, message: "A valid singer id is required." });
+        }
+
+        const { data, error } = await supabase
+            .from("singers")
+            .select("singer_name,date_of_birth")
+            .eq("id", singerId)
+            .maybeSingle();
+
+        if (error) {
+            throw error;
+        }
+
+        const birthday = Boolean(data) && isBirthdayToday(data.date_of_birth);
+
+        return res.status(200).json({
+            success: true,
+            birthday,
+            first_name: birthday ? String(data.singer_name || "").trim().split(/\s+/)[0] : null
+        });
+
+    }
+
+    catch (error) {
+
+        console.error("GET BIRTHDAY STATUS:", error);
+
+        return res.status(500).json({ success: false, message: "Unable to check." });
+
+    }
+
+};
+
+
 module.exports = {
+
+    getBirthdayStatus,
 
     getSingerByMobile,
 

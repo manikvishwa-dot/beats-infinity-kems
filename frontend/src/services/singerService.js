@@ -427,7 +427,21 @@ const confirmDob = async (singerId, pin, dateOfBirth) => {
 // EXPORT
 // ==========================================================
 
+// Is today the singer's birthday? (yes/no only)
+const getBirthdayStatus = async singerId => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/${encodeURIComponent(singerId)}/birthday`
+    );
+
+    return handleResponse(response);
+
+};
+
+
 export {
+
+    getBirthdayStatus,
 
     checkSinger,
 

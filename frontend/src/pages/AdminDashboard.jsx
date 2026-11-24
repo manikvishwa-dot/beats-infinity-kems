@@ -17,6 +17,7 @@ import {
 } from "recharts";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
+import BirthdayCard from "../components/admin/BirthdayCard";
 import { getSession } from "../services/adminService";
 import { getDashboardOverview, getEventAnalytics } from "../services/adminDashboardService";
 
@@ -495,6 +496,8 @@ function AdminDashboard() {
                                 />
                             )}
                         </div>
+
+                        <BirthdayCard />
 
                         {/* ---------- event filter ---------- */}
                         {allEvents.length > 1 && (

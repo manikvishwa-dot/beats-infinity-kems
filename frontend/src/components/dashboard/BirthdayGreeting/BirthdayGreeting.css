@@ -1,0 +1,123 @@
+/* ==========================================================
+   BIRTHDAY GREETING (singer dashboard)
+   ========================================================== */
+
+.birthday-greeting {
+    position: relative;
+    overflow: hidden;
+    padding: 34px 26px 28px;
+    border-radius: 28px;
+    text-align: center;
+    background:
+        radial-gradient(circle at 20% 0%, rgba(255, 213, 74, 0.28), transparent 55%),
+        radial-gradient(circle at 85% 100%, rgba(255, 111, 168, 0.28), transparent 55%),
+        linear-gradient(135deg, #2a1640, #17132b);
+    border: 1px solid rgba(255, 213, 74, 0.35);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+    animation: birthday-pop 0.6s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+
+.birthday-greeting h2 {
+    position: relative;
+    margin: 6px 0 10px;
+    font-family: "Poppins", sans-serif;
+    font-size: clamp(24px, 6vw, 34px);
+    background: linear-gradient(90deg, #ffd54a, #ff9fc6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.birthday-greeting p {
+    position: relative;
+    max-width: 520px;
+    margin: 0 auto 14px;
+    color: #ece6f6;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.birthday-sign {
+    position: relative;
+    color: #ffd54a;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.birthday-cake {
+    position: relative;
+    font-size: 54px;
+    line-height: 1;
+    animation: birthday-bounce 1.6s ease-in-out infinite;
+}
+
+.birthday-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    z-index: 2;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.25);
+    color: #ffffff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.birthday-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.birthday-confetti {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.birthday-confetti span {
+    position: absolute;
+    top: -14px;
+    width: 8px;
+    height: 13px;
+    border-radius: 2px;
+    opacity: 0.9;
+    animation-name: birthday-fall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.birthday-confetti span.round {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+@keyframes birthday-fall {
+    0%   { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(420px) rotate(540deg); }
+}
+
+@keyframes birthday-bounce {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+}
+
+@keyframes birthday-pop {
+    0%   { transform: scale(0.92); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .birthday-greeting,
+    .birthday-cake,
+    .birthday-confetti span {
+        animation: none;
+    }
+
+    .birthday-confetti {
+        display: none;
+    }
+}

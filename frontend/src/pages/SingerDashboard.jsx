@@ -13,6 +13,8 @@ import MySongs
 
 import DobPrompt
     from "../components/dashboard/DobPrompt/DobPrompt";
+import BirthdayGreeting
+    from "../components/dashboard/BirthdayGreeting/BirthdayGreeting";
 import { getMyPairing } from "../services/pairingService";
 
 
@@ -115,6 +117,10 @@ function SingerDashboard() {
             <DobPrompt />
 
             <DashboardWelcome />
+
+            <BirthdayGreeting
+                singerId={singerId}
+            />
 
             <PairingStatus
                 singerId={singerId}
