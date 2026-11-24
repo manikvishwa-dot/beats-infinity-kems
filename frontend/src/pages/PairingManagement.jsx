@@ -4,6 +4,7 @@ import AdminTopbar from "../components/admin/AdminTopbar";
 import EventSelector from "../components/admin/EventSelector";
 import ExcelToolbar from "../components/admin/ExcelToolbar";
 import FinalPairingList from "../components/admin/FinalPairingList";
+import SongCountTab from "../components/admin/SongCountTab";
 import PairingChangeLog from "../components/admin/PairingChangeLog";
 import {
     getPairingSuggestions,
@@ -195,6 +196,7 @@ function PairingManagement() {
     // Counts show what still needs the admin's attention
     const tabs = [
         { id: "final", label: "Final List" },
+        { id: "counts", label: "Song Count" },
         { id: "review", label: "To Review", count: suggestions.potential_matches.length + pendingSoloCount },
         { id: "open", label: "Open Songs & Manual", count: openSongsMale.length },
         { id: "report", label: "Report & Excel" },
@@ -688,6 +690,14 @@ function PairingManagement() {
                         />
                     ) : (
                         <div className="pairing-empty">Select an event to see its final pairing list.</div>
+                    )
+                )}
+
+                {activeTab === "counts" && (
+                    primaryEventId ? (
+                        <SongCountTab key={primaryEventId} eventId={primaryEventId} />
+                    ) : (
+                        <div className="pairing-empty">Select an event to see each singer's song count.</div>
                     )
                 )}
 
