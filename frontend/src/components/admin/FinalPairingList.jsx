@@ -88,7 +88,7 @@ function SingerSelect({ value, singers, onChange, onAddSinger, emptyLabel, ariaL
 }
 
 
-function FinalPairingList({ eventId, onSaved }) {
+function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
 
     const [rows, setRows] = useState([]);
     const [savedSnapshot, setSavedSnapshot] = useState("[]");
@@ -177,6 +177,11 @@ function FinalPairingList({ eventId, onSaved }) {
             : [...list, ...singers.filter(singer => singer.id === id)];
 
     const dirty = comparable(rows) !== savedSnapshot;
+
+    // Let the Pairing page know, so changing tab asks first
+    useEffect(() => {
+        onDirtyChange?.(dirty);
+    }, [dirty, onDirtyChange]);
 
     // Warn before leaving the page with unsaved edits
     useEffect(() => {

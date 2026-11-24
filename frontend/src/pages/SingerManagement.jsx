@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminTopbar from "../components/admin/AdminTopbar";
 import EventSelector from "../components/admin/EventSelector";
 import ExcelToolbar from "../components/admin/ExcelToolbar";
-import { getAllSingers, getSingersOverview, bulkUpdateSingers } from "../services/adminDashboardService";
+import { getAllSingers, getFinalPairingList, bulkUpdateSingers } from "../services/adminDashboardService";
 import { getEvents } from "../services/eventService";
 
 import "../styles/adminTheme.css";
@@ -14,7 +14,9 @@ const SINGER_COLUMNS = [
     { key: "singer_name", header: "Singer Name", width: 26 },
     { key: "gender", header: "Gender", width: 12 },
     { key: "date_of_birth", header: "Date of Birth (YYYY-MM-DD)", width: 24 },
-    { key: "mobile_number", header: "Mobile Number", width: 18 }
+    { key: "mobile_number", header: "Mobile Number", width: 18 },
+    // Reference only - ignored when the file is uploaded again
+    { key: "songs", header: "Songs (from Final List - not imported)", width: 70 }
 ];
 
 const formatDate = value => {
@@ -56,6 +58,7 @@ function SingerManagement() {
     const [selectedEventIds, setSelectedEventIds] = useState([]);
     const [enrolledIds, setEnrolledIds] = useState(null);
     const [enrolledLoading, setEnrolledLoading] = useState(false);
+    const [songsBySinger, setSongsBySinger] = useState(() => new Map());
 
     const loadSingers = useCallback(async () => {
         try {
@@ -104,34 +107,81 @@ function SingerManagement() {
 
     }, []);
 
+    // Who's in the selected event(s) and their songs, from each
+    // event's Final List: registered (paid / pending), added to the
+    // event (walk-ins, uploaded list) or on the list itself.
     useEffect(() => {
 
         if (selectedEventIds.length === 0) {
             setEnrolledIds(null);
-            return;
+            setSongsBySinger(new Map());
+            return undefined;
         }
 
+        let alive = true;
         setEnrolledLoading(true);
 
-        getSingersOverview(selectedEventIds.join(","))
-            .then(result => {
+        Promise.all(selectedEventIds.map(id => getFinalPairingList(id)))
+            .then(results => {
 
-                setEnrolledIds(new Set((result.singers || []).map(row => row.singer_id)));
+                if (!alive) return;
+
+                const ids = new Set();
+                const songs = new Map();
+                const many = results.length > 1;
+
+                results.forEach(result => {
+
+                    const nameById = new Map((result.singers || []).map(singer => [singer.id, singer.singer_name]));
+
+                    (result.singers || []).forEach(singer => {
+                        if (singer.in_event) ids.add(singer.id);
+                    });
+
+                    (result.rows || []).forEach(row => {
+                        const pair = [row.male_singer_id, row.female_singer_id].filter(Boolean);
+                        pair.forEach(id => {
+                            ids.add(id);
+                            const partnerId = pair.find(other => other !== id);
+                            if (!songs.has(id)) songs.set(id, []);
+                            songs.get(id).push({
+                                title: row.song_title,
+                                movie: row.movie,
+                                partner: partnerId ? nameById.get(partnerId) || "" : "",
+                                event: many ? result.event_name : ""
+                            });
+                        });
+                    });
+
+                });
+
+                setEnrolledIds(ids);
+                setSongsBySinger(songs);
 
             })
             .catch(requestError => {
 
-                console.error("Load enrolled singers error:", requestError);
-                setEnrolledIds(new Set());
+                console.error("Load event singers error:", requestError);
+                if (alive) {
+                    setEnrolledIds(new Set());
+                    setSongsBySinger(new Map());
+                }
 
             })
             .finally(() => {
 
-                setEnrolledLoading(false);
+                if (alive) setEnrolledLoading(false);
 
             });
 
+        return () => {
+            alive = false;
+        };
+
     }, [selectedEventIds]);
+
+    const songText = song =>
+        `${song.title}${song.partner ? ` (with ${song.partner})` : " (solo)"}${song.event ? ` - ${song.event}` : ""}`;
 
     const filteredSingers = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -190,7 +240,10 @@ function SingerManagement() {
 
                 <ExcelToolbar
                     columns={SINGER_COLUMNS}
-                    rows={filteredSingers}
+                    rows={filteredSingers.map(singer => ({
+                        ...singer,
+                        songs: (songsBySinger.get(singer.id) || []).map(songText).join("; ")
+                    }))}
                     filename="beats-infinity-singers"
                     onImportRows={handleImportRows}
                     hint="Export, edit Name/Gender/Date of Birth/Mobile Number, then re-upload the same file to bulk-update. Leave the ID column untouched - it's how each row is matched."
@@ -235,6 +288,7 @@ function SingerManagement() {
                                     <th>Gender</th>
                                     <th>Date of Birth</th>
                                     <th>Mobile Number</th>
+                                    {enrolledIds && <th>Songs</th>}
                                 </tr>
                             </thead>
 
@@ -249,6 +303,22 @@ function SingerManagement() {
                                         </td>
                                         <td>{formatDate(singer.date_of_birth)}</td>
                                         <td>{singer.mobile_number || "—"}</td>
+                                        {enrolledIds && (
+                                            <td className="songs-cell">
+                                                {(songsBySinger.get(singer.id) || []).length === 0 ? (
+                                                    <span className="songs-none">No songs on the Final List yet</span>
+                                                ) : (
+                                                    <ul>
+                                                        {songsBySinger.get(singer.id).map((song, index) => (
+                                                            <li key={`${song.title}-${index}`} title={songText(song)}>
+                                                                <span>{song.title}</span>
+                                                                <em>{song.partner ? `with ${song.partner}` : "solo"}{song.event ? ` · ${song.event}` : ""}</em>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

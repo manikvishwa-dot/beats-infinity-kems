@@ -65,6 +65,8 @@ function PairingManagement() {
 
     // final | review | open | report | log
     const [activeTab, setActiveTab] = useState("final");
+    // Final List has edits not saved yet (switching tab would lose them)
+    const [finalDirty, setFinalDirty] = useState(false);
 
     useEffect(() => {
 
@@ -667,6 +669,13 @@ function PairingManagement() {
                             aria-selected={activeTab === tab.id}
                             className={`pairing-tab${activeTab === tab.id ? " is-active" : ""}`}
                             onClick={() => {
+                                if (
+                                    activeTab === "final" && tab.id !== "final" && finalDirty &&
+                                    !window.confirm("The Final List has changes that aren't saved yet. Leave without saving? (Cancel, then click \"Save final list\" to keep them.)")
+                                ) {
+                                    return;
+                                }
+                                if (tab.id !== "final") setFinalDirty(false);
                                 setActiveTab(tab.id);
                                 setError("");
                                 setSuccess("");
@@ -687,6 +696,7 @@ function PairingManagement() {
                             key={primaryEventId}
                             eventId={primaryEventId}
                             onSaved={loadData}
+                            onDirtyChange={setFinalDirty}
                         />
                     ) : (
                         <div className="pairing-empty">Select an event to see its final pairing list.</div>
