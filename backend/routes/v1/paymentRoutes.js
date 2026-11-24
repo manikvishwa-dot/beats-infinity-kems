@@ -94,6 +94,12 @@ router.put(
 );
 
 router.put(
+    "/:id/waive",
+    requireAdmin,
+    paymentController.waivePaymentFee
+);
+
+router.put(
     "/bulk-status",
     requireAdmin,
     paymentController.bulkUpdatePaymentStatus
@@ -130,6 +136,7 @@ console.log("GET    /api/v1/payments/past-dues");
 console.log("POST   /api/v1/payments");
 console.log("PUT    /api/v1/payments/:id/mark-paid");
 console.log("PUT    /api/v1/payments/:id/reject");
+console.log("PUT    /api/v1/payments/:id/waive");
 console.log("PUT    /api/v1/payments/bulk-status");
 console.log("PUT    /api/v1/payments/:id/replace-song");
 console.log("PUT    /api/v1/payments/:id/add-song");

@@ -165,6 +165,9 @@ const loadSingerSongMap = async (eventId = null) => {
     let paymentsQuery = supabase
         .from("payments")
         .select("singer_id,selected_song_ids,solo_song_id,created_at")
+        // Walk-in payments only mirror songs already placed on the
+        // Final List - they aren't picks waiting to be paired.
+        .or("payment_type.is.null,payment_type.neq.Walk-in")
         .order("created_at", { ascending: false });
 
     if (eventId) {

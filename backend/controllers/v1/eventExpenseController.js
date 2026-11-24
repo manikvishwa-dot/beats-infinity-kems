@@ -254,6 +254,9 @@ const getFinanceSummary = async (req, res) => {
         const expenses = expensesResult.data || [];
 
         const paidPayments = payments.filter(payment => payment.status === "Paid");
+        // Free entries (guest / management team) are Paid at Rs 0
+        const payingPayments = paidPayments.filter(payment => Number(payment.amount || 0) > 0);
+        const freeCount = paidPayments.length - payingPayments.length;
         const pendingCount = payments.filter(payment => payment.status === "Pending").length;
         const rejectedCount = payments.filter(payment => payment.status === "Rejected").length;
 
@@ -268,7 +271,8 @@ const getFinanceSummary = async (req, res) => {
                 revenue,
                 expense_total: expenseTotal,
                 balance: revenue - expenseTotal,
-                paid_count: paidPayments.length,
+                paid_count: payingPayments.length,
+                free_count: freeCount,
                 pending_count: pendingCount,
                 rejected_count: rejectedCount,
                 total_payment_count: payments.length

@@ -157,6 +157,26 @@ const rejectPayment = async (paymentId) => {
 };
 
 // ==========================================================
+// ADMIN - FREE ENTRY (Rs 0): "Guest Singer" | "Management Team"
+// ==========================================================
+
+const waivePayment = async (paymentId, waiver) => {
+    const response = await fetch(
+        `${API_BASE_URL}/${paymentId}/waive`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ waiver })
+        }
+    );
+
+    return handleResponse(response);
+};
+
+// ==========================================================
 // ADMIN - BULK UPDATE STATUS (Excel import)
 // ==========================================================
 
@@ -279,5 +299,6 @@ export {
     getPastEventDues,
     markPaymentAsPaid,
     rejectPayment,
+    waivePayment,
     bulkUpdatePaymentStatus
 };

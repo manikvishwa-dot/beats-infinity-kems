@@ -307,6 +307,9 @@ const getEventAnalytics = async (req, res) => {
         // Group everything by event_id first, one pass each.
         const byEvent = new Map(eventIds.map(id => [id, {
             paymentsByStatus: { Paid: new Set(), Pending: new Set(), Rejected: new Set() },
+            // Paid singers who actually paid - free entries
+            // (guest / management team) are Paid at Rs 0
+            payingSingerIds: new Set(),
             revenue: 0,
             expenses: 0,
             expenseByCategory: new Map(),
@@ -327,6 +330,9 @@ const getEventAnalytics = async (req, res) => {
 
             if (p.status === "Paid") {
                 bucket.revenue += Number(p.amount || 0);
+                if (Number(p.amount || 0) > 0) {
+                    bucket.payingSingerIds.add(p.singer_id);
+                }
             }
         });
 
@@ -375,6 +381,7 @@ const getEventAnalytics = async (req, res) => {
             const b = byEvent.get(event.id);
 
             const paidCount = b.paymentsByStatus.Paid.size;
+            const payingCount = b.payingSingerIds.size;
             const pendingCount = b.paymentsByStatus.Pending.size;
             const rejectedCount = b.paymentsByStatus.Rejected.size;
 
@@ -387,7 +394,7 @@ const getEventAnalytics = async (req, res) => {
                 event_date: event.event_date || event.created_at,
 
                 singer_count: paidCount + pendingCount,
-                payment_breakdown: { paid: paidCount, pending: pendingCount, rejected: rejectedCount },
+                payment_breakdown: { paid: payingCount, free: paidCount - payingCount, pending: pendingCount, rejected: rejectedCount },
 
                 gender_breakdown: b.genderCount,
 
@@ -395,7 +402,7 @@ const getEventAnalytics = async (req, res) => {
                 expenses: b.expenses,
                 balance,
                 profit_margin_pct: b.revenue > 0 ? Math.round((balance / b.revenue) * 1000) / 10 : 0,
-                avg_revenue_per_singer: paidCount > 0 ? Math.round(b.revenue / paidCount) : 0,
+                avg_revenue_per_singer: payingCount > 0 ? Math.round(b.revenue / payingCount) : 0,
                 expense_by_category: [...b.expenseByCategory.entries()].map(([category, amount]) => ({ category, amount })),
 
                 pairing_count: b.pairingCount,

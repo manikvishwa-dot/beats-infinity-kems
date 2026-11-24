@@ -13,6 +13,7 @@ import {
     getPayments,
     markPaymentAsPaid,
     rejectPayment,
+    waivePayment,
     bulkUpdatePaymentStatus
 } from "../services/paymentService";
 import { getEvents } from "../services/eventService";
@@ -28,22 +29,40 @@ const PAYMENT_COLUMNS = [
     { key: "amount", header: "Amount", width: 12 },
     { key: "song_count", header: "Duet Songs", width: 14 },
     { key: "solo_song", header: "Solo Song", width: 30 },
+    { key: "entry_type", header: "Entry", width: 14 },
+    { key: "free_entry", header: "Free Entry", width: 18 },
     { key: "status", header: "Status (Pending/Paid/Rejected)", width: 26 }
 ];
 
 const FILTERS = [
     "Pending",
     "Paid",
+    "Free",
     "Rejected",
     "All"
 ];
 
 const FILTER_LABELS = {
     Pending: "Awaiting approval",
-    Paid: "Confirmed",
+    Paid: "Paid",
+    Free: "Free entry",
     Rejected: "Rejected",
     All: "All requests"
 };
+
+// Free entry (Rs 0) - guests singing as a goodwill gesture and the
+// management team. Stored as Paid at Rs 0 with fee_waiver set.
+const WAIVERS = [
+    { value: "Guest Singer", icon: "🎤" },
+    { value: "Management Team", icon: "⭐" }
+];
+
+const isWalkIn = payment =>
+    payment?.payment_type === "Walk-in";
+
+// Which tile a payment belongs to: free entries get their own
+const getCategory = payment =>
+    payment.fee_waiver ? "Free" : payment.status;
 
 const formatDate = (value) => {
     if (!value) {
@@ -92,6 +111,10 @@ const getStatusClass = (status) => {
         return "rejected";
     }
 
+    if (status === "Free") {
+        return "free";
+    }
+
     return "pending";
 };
 
@@ -112,6 +135,9 @@ const AdminPaymentManagement = () => {
         useState(null);
 
     const [expandedId, setExpandedId] =
+        useState(null);
+
+    const [freeMenuId, setFreeMenuId] =
         useState(null);
 
     const [error, setError] =
@@ -213,6 +239,22 @@ const AdminPaymentManagement = () => {
     }, [loadPayments]);
 
     useEffect(() => {
+        if (!freeMenuId) {
+            return undefined;
+        }
+
+        const close = event => {
+            if (!event.target.closest?.(".payment-free-wrap")) {
+                setFreeMenuId(null);
+            }
+        };
+
+        document.addEventListener("mousedown", close);
+
+        return () => document.removeEventListener("mousedown", close);
+    }, [freeMenuId]);
+
+    useEffect(() => {
         if (!notice) {
             return undefined;
         }
@@ -227,13 +269,14 @@ const AdminPaymentManagement = () => {
             const base = {
                 Pending: { count: 0, amount: 0 },
                 Paid: { count: 0, amount: 0 },
+                Free: { count: 0, amount: 0 },
                 Rejected: { count: 0, amount: 0 },
                 All: { count: 0, amount: 0 }
             };
 
             payments.forEach(payment => {
                 const amount = Number(payment.amount || 0);
-                const bucket = base[payment.status] || base.Pending;
+                const bucket = base[getCategory(payment)] || base.Pending;
 
                 bucket.count += 1;
                 bucket.amount += amount;
@@ -251,7 +294,7 @@ const AdminPaymentManagement = () => {
             const query = search.trim().toLowerCase();
 
             const rows = payments.filter(payment => {
-                if (filter !== "All" && payment.status !== filter) {
+                if (filter !== "All" && getCategory(payment) !== filter) {
                     return false;
                 }
 
@@ -279,7 +322,7 @@ const AdminPaymentManagement = () => {
         [payments, filter, search]
     );
 
-    const updateLocalStatus = (paymentId, status) => {
+    const updateLocalStatus = (paymentId, status, extra = {}) => {
         setPayments(current =>
             current.map(payment =>
                 payment.id === paymentId
@@ -287,8 +330,9 @@ const AdminPaymentManagement = () => {
                         ...payment,
                         status,
                         paid_at: status === "Paid"
-                            ? new Date().toISOString()
-                            : payment.paid_at
+                            ? payment.paid_at || new Date().toISOString()
+                            : payment.paid_at,
+                        ...extra
                     }
                     : payment
             )
@@ -302,7 +346,9 @@ const AdminPaymentManagement = () => {
             payment.singer?.singer_name || "this singer";
 
         const confirmed = window.confirm(
-            `Confirm ${formatRupees(payment.amount)} received from ${name}? Their duet songs will then be submitted for pairing.`
+            isWalkIn(payment)
+                ? `Confirm ${formatRupees(payment.amount)} cash received from ${name} (walk-in)?`
+                : `Confirm ${formatRupees(payment.amount)} received from ${name}? Their duet songs will then be submitted for pairing.`
         );
 
         if (!confirmed) {
@@ -344,7 +390,9 @@ const AdminPaymentManagement = () => {
             payment.singer?.singer_name || "this singer";
 
         const confirmed = window.confirm(
-            `Reject the payment request from ${name}?`
+            isWalkIn(payment)
+                ? `Mark ${name}'s walk-in payment as NOT received?`
+                : `Reject the payment request from ${name}?`
         );
 
         if (!confirmed) {
@@ -360,7 +408,11 @@ const AdminPaymentManagement = () => {
             );
 
             updateLocalStatus(payment.id, "Rejected");
-            setNotice(`${name}'s request rejected`);
+            setNotice(
+                isWalkIn(payment)
+                    ? `${name}: payment not received`
+                    : `${name}'s request rejected`
+            );
             loadPayments({ silent: true });
         }
         catch (requestError) {
@@ -379,6 +431,60 @@ const AdminPaymentManagement = () => {
         }
     };
 
+    const handleWaive = async (
+        payment,
+        waiver
+    ) => {
+        setFreeMenuId(null);
+
+        const name =
+            payment.singer?.singer_name || "this singer";
+
+        const songsNote =
+            payment.status === "Pending" && !isWalkIn(payment)
+                ? " Their duet songs will be submitted for pairing."
+                : "";
+
+        const confirmed = window.confirm(
+            `Mark ${name} as ${waiver}? They pay nothing (Rs 0) and won't count toward money collected.${songsNote}`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        setActionId(payment.id);
+        setError("");
+
+        try {
+            await waivePayment(
+                payment.id,
+                waiver
+            );
+
+            updateLocalStatus(payment.id, "Paid", {
+                amount: 0,
+                fee_waiver: waiver
+            });
+            setNotice(`${name} marked as ${waiver} (free)`);
+            loadPayments({ silent: true });
+        }
+        catch (requestError) {
+            console.error(
+                "Free entry error:",
+                requestError
+            );
+
+            setError(
+                requestError.message ||
+                "Unable to mark this entry as free."
+            );
+        }
+        finally {
+            setActionId(null);
+        }
+    };
+
     const excelRows = useMemo(
         () => visiblePayments.map(payment => ({
             id: payment.id,
@@ -390,6 +496,8 @@ const AdminPaymentManagement = () => {
             solo_song: payment.solo_song
                 ? `${payment.solo_song.title}${payment.solo_song.movie ? ` (${payment.solo_song.movie})` : ""}`
                 : "",
+            entry_type: isWalkIn(payment) ? "Walk-in" : "Registration",
+            free_entry: payment.fee_waiver || "",
             status: payment.status
         })),
         [visiblePayments]
@@ -546,8 +654,24 @@ const AdminPaymentManagement = () => {
                         const isExpanded =
                             expandedId === payment.id;
 
+                        const category =
+                            getCategory(payment);
+
                         const statusClass =
-                            getStatusClass(payment.status);
+                            getStatusClass(category);
+
+                        const walkIn =
+                            isWalkIn(payment);
+
+                        const statusLabel =
+                            payment.fee_waiver ||
+                            (walkIn && payment.status === "Rejected"
+                                ? "Not received"
+                                : payment.status);
+
+                        const canWaive =
+                            payment.status !== "Rejected" &&
+                            !payment.fee_waiver;
 
                         const songCount =
                             payment.songs?.length || payment.song_count || 0;
@@ -569,6 +693,11 @@ const AdminPaymentManagement = () => {
                                         <strong>
                                             {singer.singer_name ||
                                                 "Unknown Singer"}
+                                            {walkIn && (
+                                                <em className="payment-walkin-tag">
+                                                    Walk-in
+                                                </em>
+                                            )}
                                         </strong>
                                         <span>
                                             {singer.mobile_number || "—"}
@@ -605,8 +734,10 @@ const AdminPaymentManagement = () => {
                                         )}
                                     </div>
 
-                                    <div className="payment-row-amount">
-                                        {formatRupees(payment.amount)}
+                                    <div className={`payment-row-amount${payment.fee_waiver ? " free" : ""}`}>
+                                        {payment.fee_waiver
+                                            ? "Free"
+                                            : formatRupees(payment.amount)}
                                     </div>
 
                                     <div className="payment-row-actions">
@@ -619,10 +750,13 @@ const AdminPaymentManagement = () => {
                                                         handleMarkPaid(payment)
                                                     }
                                                     disabled={isActioning}
+                                                    title={walkIn ? "Cash received" : "Payment received"}
                                                 >
                                                     {isActioning
                                                         ? "Saving…"
-                                                        : "✓ Approve"}
+                                                        : walkIn
+                                                            ? "✓ Received"
+                                                            : "✓ Approve"}
                                                 </button>
 
                                                 <button
@@ -632,16 +766,56 @@ const AdminPaymentManagement = () => {
                                                         handleReject(payment)
                                                     }
                                                     disabled={isActioning}
-                                                    title="Reject"
-                                                    aria-label="Reject"
+                                                    title={walkIn ? "Not received" : "Reject"}
+                                                    aria-label={walkIn ? "Not received" : "Reject"}
                                                 >
                                                     ✕
                                                 </button>
                                             </>
                                         ) : (
                                             <span className={`payment-status-pill ${statusClass}`}>
-                                                {payment.status}
+                                                {statusLabel}
                                             </span>
+                                        )}
+
+                                        {canWaive && (
+                                            <div className="payment-free-wrap">
+                                                <button
+                                                    type="button"
+                                                    className={`payment-free-btn${freeMenuId === payment.id ? " open" : ""}`}
+                                                    onClick={() =>
+                                                        setFreeMenuId(
+                                                            freeMenuId === payment.id
+                                                                ? null
+                                                                : payment.id
+                                                        )
+                                                    }
+                                                    disabled={isActioning}
+                                                    title="Free entry (Rs 0) - guest or management team"
+                                                    aria-haspopup="menu"
+                                                    aria-expanded={freeMenuId === payment.id}
+                                                >
+                                                    ₹0
+                                                </button>
+
+                                                {freeMenuId === payment.id && (
+                                                    <div className="payment-free-menu" role="menu">
+                                                        <span>Free entry · ₹0</span>
+                                                        {WAIVERS.map(option => (
+                                                            <button
+                                                                type="button"
+                                                                role="menuitem"
+                                                                key={option.value}
+                                                                onClick={() =>
+                                                                    handleWaive(payment, option.value)
+                                                                }
+                                                            >
+                                                                {option.icon} {option.value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </div>

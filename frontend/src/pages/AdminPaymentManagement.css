@@ -48,7 +48,7 @@
 
 .payment-stat-row {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 16px;
 }
@@ -86,6 +86,7 @@
 .payment-stat.pending { --tone: #ffc247; }
 .payment-stat.paid { --tone: #39EF79; }
 .payment-stat.rejected { --tone: #ff5f6d; }
+.payment-stat.free { --tone: #5fc8ff; }
 .payment-stat.all { --tone: #9b6bf0; }
 
 .payment-stat:hover {
@@ -198,7 +199,7 @@
 
 .payment-row-main {
     display: grid;
-    grid-template-columns: 38px minmax(0, 1.6fr) 150px minmax(120px, .8fr) 84px 168px;
+    grid-template-columns: 38px minmax(0, 1.6fr) 150px minmax(120px, .8fr) 84px 218px;
     align-items: center;
     gap: 14px;
     padding: 10px 16px;
@@ -219,6 +220,22 @@
 
 .payment-avatar.paid { color: #39EF79; background: rgba(57,239,121,0.12); }
 .payment-avatar.rejected { color: #ff6b6b; background: rgba(255,107,107,0.12); }
+.payment-avatar.free { color: #5fc8ff; background: rgba(95,200,255,0.12); }
+
+.payment-walkin-tag {
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-style: normal;
+    font-weight: 800;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    vertical-align: 2px;
+    color: #ffb36b;
+    background: rgba(255,153,51,0.14);
+    border: 1px solid rgba(255,153,51,0.3);
+}
 
 .payment-row-who {
     display: flex;
@@ -307,9 +324,78 @@
 
 .payment-row-actions {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 8px;
 }
+
+.payment-row-amount.free {
+    color: #5fc8ff;
+    font-size: 14px;
+}
+
+.payment-free-wrap { position: relative; }
+
+.payment-free-btn {
+    height: 34px;
+    padding: 0 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(95,200,255,0.3);
+    background: rgba(95,200,255,0.08);
+    color: #5fc8ff;
+    font-family: "Poppins", sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+}
+
+.payment-free-btn:hover:not(:disabled),
+.payment-free-btn.open {
+    background: #5fc8ff;
+    color: #0b0b0b;
+}
+
+.payment-free-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.payment-free-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 30;
+    min-width: 190px;
+    padding: 6px;
+    border-radius: 12px;
+    background: #181818;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+    display: flex;
+    flex-direction: column;
+    animation: payment-songs-in .15s ease;
+}
+
+.payment-free-menu > span {
+    padding: 6px 10px 4px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #777777;
+}
+
+.payment-free-menu button {
+    padding: 9px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #eeeeee;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.payment-free-menu button:hover { background: rgba(95,200,255,0.12); color: #ffffff; }
 
 .payment-approve-btn,
 .payment-reject-btn {
@@ -366,6 +452,7 @@
 
 .payment-status-pill.paid { color: #39EF79; background: rgba(57,239,121,0.12); }
 .payment-status-pill.rejected { color: #ff6b6b; background: rgba(255,107,107,0.12); }
+.payment-status-pill.free { color: #5fc8ff; background: rgba(95,200,255,0.12); white-space: nowrap; }
 
 /* ---------- Expanded song list ---------- */
 
@@ -503,6 +590,7 @@
     .admin-payment-header { align-items: flex-start; flex-direction: column; }
 
     .payment-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .payment-stat.all { grid-column: 1 / -1; }
     .payment-stat { padding: 11px 13px; }
     .payment-stat-count { font-size: 22px; }
 
@@ -525,6 +613,7 @@
     .payment-row-date { font-size: 12px; color: #999999; }
     .payment-row-actions { justify-content: stretch; margin-top: 4px; }
     .payment-row-actions .payment-approve-btn { flex: 1; padding: 10px 16px; }
+    .payment-free-btn { height: 38px; padding: 0 14px; }
     .payment-row-actions .payment-status-pill { margin-left: auto; }
     .payment-reject-btn { width: 40px; height: 38px; }
 

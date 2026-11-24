@@ -1,6 +1,10 @@
 const { supabase } = require("../../config/supabase");
 const { getActiveEventId } = require("../../utils/activeEvent");
 const {
+    PAYMENT_AMOUNT,
+    PAYMENT_TYPE_WALK_IN
+} = require("../../utils/paymentRules");
+const {
     loadSingerSongMap,
     normalizeTitle,
     isValidUuid
@@ -414,6 +418,155 @@ const addToRoster = async (eventId, singerId, strict = false) => {
 
 };
 
+// ----------------------------------------------------------
+// WALK-IN PAYMENTS
+//
+// Walk-ins pay cash at the venue (or are let in free as a guest /
+// management team - the admin decides on the Payments page). So:
+//   - every singer on this event's Final List, plus `extraSingerIds`
+//     (a walk-in just added, not on any row yet), who has NO payment
+//     for this event gets a Pending "Walk-in" payment;
+//   - every Walk-in payment's songs are kept equal to that singer's
+//     rows on the list, so the Songs and Singers pages show them.
+// Registered singers' payments are never touched.
+//
+// Returns warnings for the admin (never throws for one singer).
+// ----------------------------------------------------------
+
+const syncWalkInPayments = async (eventId, extraSingerIds = []) => {
+
+    const warnings = [];
+    const list = await loadFinalList(eventId);
+
+    const duetsBySinger = new Map();
+    const soloBySinger = new Map();
+
+    const addDuet = (singerId, songId) => {
+        if (!singerId) return;
+        const songs = duetsBySinger.get(singerId) || [];
+        if (!songs.includes(songId)) songs.push(songId);
+        duetsBySinger.set(singerId, songs);
+    };
+
+    list.rows.forEach(row => {
+        if (row.kind === "solo") {
+            if (!soloBySinger.has(row.solo_singer_id)) {
+                soloBySinger.set(row.solo_singer_id, row.song_id);
+            }
+        }
+        else {
+            addDuet(row.male_singer_id, row.song_id);
+            addDuet(row.female_singer_id, row.song_id);
+        }
+    });
+
+    const wanted = new Set([
+        ...duetsBySinger.keys(),
+        ...soloBySinger.keys(),
+        ...extraSingerIds.filter(Boolean)
+    ]);
+
+    const { data: payments, error } = await supabase
+        .from("payments")
+        .select("id,singer_id,payment_type,selected_song_ids,solo_song_id,created_at")
+        .eq("event_id", eventId)
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        throw error;
+    }
+
+    const hasPayment = new Set((payments || []).map(payment => payment.singer_id));
+    const nameOf = id => list.singerById.get(id)?.singer_name || "A singer";
+
+    for (const singerId of wanted) {
+
+        if (hasPayment.has(singerId)) {
+            continue;
+        }
+
+        const { error: insertError } = await supabase
+            .from("payments")
+            .insert({
+                singer_id: singerId,
+                amount: PAYMENT_AMOUNT,
+                payment_type: PAYMENT_TYPE_WALK_IN,
+                status: "Pending",
+                selected_song_ids: duetsBySinger.get(singerId) || [],
+                solo_song_id: soloBySinger.get(singerId) || null,
+                event_id: eventId
+            });
+
+        if (insertError) {
+
+            console.error("WALK-IN PAYMENT:", insertError);
+
+            warnings.push(
+                insertError.code === "23505"
+                    ? `${nameOf(singerId)} still has a pending payment from another event, so no walk-in payment was created - settle that one on the Payments page first.`
+                    : `Couldn't create a walk-in payment for ${nameOf(singerId)}.`
+            );
+
+        }
+
+    }
+
+    // Keep walk-ins' songs in step with the list
+    const latestWalkIn = new Map();
+
+    (payments || [])
+        .filter(payment => payment.payment_type === PAYMENT_TYPE_WALK_IN)
+        .forEach(payment => {
+            if (!latestWalkIn.has(payment.singer_id)) {
+                latestWalkIn.set(payment.singer_id, payment);
+            }
+        });
+
+    for (const [singerId, payment] of latestWalkIn) {
+
+        const duets = duetsBySinger.get(singerId) || [];
+        const solo = soloBySinger.get(singerId) || null;
+        const current = Array.isArray(payment.selected_song_ids) ? payment.selected_song_ids : [];
+
+        const same =
+            current.length === duets.length &&
+            current.every((id, index) => id === duets[index]) &&
+            (payment.solo_song_id || null) === solo;
+
+        if (same) {
+            continue;
+        }
+
+        const { error: updateError } = await supabase
+            .from("payments")
+            .update({
+                selected_song_ids: duets,
+                solo_song_id: solo,
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", payment.id);
+
+        if (updateError) {
+            console.error("WALK-IN PAYMENT SONGS:", updateError);
+            warnings.push(`Couldn't update ${nameOf(singerId)}'s walk-in songs.`);
+        }
+
+    }
+
+    return warnings;
+
+};
+
+const syncWalkInsSafely = async (eventId, extraSingerIds) => {
+    try {
+        return await syncWalkInPayments(eventId, extraSingerIds);
+    }
+    catch (error) {
+        console.error("SYNC WALK-IN PAYMENTS:", error);
+        return ["Walk-in payments couldn't be updated - check the Payments page."];
+    }
+};
+
 const normalizeMobile = value =>
     String(value || "").replace(/\D/g, "").slice(-10);
 
@@ -542,6 +695,8 @@ const addEventSinger = async (req, res) => {
 
         await addToRoster(eventId, singer.id, true);
 
+        const walkInWarnings = await syncWalkInsSafely(eventId, [singer.id]);
+
         const { error: logError } = await supabase
             .from("pairing_change_log")
             .insert({
@@ -564,13 +719,16 @@ const addEventSinger = async (req, res) => {
 
         console.log(`✅ Singer added to event${created ? " (new registration)" : ""}:`, singer.singer_name);
 
+        const addedMessage = created
+            ? `${singer.singer_name} registered and added to this event.`
+            : reused
+                ? `That mobile number is already registered as ${singer.singer_name} - added them to this event.`
+                : `${singer.singer_name} added to this event.`;
+
         return res.status(200).json({
             success: true,
-            message: created
-                ? `${singer.singer_name} registered and added to this event.`
-                : reused
-                    ? `That mobile number is already registered as ${singer.singer_name} - added them to this event.`
-                    : `${singer.singer_name} added to this event.`,
+            message: [addedMessage, ...walkInWarnings].join(" "),
+            warnings: walkInWarnings,
             singer: {
                 id: singer.id,
                 singer_name: singer.singer_name,
@@ -852,6 +1010,9 @@ const saveFinalList = async (req, res) => {
 
         }
 
+        // Walk-ins: Pending payment + songs in step with the list
+        const walkInWarnings = await syncWalkInsSafely(eventId);
+
         // --------------------------------------------------
         // CHANGE LOG (for reports)
         // --------------------------------------------------
@@ -888,12 +1049,17 @@ const saveFinalList = async (req, res) => {
 
         console.log(`✅ Final list saved (${summary || "no changes"}) by`, adminName);
 
+        const warningText = walkInWarnings.length > 0
+            ? ` ${walkInWarnings.join(" ")}`
+            : "";
+
         return res.status(200).json({
             success: true,
             message: summary
-                ? `Final list saved - ${summary}.${logWarning}`
-                : "No changes to save.",
-            changes: log.length
+                ? `Final list saved - ${summary}.${logWarning}${warningText}`
+                : `No changes to save.${warningText}`,
+            changes: log.length,
+            warnings: walkInWarnings
         });
 
     }

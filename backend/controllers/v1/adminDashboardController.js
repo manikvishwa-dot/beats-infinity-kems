@@ -51,7 +51,7 @@ const getSingersOverview = async (req, res) => {
             .from("payments")
 
             .select(
-                "id,singer_id,status,selected_song_ids,created_at,event_id"
+                "id,singer_id,status,payment_type,amount,selected_song_ids,created_at,event_id"
             )
 
             .order(
@@ -389,6 +389,12 @@ const getSingersOverview = async (req, res) => {
 
                             payment_status:
                                 payment.status,
+
+                            payment_type:
+                                payment.payment_type || null,
+
+                            payment_amount:
+                                payment.amount,
 
                             event_id:
                                 payment.event_id || null,

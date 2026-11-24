@@ -1,5 +1,12 @@
 const { supabase } = require("../../config/supabase");
 const { getActiveEventId } = require("../../utils/activeEvent");
+const {
+    PAYMENT_AMOUNT,
+    FEE_WAIVERS,
+    FEE_WAIVER_MIGRATION_MESSAGE,
+    isWalkIn,
+    isMissingWaiverMigration
+} = require("../../utils/paymentRules");
 
 // ==========================================================
 // BEATS INFINITY - PAYMENT CONTROLLER
@@ -27,7 +34,6 @@ const { getActiveEventId } = require("../../utils/activeEvent");
 // No UTR is collected.
 // ==========================================================
 
-const PAYMENT_AMOUNT = 700;
 const REQUIRED_SONG_COUNT = 6;
 
 const VALID_STATUSES = [
@@ -1375,6 +1381,51 @@ const getPayments = async (req, res) => {
 // Supabase supports calling PostgreSQL functions through RPC.
 // ==========================================================
 
+// A walk-in's songs are already on the Final List, so confirming
+// their (cash) payment is a plain status change - the
+// confirm_payment_and_submit_songs RPC would demand 5-6 song picks
+// and create pairing requests for songs that are already paired.
+const confirmPaymentDirectly = async (paymentId, extra = {}) => {
+
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+        .from("payments")
+        .update({
+            status: "Paid",
+            paid_at: now,
+            updated_at: now,
+            ...extra
+        })
+        .eq("id", paymentId)
+        .eq("status", "Pending")
+        .select()
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+
+};
+
+const loadPaymentRow = async paymentId => {
+
+    const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("id", paymentId)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+
+};
+
 const markPaymentAsPaid = async (req, res) => {
     try {
         const paymentId = cleanString(
@@ -1386,6 +1437,36 @@ const markPaymentAsPaid = async (req, res) => {
                 success: false,
                 message: "Payment ID is required."
             });
+        }
+
+        const existing = await loadPaymentRow(paymentId);
+
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Payment not found."
+            });
+        }
+
+        if (isWalkIn(existing)) {
+
+            const payment = await confirmPaymentDirectly(paymentId);
+
+            if (!payment) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Only a pending payment can be confirmed."
+                });
+            }
+
+            console.log("✅ WALK-IN PAYMENT CONFIRMED:", paymentId);
+
+            return res.status(200).json({
+                success: true,
+                message: "Walk-in payment received.",
+                payment
+            });
+
         }
 
         const {
@@ -1461,6 +1542,137 @@ const markPaymentAsPaid = async (req, res) => {
             "MARK PAYMENT PAID EXCEPTION:",
             error
         );
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error.",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================================
+// FREE ENTRY (Rs 0) - ADMIN
+//
+// PUT /api/v1/payments/:id/waive
+//
+// Body: { waiver: "Guest Singer" | "Management Team" }
+//
+// Marks a Pending or Paid payment as free: status Paid, amount 0,
+// fee_waiver set, so it never counts toward money collected.
+// A Pending registration still goes through the normal confirm
+// RPC first, so the singer's duet songs are submitted for pairing
+// exactly as for a paying singer.
+// ==========================================================
+
+const waivePaymentFee = async (req, res) => {
+    try {
+        const paymentId = cleanString(req.params.id);
+        const waiver = cleanString(req.body?.waiver);
+
+        if (!paymentId) {
+            return res.status(400).json({
+                success: false,
+                message: "Payment ID is required."
+            });
+        }
+
+        if (!FEE_WAIVERS.includes(waiver)) {
+            return res.status(400).json({
+                success: false,
+                message: `Choose one of: ${FEE_WAIVERS.join(", ")}.`
+            });
+        }
+
+        const existing = await loadPaymentRow(paymentId);
+
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Payment not found."
+            });
+        }
+
+        if (existing.status === "Rejected") {
+            return res.status(400).json({
+                success: false,
+                message: "This payment was rejected - it can't be marked free."
+            });
+        }
+
+        // Check the database supports free entries BEFORE the
+        // confirm RPC runs, so a missing migration can't leave a
+        // registration confirmed as Paid at the full fee.
+        const { error: columnError } = await supabase
+            .from("payments")
+            .select("fee_waiver")
+            .limit(1);
+
+        if (columnError) {
+            if (isMissingWaiverMigration(columnError)) {
+                return res.status(500).json({
+                    success: false,
+                    message: FEE_WAIVER_MIGRATION_MESSAGE
+                });
+            }
+            throw columnError;
+        }
+
+        const now = new Date().toISOString();
+        const freeValues = { amount: 0, fee_waiver: waiver, updated_at: now };
+
+        if (existing.status === "Pending" && !isWalkIn(existing)) {
+
+            const { data: rpcResult, error: rpcError } = await supabase.rpc(
+                "confirm_payment_and_submit_songs",
+                { p_payment_id: paymentId }
+            );
+
+            if (rpcError || !rpcResult || rpcResult.success !== true) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        rpcError?.message ||
+                        rpcResult?.message ||
+                        "Unable to confirm this registration."
+                });
+            }
+
+        }
+
+        const update = existing.status === "Pending" && isWalkIn(existing)
+            ? { ...freeValues, status: "Paid", paid_at: now }
+            : freeValues;
+
+        const { data: payment, error } = await supabase
+            .from("payments")
+            .update(update)
+            .eq("id", paymentId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("WAIVE PAYMENT:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: isMissingWaiverMigration(error)
+                    ? FEE_WAIVER_MIGRATION_MESSAGE
+                    : "Unable to mark this entry as free.",
+                error: error.message
+            });
+        }
+
+        console.log(`✅ FREE ENTRY (${waiver}):`, paymentId);
+
+        return res.status(200).json({
+            success: true,
+            message: `Marked as ${waiver} - free entry.`,
+            payment
+        });
+    }
+    catch (error) {
+        console.error("WAIVE PAYMENT EXCEPTION:", error);
 
         return res.status(500).json({
             success: false,
@@ -1592,7 +1804,7 @@ const bulkUpdatePaymentStatus = async (req, res) => {
 
             const { data: current, error: currentError } = await supabase
                 .from("payments")
-                .select("id,status")
+                .select("id,status,payment_type")
                 .eq("id", id)
                 .maybeSingle();
 
@@ -1611,7 +1823,19 @@ const bulkUpdatePaymentStatus = async (req, res) => {
                 continue;
             }
 
-            if (targetStatus === "Paid") {
+            if (targetStatus === "Paid" && isWalkIn(current)) {
+                try {
+                    const confirmed = await confirmPaymentDirectly(id);
+
+                    results.push(confirmed
+                        ? { id, status: "updated", message: "Walk-in marked Paid." }
+                        : { id, status: "error", message: "Only a pending payment can be confirmed." });
+                }
+                catch (confirmError) {
+                    results.push({ id, status: "error", message: confirmError.message });
+                }
+            }
+            else if (targetStatus === "Paid") {
                 const { data: rpcResult, error: rpcError } = await supabase.rpc(
                     "confirm_payment_and_submit_songs",
                     { p_payment_id: id }
@@ -1682,6 +1906,7 @@ module.exports = {
     markPaymentAsPaid,
     rejectPayment,
     bulkUpdatePaymentStatus,
+    waivePaymentFee,
     addSongToPayment,
     removeSongFromPayment,
     replaceSongInPayment,
