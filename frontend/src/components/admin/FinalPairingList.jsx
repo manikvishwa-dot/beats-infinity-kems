@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ExcelToolbar from "./ExcelToolbar";
 import AddSingerDialog from "./AddSingerDialog";
+import UploadReviewDialog from "./UploadReviewDialog";
+import { analyzeUpload, normalizeName, resolveUpload } from "../../utils/pairingImport";
 import {
     getFinalPairingList,
+    registerEventSingers,
     saveFinalPairingList
 } from "../../services/adminDashboardService";
 
@@ -161,6 +164,18 @@ function FinalPairingList({ eventId, onSaved }) {
         [singers]
     );
 
+    const genderById = useMemo(
+        () => new Map(singers.map(singer => [singer.id, singer.gender])),
+        [singers]
+    );
+
+    // A dropdown's list plus whoever is picked in it, so a man on a
+    // two-men song still shows in the second column
+    const withCurrent = (list, id) =>
+        !id || list.some(singer => singer.id === id)
+            ? list
+            : [...list, ...singers.filter(singer => singer.id === id)];
+
     const dirty = comparable(rows) !== savedSnapshot;
 
     // Warn before leaving the page with unsaved edits
@@ -237,7 +252,10 @@ function FinalPairingList({ eventId, onSaved }) {
                     row.song_title.trim() || row.movie.trim()
                 )
                 .map(({ ref, male_singer_id, female_singer_id, song_title, movie }) => ({
-                    ref, male_singer_id, female_singer_id, song_title, movie
+                    ref, male_singer_id, female_singer_id, song_title, movie,
+                    // Two men / two women together - confirmed on upload
+                    same_gender: Boolean(male_singer_id && female_singer_id) &&
+                        normalize(genderById.get(male_singer_id)) === normalize(genderById.get(female_singer_id))
                 }));
 
             const result = await saveFinalPairingList(eventId, payload);
@@ -275,65 +293,133 @@ function FinalPairingList({ eventId, onSaved }) {
     }));
 
     // Upload replaces what's on screen (not saved until Save).
-    // Rows that match an existing one keep it, so unchanged rows
-    // aren't logged as removed + added.
-    const handleImportRows = async parsedRows => {
+    // Names not registered yet, two men / two women on one song and
+    // songs listed twice go through UploadReviewDialog first.
+    const [pendingUpload, setPendingUpload] = useState(null);
+    const [uploadBusy, setUploadBusy] = useState(false);
+    const [uploadError, setUploadError] = useState("");
 
-        const findSinger = (name, list) => {
-            const wanted = normalize(name);
-            return list.find(singer => normalize(singer.singer_name) === wanted);
-        };
+    // Rows that match an existing one keep it (same two singers, same
+    // song, either order), so unchanged rows aren't logged as
+    // removed + added.
+    const applyUploadedRows = (resolvedRows, idForKey) => {
 
-        const problems = [];
         const unusedServer = [...serverRows];
+        const pairOf = (a, b) => [a, b].filter(Boolean).sort().join("|");
 
-        const imported = parsedRows
-            .filter(row => [row.male_singer_name, row.female_singer_name, row.song_title]
-                .some(value => String(value || "").trim()))
-            .map((row, index) => {
+        const imported = resolvedRows.map(row => {
 
-                const maleName = String(row.male_singer_name || "").trim();
-                const femaleRaw = String(row.female_singer_name || "").trim();
-                const femaleName = normalize(femaleRaw) === "solo" ? "" : femaleRaw;
+            const maleId = row.male ? (row.male.id || idForKey(row.male.key)) : "";
+            const femaleId = row.female ? (row.female.id || idForKey(row.female.key)) : "";
 
-                const male = maleName ? findSinger(maleName, maleSingers) : null;
-                const female = femaleName ? findSinger(femaleName, femaleSingers) : null;
+            const matchIndex = unusedServer.findIndex(existing =>
+                pairOf(existing.male_singer_id, existing.female_singer_id) === pairOf(maleId, femaleId) &&
+                normalize(existing.song_title) === normalize(row.title)
+            );
 
-                if (maleName && !male) problems.push(`Row ${index + 1}: male singer "${maleName}" not found`);
-                if (femaleName && !female) problems.push(`Row ${index + 1}: female singer "${femaleName}" not found`);
+            const ref = matchIndex >= 0 ? unusedServer.splice(matchIndex, 1)[0].ref : null;
 
-                const next = {
-                    male_singer_id: male?.id || "",
-                    female_singer_id: female?.id || "",
-                    song_title: String(row.song_title || "").trim(),
-                    movie: String(row.movie || "").trim()
-                };
-
-                const matchIndex = unusedServer.findIndex(existing =>
-                    existing.male_singer_id === next.male_singer_id &&
-                    existing.female_singer_id === next.female_singer_id &&
-                    normalize(existing.song_title) === normalize(next.song_title)
-                );
-
-                const ref = matchIndex >= 0 ? unusedServer.splice(matchIndex, 1)[0].ref : null;
-
-                return withKey({ ...next, ref });
-
+            return withKey({
+                ref,
+                male_singer_id: maleId || "",
+                female_singer_id: femaleId || "",
+                song_title: row.title,
+                movie: row.movie
             });
 
-        if (problems.length > 0) {
+        });
+
+        setSuccess(`${imported.length} rows loaded from Excel - check them, then click "Save final list".`);
+        setRows(imported);
+
+        return imported.length;
+
+    };
+
+    const handleImportRows = async parsedRows => {
+
+        const analysis = analyzeUpload(parsedRows, singers);
+
+        if (analysis.rows.length === 0) {
+            return { error: true, message: "No pairing rows found in that file." };
+        }
+
+        const { resolved, duplicates } = resolveUpload(analysis.rows, singers, analysis.newSingers);
+        const needsReview =
+            analysis.newSingers.length > 0 ||
+            duplicates.length > 0 ||
+            resolved.some(row => row.sameGender);
+
+        if (needsReview) {
+            setUploadError("");
+            setPendingUpload(analysis);
+            return { message: "Check the questions in the window that opened." };
+        }
+
+        if (analysis.problems.length > 0) {
             return {
                 error: true,
-                message: `Nothing loaded - ${problems.slice(0, 5).join("; ")}${problems.length > 5 ? ` (+${problems.length - 5} more)` : ""}. Use the names exactly as they appear in the dropdowns.`
+                message: `Nothing loaded - ${analysis.problems.slice(0, 5).join(" ")}`
             };
         }
 
-        setSuccess("");
-        setRows(imported);
+        const count = applyUploadedRows(resolved, () => "");
 
-        return {
-            message: `${imported.length} rows loaded from Excel - check them, then click "Save final list".`
-        };
+        return { message: `${count} rows loaded from Excel - check them, then click "Save final list".` };
+
+    };
+
+    const handleUploadConfirmed = async ({ rows: chosenRows, newSingers }) => {
+
+        setUploadBusy(true);
+        setUploadError("");
+
+        try {
+
+            const idByKey = new Map();
+            let note = "";
+
+            const stillNeeded = newSingers.filter(singer =>
+                chosenRows.some(row => row.male?.key === singer.key || row.female?.key === singer.key)
+            );
+
+            if (stillNeeded.length > 0) {
+
+                const result = await registerEventSingers(
+                    eventId,
+                    stillNeeded.map(singer => ({ singer_name: singer.name, gender: singer.gender }))
+                );
+
+                (result.singers || []).forEach(singer => {
+                    idByKey.set(normalizeName(singer.singer_name), singer.id);
+                });
+
+                setSingers(current => {
+                    const byId = new Map(current.map(item => [item.id, item]));
+                    (result.singers || []).forEach(singer => byId.set(singer.id, { ...byId.get(singer.id), ...singer, in_event: true }));
+                    return [...byId.values()].sort((a, b) => a.singer_name.localeCompare(b.singer_name));
+                });
+
+                note = ` ${result.message}`;
+
+            }
+
+            const count = applyUploadedRows(chosenRows, key => idByKey.get(key) || "");
+
+            setSuccess(`${count} rows loaded from Excel - check them, then click "Save final list".${note}`);
+            setPendingUpload(null);
+
+        }
+        catch (requestError) {
+
+            setUploadError(requestError.message || "Unable to register the new singers.");
+
+        }
+        finally {
+
+            setUploadBusy(false);
+
+        }
 
     };
 
@@ -392,17 +478,20 @@ function FinalPairingList({ eventId, onSaved }) {
                         {rows.map((row, index) => {
                             const isSolo = !(row.male_singer_id && row.female_singer_id) &&
                                 Boolean(row.male_singer_id || row.female_singer_id);
+                            const isDuo = Boolean(row.male_singer_id && row.female_singer_id) &&
+                                normalize(genderById.get(row.male_singer_id)) === normalize(genderById.get(row.female_singer_id));
 
                             return (
                                 <tr key={row.key} className={row.ref ? "" : "is-new"}>
                                     <td className="final-col-num">
                                         {index + 1}
                                         {isSolo && <span className="final-solo-tag">Solo</span>}
+                                        {isDuo && <span className="final-solo-tag duo" title="Two singers of the same gender singing together">Together</span>}
                                     </td>
                                     <td>
                                         <SingerSelect
                                             value={row.male_singer_id}
-                                            singers={maleSingers}
+                                            singers={withCurrent(maleSingers, row.male_singer_id)}
                                             emptyLabel={row.female_singer_id ? "★ Solo" : "Select male singer"}
                                             ariaLabel={`Row ${index + 1} male singer`}
                                             onChange={value => updateRow(row.key, "male_singer_id", value)}
@@ -412,7 +501,7 @@ function FinalPairingList({ eventId, onSaved }) {
                                     <td>
                                         <SingerSelect
                                             value={row.female_singer_id}
-                                            singers={femaleSingers}
+                                            singers={withCurrent(femaleSingers, row.female_singer_id)}
                                             emptyLabel={row.male_singer_id ? "★ Solo" : "Select female singer"}
                                             ariaLabel={`Row ${index + 1} female singer`}
                                             onChange={value => updateRow(row.key, "female_singer_id", value)}
@@ -486,6 +575,17 @@ function FinalPairingList({ eventId, onSaved }) {
                     </button>
                 </div>
             </div>
+
+            {pendingUpload && (
+                <UploadReviewDialog
+                    analysis={pendingUpload}
+                    singers={singers}
+                    busy={uploadBusy}
+                    error={uploadError}
+                    onConfirm={handleUploadConfirmed}
+                    onCancel={() => setPendingUpload(null)}
+                />
+            )}
 
             {addingSinger && (
                 <AddSingerDialog

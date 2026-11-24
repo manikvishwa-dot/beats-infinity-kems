@@ -305,6 +305,25 @@ const addEventSinger = async (eventId, singer) => {
 
 };
 
+// Register names from an uploaded list: [{ singer_name, gender }]
+const registerEventSingers = async (eventId, singers) => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/final/singers/bulk`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ event_id: eventId, singers })
+        }
+    );
+
+    return handleResponse(response);
+
+};
+
 const getPairingChangeLog = async eventId => {
 
     const response = await fetch(
@@ -445,6 +464,7 @@ export {
     saveFinalPairingList,
     getPairingChangeLog,
     addEventSinger,
+    registerEventSingers,
     getSingersPerEvent,
     getFinanceByEvent,
     getEventAnalytics,

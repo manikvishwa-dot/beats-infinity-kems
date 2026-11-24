@@ -1,3 +1,5 @@
+const bcrypt = require("bcryptjs");
+
 const { supabase } = require("../../config/supabase");
 const { getActiveEventId } = require("../../utils/activeEvent");
 const {
@@ -755,6 +757,158 @@ const addEventSinger = async (req, res) => {
 
 
 // ==========================================================
+// REGISTER SINGERS FROM AN UPLOADED LIST
+//
+// POST /api/v1/admin/pairings/final/singers/bulk
+// Body: { event_id, singers: [{ singer_name, gender }] }
+//
+// For a pairing list uploaded from Excel with names that aren't
+// registered yet. Each new singer gets a temporary PIN (1234) and
+// a temporary phone number "00000NNNNN" (can't be a real Indian
+// mobile, so it never clashes) that an admin replaces later on
+// the Singers page. A name already registered with the same
+// gender is reused, never duplicated. Everyone goes on the
+// event roster.
+// ==========================================================
+
+const TEMP_PIN = "1234";
+const TEMP_MOBILE_PREFIX = "00000";
+
+const nextTempMobiles = async count => {
+
+    const { data, error } = await supabase
+        .from("singers")
+        .select("mobile_number")
+        .like("mobile_number", `${TEMP_MOBILE_PREFIX}%`);
+
+    if (error) throw error;
+
+    let highest = 0;
+    (data || []).forEach(row => {
+        const n = Number(String(row.mobile_number).slice(TEMP_MOBILE_PREFIX.length));
+        if (Number.isFinite(n) && n > highest) highest = n;
+    });
+
+    return Array.from({ length: count }, (_, i) =>
+        `${TEMP_MOBILE_PREFIX}${String(highest + i + 1).padStart(5, "0")}`
+    );
+
+};
+
+const registerEventSingers = async (req, res) => {
+
+    try {
+
+        const eventId = await resolveEventId(req.body?.event_id);
+        await loadEvent(eventId);
+
+        const input = Array.isArray(req.body?.singers) ? req.body.singers : null;
+
+        if (!input || input.length === 0) {
+            throw httpError(400, "No singers to register.");
+        }
+
+        if (input.length > 200) {
+            throw httpError(400, "Too many singers in one go (max 200).");
+        }
+
+        // Clean + de-duplicate the request itself
+        const wanted = [];
+        const seen = new Set();
+
+        for (const item of input) {
+            const name = cleanText(item?.singer_name).replace(/\s+/g, " ");
+            const g = cleanText(item?.gender).toLowerCase();
+
+            if (name.length < 2) throw httpError(400, `"${name}" is too short for a name.`);
+            if (g !== "male" && g !== "female") throw httpError(400, `Choose Male or Female for ${name}.`);
+
+            const gender = g === "male" ? "Male" : "Female";
+            const key = `${name.toLowerCase()}|${gender}`;
+
+            if (!seen.has(key)) {
+                seen.add(key);
+                wanted.push({ name, gender, key });
+            }
+        }
+
+        // Reuse anyone already registered with that name + gender
+        const { data: existing, error: existingError } = await supabase
+            .from("singers")
+            .select("id,singer_name,gender");
+
+        if (existingError) throw existingError;
+
+        const byKey = new Map();
+        (existing || []).forEach(singer => {
+            const key = `${String(singer.singer_name).trim().toLowerCase()}|${singer.gender}`;
+            if (!byKey.has(key)) byKey.set(key, singer);
+        });
+
+        const toCreate = wanted.filter(w => !byKey.has(w.key));
+        const mobiles = await nextTempMobiles(toCreate.length);
+        const pinHash = toCreate.length > 0 ? await bcrypt.hash(TEMP_PIN, 10) : null;
+
+        let created = [];
+
+        if (toCreate.length > 0) {
+
+            const { data, error } = await supabase
+                .from("singers")
+                .insert(toCreate.map((w, i) => ({
+                    singer_name: w.name,
+                    gender: w.gender,
+                    mobile_number: mobiles[i],
+                    date_of_birth: PLACEHOLDER_DOB,
+                    pin_hash: pinHash
+                })))
+                .select("id,singer_name,gender,mobile_number");
+
+            if (error) throw error;
+
+            created = data || [];
+            created.forEach(singer => byKey.set(`${singer.singer_name.toLowerCase()}|${singer.gender}`, singer));
+
+        }
+
+        const singers = wanted.map(w => byKey.get(w.key));
+
+        for (const singer of singers) {
+            await addToRoster(eventId, singer.id, true);
+        }
+
+        const createdIds = new Set(created.map(singer => singer.id));
+        const reusedCount = singers.length - created.length;
+
+        return res.status(200).json({
+            success: true,
+            message: `${created.length} new singer${created.length === 1 ? "" : "s"} registered` +
+                (reusedCount > 0 ? `, ${reusedCount} already registered` : "") +
+                ". Temporary PIN 1234 - update their phone numbers on the Singers page.",
+            singers: singers.map(singer => ({
+                id: singer.id,
+                singer_name: singer.singer_name,
+                gender: singer.gender,
+                in_event: true,
+                created: createdIds.has(singer.id)
+            }))
+        });
+
+    }
+    catch (error) {
+        console.error("REGISTER EVENT SINGERS:", error);
+
+        return res.status(error.status || 500).json({
+            success: false,
+            message: error.status ? error.message : "Unable to register the singers.",
+            error: error.message
+        });
+    }
+
+};
+
+
+// ==========================================================
 // PUT /api/v1/admin/pairings/final
 //
 // Body: { event_id, rows: [{ ref, male_singer_id,
@@ -803,10 +957,19 @@ const saveFinalList = async (req, res) => {
                 problems.push(`${line}: song name is missing.`);
             }
 
+            // Two men (or two women) singing one song together is
+            // allowed once the admin has confirmed it (same_gender).
+            // Both columns then just hold "the two singers".
+            const sameGender = input.same_gender === true && Boolean(maleId && femaleId);
+
+            if (maleId && femaleId && maleId === femaleId) {
+                problems.push(`${line}: the same singer is in both columns.`);
+            }
+
             if (maleId) {
                 const singer = singerById.get(maleId);
                 if (!singer) problems.push(`${line}: male singer not found.`);
-                else if (String(singer.gender).toLowerCase() !== "male") {
+                else if (!sameGender && String(singer.gender).toLowerCase() !== "male") {
                     problems.push(`${line}: ${singer.singer_name} isn't a male singer.`);
                 }
             }
@@ -814,8 +977,16 @@ const saveFinalList = async (req, res) => {
             if (femaleId) {
                 const singer = singerById.get(femaleId);
                 if (!singer) problems.push(`${line}: female singer not found.`);
-                else if (String(singer.gender).toLowerCase() !== "female") {
+                else if (!sameGender && String(singer.gender).toLowerCase() !== "female") {
                     problems.push(`${line}: ${singer.singer_name} isn't a female singer.`);
+                }
+            }
+
+            if (sameGender) {
+                const a = String(singerById.get(maleId)?.gender || "").toLowerCase();
+                const b = String(singerById.get(femaleId)?.gender || "").toLowerCase();
+                if (a && b && a !== b) {
+                    problems.push(`${line}: marked as a same-gender song, but the singers aren't the same gender.`);
                 }
             }
 
@@ -823,7 +994,9 @@ const saveFinalList = async (req, res) => {
                 problems.push(`${line}: this row changed since the page loaded - reload and try again.`);
             }
 
-            const key = `${maleId}|${femaleId}|${normalizeTitle(title)}`;
+            // Order-free, so "A & B" and "B & A" singing the same
+            // song count as the same row
+            const key = `${[maleId, femaleId].sort().join("|")}|${normalizeTitle(title)}`;
 
             if (title && seen.has(key)) {
                 problems.push(`${line}: duplicate of an earlier row.`);
@@ -1129,5 +1302,6 @@ module.exports = {
     getFinalList,
     saveFinalList,
     getChangeLog,
-    addEventSinger
+    addEventSinger,
+    registerEventSingers
 };

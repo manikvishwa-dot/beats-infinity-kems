@@ -661,3 +661,175 @@ select.final-input {
     }
 
 }
+
+/* ---------- Upload review dialog (UploadReviewDialog.jsx) ---------- */
+
+.add-singer-dialog.upload-review {
+    width: min(620px, 100%);
+    text-align: left;
+}
+
+.upload-review h4 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    color: #ffffff;
+}
+
+.upload-review-lead {
+    margin: -6px 0 14px;
+    color: #a8a8b4;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.upload-review-section {
+    margin-bottom: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.upload-review-hint {
+    margin: 0 0 10px;
+    color: #9a9aa6;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.upload-review-singers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 14px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.upload-review-singers li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 13.5px;
+}
+
+.upload-review-singers li > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upload-review-gender,
+.upload-review-choice {
+    display: inline-flex;
+    flex: 0 0 auto;
+    padding: 2px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.upload-review-gender button,
+.upload-review-choice button {
+    padding: 4px 9px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #9a9aa6;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.upload-review-gender button.is-active.male {
+    background: rgba(57, 135, 229, 0.25);
+    color: #8fbaf3;
+}
+
+.upload-review-gender button.is-active.female {
+    background: rgba(213, 81, 129, 0.25);
+    color: #f09abb;
+}
+
+.upload-review-choice button.is-active.yes {
+    background: rgba(57, 239, 121, 0.18);
+    color: var(--admin-green-bright, #39EF79);
+}
+
+.upload-review-choice button.is-active.no {
+    background: rgba(255, 107, 107, 0.16);
+    color: #ff8a8a;
+}
+
+.upload-review-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.upload-review-rows li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.upload-review-rows li > div:first-child {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.upload-review-rows strong {
+    font-size: 13.5px;
+}
+
+.upload-review-rows small {
+    color: #8a8a96;
+    font-size: 12px;
+}
+
+.upload-review-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #d0d0da;
+    cursor: pointer;
+}
+
+.upload-review-actions {
+    align-items: center;
+}
+
+.upload-review-count {
+    margin-right: auto;
+    color: #9a9aa6;
+    font-size: 12.5px;
+}
+
+.upload-review-wait {
+    margin: 8px 0 0;
+    text-align: right;
+    color: #fab219;
+    font-size: 12px;
+}
+
+.final-solo-tag.duo {
+    color: #8fbaf3;
+}
+
+@media (max-width: 560px) {
+    .upload-review-singers {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

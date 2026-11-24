@@ -19,7 +19,8 @@ const {
     getFinalList,
     saveFinalList,
     getChangeLog,
-    addEventSinger
+    addEventSinger,
+    registerEventSingers
 } = require("../../controllers/v1/finalPairingController");
 
 const {
@@ -139,6 +140,13 @@ router.post(
     "/pairings/final/singers",
     requireAdmin,
     addEventSinger
+);
+
+// Register several singers at once (names from an uploaded list)
+router.post(
+    "/pairings/final/singers/bulk",
+    requireAdmin,
+    registerEventSingers
 );
 
 router.get(
