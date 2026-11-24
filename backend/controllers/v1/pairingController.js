@@ -40,28 +40,81 @@ const normalizeTitle = value =>
 
 
 // ==========================================================
+// SOLO SONGS
+//
+// A male singer may add ONE optional solo. It is never paired -
+// an admin approves (or rejects) it instead, and only approved
+// solos appear on the singer's Song List.
+//
+// A song counts as a solo when it is:
+//   - in the payment's solo slot (payments.solo_song_id), or
+//   - marked song_type "Solo" AND picked on/after the day the
+//     solo option shipped. Older "Solo" labels came from the
+//     old YouTube search (it marked most picks is_duet=false)
+//     and are really duets - many already have pairings.
+// ==========================================================
+
+const SOLO_FEATURE_START = "2026-11-23";
+
+const isSoloSong = (song, soloSlotIds) =>
+    Boolean(song) && (
+        soloSlotIds.has(song.id) ||
+        (
+            song.song_type === "Solo" &&
+            String(song.created_at || "") >= SOLO_FEATURE_START
+        )
+    );
+
+// songs.solo_status is added by a migration - until it has been
+// run, read songs without it (every solo counts as undecided).
+const SONG_COLUMNS = "id,title,movie,event_id,song_type,created_at";
+
+const fetchSongRows = async ids => {
+
+    const withStatus = await supabase
+        .from("songs")
+        .select(`${SONG_COLUMNS},solo_status`)
+        .in("id", ids);
+
+    if (!withStatus.error) {
+        return withStatus.data || [];
+    }
+
+    if (!/solo_status/i.test(withStatus.error.message || "")) {
+        throw withStatus.error;
+    }
+
+    const without = await supabase
+        .from("songs")
+        .select(SONG_COLUMNS)
+        .in("id", ids);
+
+    if (without.error) {
+        throw without.error;
+    }
+
+    return without.data || [];
+
+};
+
+
+// ==========================================================
 // SHARED: LATEST PAYMENT PER SINGER, WITH SINGER + SONG INFO
+//
+// selectionsBySinger: singerId -> [{ song_id, title }]  DUETS only
+// solosBySinger:      singerId -> [{ song_id, title, movie,
+//                                    solo_status }]
 // ==========================================================
 
 const loadSingerSongMap = async (eventId = null) => {
 
     let paymentsQuery = supabase
-
         .from("payments")
-
-        .select(
-            "singer_id,selected_song_ids,created_at"
-        )
-
-        .order(
-            "created_at",
-            { ascending: false }
-        );
+        .select("singer_id,selected_song_ids,solo_song_id,created_at")
+        .order("created_at", { ascending: false });
 
     if (eventId) {
-
         paymentsQuery = paymentsQuery.eq("event_id", eventId);
-
     }
 
     const {
@@ -69,172 +122,108 @@ const loadSingerSongMap = async (eventId = null) => {
         error: paymentsError
     } = await paymentsQuery;
 
-
     if (paymentsError) {
-
         throw paymentsError;
-
     }
 
+    // Latest payment per singer
+    const latestBySinger = new Map();
 
-    const latestBySinger =
-        new Map();
-
-
-    (payments || []).forEach(
-        payment => {
-
-            if (
-                !latestBySinger.has(
-                    payment.singer_id
-                )
-            ) {
-
-                latestBySinger.set(
-                    payment.singer_id,
-                    Array.isArray(
-                        payment.selected_song_ids
-                    )
-                        ? payment.selected_song_ids
-                        : []
-                );
-
-            }
-
+    (payments || []).forEach(payment => {
+        if (!latestBySinger.has(payment.singer_id)) {
+            latestBySinger.set(payment.singer_id, {
+                songIds: Array.isArray(payment.selected_song_ids)
+                    ? payment.selected_song_ids
+                    : [],
+                soloSongId: payment.solo_song_id || null
+            });
         }
-    );
+    });
 
-
-    const singerIds =
-        [...latestBySinger.keys()];
-
+    const singerIds = [...latestBySinger.keys()];
 
     if (singerIds.length === 0) {
-
         return {
             singers: [],
             songMap: new Map(),
-            selectionsBySinger: latestBySinger
+            selectionsBySinger: new Map(),
+            solosBySinger: new Map()
         };
-
     }
-
 
     const {
         data: singers,
         error: singersError
     } = await supabase
-
         .from("singers")
-
-        .select(
-            "id,singer_name,gender"
-        )
-
-        .in(
-            "id",
-            singerIds
-        );
-
+        .select("id,singer_name,gender")
+        .in("id", singerIds);
 
     if (singersError) {
-
         throw singersError;
-
     }
 
+    const soloSlotIds = new Set(
+        [...latestBySinger.values()]
+            .map(entry => entry.soloSongId)
+            .filter(Boolean)
+    );
 
-    const allSongIds =
-        [
-            ...new Set(
-                [...latestBySinger.values()].flat()
+    const allSongIds = [
+        ...new Set(
+            [...latestBySinger.values()].flatMap(entry =>
+                [...entry.songIds, entry.soloSongId].filter(Boolean)
             )
-        ];
+        )
+    ];
 
+    const songs = allSongIds.length > 0
+        ? await fetchSongRows(allSongIds)
+        : [];
 
-    let songs = [];
+    const songMap = new Map(songs.map(song => [song.id, song]));
 
+    const selectionsBySinger = new Map();
+    const solosBySinger = new Map();
 
-    if (allSongIds.length > 0) {
+    latestBySinger.forEach(({ songIds, soloSongId }, singerId) => {
 
-        const {
-            data: songRows,
-            error: songsError
-        } = await supabase
+        const ids = [...new Set([...songIds, soloSongId].filter(Boolean))];
 
-            .from("songs")
+        const duets = [];
+        const solos = [];
 
-            .select(
-                "id,title,movie,event_id"
-            )
+        ids.forEach(songId => {
 
-            .in(
-                "id",
-                allSongIds
-            );
+            const song = songMap.get(songId);
 
+            if (isSoloSong(song, soloSlotIds)) {
+                solos.push({
+                    song_id: songId,
+                    title: song?.title || null,
+                    movie: song?.movie || null,
+                    solo_status: song?.solo_status || null
+                });
+            }
+            else if (songIds.includes(songId)) {
+                duets.push({
+                    song_id: songId,
+                    title: song?.title || null
+                });
+            }
 
-        if (songsError) {
+        });
 
-            throw songsError;
+        selectionsBySinger.set(singerId, duets);
+        solosBySinger.set(singerId, solos);
 
-        }
-
-
-        songs =
-            songRows || [];
-
-    }
-
-
-    const songMap =
-        new Map(
-            songs.map(
-                song => [song.id, song]
-            )
-        );
-
-
-    // ------------------------------------------------------
-    // selectionsBySinger: singerId -> [{ song_id, title }]
-    // ------------------------------------------------------
-
-    const selectionsBySinger =
-        new Map(
-
-            [...latestBySinger.entries()].map(
-                ([singerId, songIds]) => [
-
-                    singerId,
-
-                    songIds.map(
-                        songId => ({
-
-                            song_id:
-                                songId,
-
-                            title:
-                                songMap.get(songId)?.title ||
-                                null
-
-                        })
-                    )
-
-                ]
-            )
-
-        );
-
+    });
 
     return {
-
-        singers:
-            singers || [],
-
+        singers: singers || [],
         songMap,
-
-        selectionsBySinger
-
+        selectionsBySinger,
+        solosBySinger
     };
 
 };
@@ -266,7 +255,8 @@ const getSuggestions = async (req, res) => {
         const {
             singers,
             songMap,
-            selectionsBySinger
+            selectionsBySinger,
+            solosBySinger
         } = await loadSingerSongMap(primaryEventId);
 
 
@@ -276,6 +266,37 @@ const getSuggestions = async (req, res) => {
                     singer => [singer.id, singer]
                 )
             );
+
+
+        // ----------------------------------------------------
+        // SOLO SONGS - approved/rejected by the admin, never
+        // paired (selectionsBySinger already excludes them).
+        // ----------------------------------------------------
+
+        const soloSongs = [];
+
+        solosBySinger.forEach((solos, singerId) => {
+
+            const singer = singerById.get(singerId);
+
+            solos.forEach(solo => {
+                soloSongs.push({
+                    song_id: solo.song_id,
+                    song_title: solo.title || "Unknown Song",
+                    movie: solo.movie,
+                    singer_id: singerId,
+                    singer_name: singer?.singer_name || "Unknown Singer",
+                    gender: singer?.gender || null,
+                    solo_status: solo.solo_status || "Pending"
+                });
+            });
+
+        });
+
+        soloSongs.sort((a, b) =>
+            a.singer_name.localeCompare(b.singer_name) ||
+            a.song_title.localeCompare(b.song_title)
+        );
 
 
         // ----------------------------------------------------
@@ -818,7 +839,10 @@ const getSuggestions = async (req, res) => {
                 existingPairings,
 
             open_songs:
-                openSongs
+                openSongs,
+
+            solo_songs:
+                soloSongs
 
         });
 
@@ -1249,7 +1273,8 @@ const getMyPairing = async (req, res) => {
         const {
             singers,
             songMap,
-            selectionsBySinger
+            selectionsBySinger,
+            solosBySinger
         } = await loadSingerSongMap(activeEventId);
 
         const singerById =
@@ -1260,6 +1285,12 @@ const getMyPairing = async (req, res) => {
 
         const mySelections =
             selectionsBySinger.get(singerId) || [];
+
+        // Only solos the admin APPROVED are shown - undecided or
+        // rejected solos stay off the Song List.
+        const myApprovedSolos =
+            (solosBySinger.get(singerId) || [])
+                .filter(solo => solo.solo_status === "Approved" && solo.title);
 
         const myGender =
             String(me?.gender || "").trim().toLowerCase();
@@ -1321,7 +1352,11 @@ const getMyPairing = async (req, res) => {
         const approvedRows =
             (decidedRows || []).filter(row => row.status === "Approved");
 
-        if (mySelections.length === 0 && approvedRows.length === 0) {
+        if (
+            mySelections.length === 0 &&
+            approvedRows.length === 0 &&
+            myApprovedSolos.length === 0
+        ) {
 
             return res.status(200).json({
                 success: true,
@@ -1486,6 +1521,19 @@ const getMyPairing = async (req, res) => {
         });
 
         const myName = me.singer_name || "Unknown Singer";
+
+        // Approved solos sit in the Song List next to the pairings.
+        myApprovedSolos.forEach(solo => {
+            songsOut.push({
+                song_id: solo.song_id,
+                song_title: solo.title,
+                movie: solo.movie || null,
+                status: "Solo",
+                male_singer_name: myGender === "male" ? myName : null,
+                female_singer_name: myGender === "female" ? myName : null,
+                partner_name: null
+            });
+        });
 
         mySelections
             .filter(({ title }) => Boolean(title))
@@ -1740,9 +1788,118 @@ const bulkDecidePairings = async (req, res) => {
 };
 
 
+// ==========================================================
+// DECIDE A SOLO (approve / reject / undo)
+//
+// POST /api/v1/admin/pairings/solo
+//
+// Body: { song_id, decision: "Approved" | "Rejected" | null }
+//
+// Solos are never paired - the admin just approves them. Only
+// approved solos show on the singer's Song List. null clears
+// the decision (back to undecided).
+// ==========================================================
+
+const decideSolo = async (req, res) => {
+
+    try {
+
+        const songId = req.body?.song_id;
+        const decision = req.body?.decision ?? null;
+
+        if (!isValidUuid(songId)) {
+            return res.status(400).json({
+                success: false,
+                message: "A valid song_id is required."
+            });
+        }
+
+        if (decision !== null && !["Approved", "Rejected"].includes(decision)) {
+            return res.status(400).json({
+                success: false,
+                message: "decision must be 'Approved', 'Rejected' or null."
+            });
+        }
+
+        const { data: song, error: songError } = await supabase
+            .from("songs")
+            .select("id,title,event_id")
+            .eq("id", songId)
+            .maybeSingle();
+
+        if (songError) {
+            throw songError;
+        }
+
+        if (!song) {
+            return res.status(404).json({
+                success: false,
+                message: "Song not found."
+            });
+        }
+
+        // Must really be someone's solo in that song's event.
+        const { solosBySinger } = await loadSingerSongMap(song.event_id || null);
+
+        const isSolo = [...solosBySinger.values()]
+            .some(solos => solos.some(solo => solo.song_id === songId));
+
+        if (!isSolo) {
+            return res.status(400).json({
+                success: false,
+                message: "This song isn't a solo in any singer's current selection."
+            });
+        }
+
+        const { error: updateError } = await supabase
+            .from("songs")
+            .update({ solo_status: decision })
+            .eq("id", songId);
+
+        if (updateError) {
+
+            if (/solo_status/i.test(updateError.message || "")) {
+                return res.status(500).json({
+                    success: false,
+                    message:
+                        "Solo approval isn't set up in the database yet - run backend/migrations/2026-11-24_solo_approval.sql in Supabase first."
+                });
+            }
+
+            throw updateError;
+
+        }
+
+        console.log(`✅ Solo ${decision || "reset"}:`, song.title);
+
+        return res.status(200).json({
+            success: true,
+            message: decision
+                ? `Solo "${song.title}" ${decision.toLowerCase()}.`
+                : `Solo "${song.title}" set back to undecided.`
+        });
+
+    }
+
+    catch (error) {
+
+        console.error("DECIDE SOLO:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to update the solo.",
+            error: error.message
+        });
+
+    }
+
+};
+
+
 module.exports = {
     getSuggestions,
     decidePairing,
     getMyPairing,
-    bulkDecidePairings
+    bulkDecidePairings,
+    decideSolo
 };

@@ -179,8 +179,11 @@ function PairingStatus({ singerId }) {
 
     }
 
-    const paired = songs.filter(song => song.status === "Paired");
-    const notPaired = songs.filter(song => song.status !== "Paired");
+    // Paired duets and admin-approved solos fill the Song List
+    const isOnSongList = song => song.status === "Paired" || song.status === "Solo";
+
+    const paired = songs.filter(isOnSongList);
+    const notPaired = songs.filter(song => !isOnSongList(song));
 
     return (
 
@@ -254,10 +257,14 @@ function PairingStatus({ singerId }) {
                                     </td>
 
                                     <td className="col-female" data-label="Female Singer">
-                                        <span className="cell-inner">
-                                            <span className="mic female"><MicIcon /></span>
-                                            {song.female_singer_name || "—"}
-                                        </span>
+                                        {song.status === "Solo" ? (
+                                            <span className="solo-chip">★ Solo</span>
+                                        ) : (
+                                            <span className="cell-inner">
+                                                <span className="mic female"><MicIcon /></span>
+                                                {song.female_singer_name || "—"}
+                                            </span>
+                                        )}
                                     </td>
 
                                     <td className="col-song" data-label="Song">

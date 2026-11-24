@@ -227,6 +227,29 @@ const bulkDecidePairings = async (rows, eventId) => {
 
 
 // ==========================================================
+// DECIDE SOLO (approve / reject / undo with null)
+// ==========================================================
+
+const decideSolo = async (songId, decision) => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/solo`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ song_id: songId, decision })
+        }
+    );
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
 // SUPER ADMIN STATS - SINGERS PER EVENT (last 6 months)
 // ==========================================================
 
@@ -337,6 +360,7 @@ export {
     decidePairing,
     bulkUpdateSingers,
     bulkDecidePairings,
+    decideSolo,
     getSingersPerEvent,
     getFinanceByEvent,
     getEventAnalytics,

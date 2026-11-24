@@ -11,7 +11,8 @@ const {
 const {
     getSuggestions,
     decidePairing,
-    bulkDecidePairings
+    bulkDecidePairings,
+    decideSolo
 } = require("../../controllers/v1/pairingController");
 
 const {
@@ -88,6 +89,19 @@ router.post(
     "/pairings/decide",
     requireAdmin,
     decidePairing
+);
+
+
+// ==========================================================
+// DECIDE SOLO (approve / reject / undo)
+//
+// POST /api/v1/admin/pairings/solo
+// ==========================================================
+
+router.post(
+    "/pairings/solo",
+    requireAdmin,
+    decideSolo
 );
 
 

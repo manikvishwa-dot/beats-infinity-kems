@@ -302,6 +302,20 @@
 
 }
 
+.pairing-action-btn:not(.approve):not(.reject) {
+
+    background: rgba(255,255,255,0.08);
+
+    color: #DDDDDD;
+
+}
+
+.pairing-action-btn:not(.approve):not(.reject):hover:not(:disabled) {
+
+    background: rgba(255,255,255,0.16);
+
+}
+
 .pairing-action-btn.approve {
 
     background: rgba(76,175,80,0.15);

@@ -7,7 +7,8 @@ import {
     getPairingSuggestions,
     getSingersOverview,
     decidePairing,
-    bulkDecidePairings
+    bulkDecidePairings,
+    decideSolo
 } from "../services/adminDashboardService";
 import { getEvents } from "../services/eventService";
 
@@ -32,7 +33,8 @@ function PairingManagement() {
     const [suggestions, setSuggestions] = useState({
         potential_matches: [],
         existing_pairings: [],
-        open_songs: []
+        open_songs: [],
+        solo_songs: []
     });
 
     const [singers, setSingers] = useState([]);
@@ -114,7 +116,8 @@ function PairingManagement() {
             setSuggestions({
                 potential_matches: suggestionsResult.potential_matches || [],
                 existing_pairings: suggestionsResult.existing_pairings || [],
-                open_songs: suggestionsResult.open_songs || []
+                open_songs: suggestionsResult.open_songs || [],
+                solo_songs: suggestionsResult.solo_songs || []
             });
 
             setSingers(overviewResult.singers || []);
@@ -197,9 +200,12 @@ function PairingManagement() {
 
         const key = title => String(title || "").trim().toLowerCase();
 
+        // Solos are approved in the Solo Songs section, never paired.
+        const soloIds = new Set(suggestions.solo_songs.map(solo => solo.song_id));
+
         const femaleByTitle = new Map(
             (female.songs || [])
-                .filter(song => song.title && song.song_id)
+                .filter(song => song.title && song.song_id && !soloIds.has(song.song_id))
                 .map(song => [key(song.title), song])
         );
 
@@ -207,7 +213,7 @@ function PairingManagement() {
         const rows = [];
 
         (male.songs || [])
-            .filter(song => song.title && song.song_id)
+            .filter(song => song.title && song.song_id && !soloIds.has(song.song_id))
             .forEach(song => {
                 maleTitles.add(key(song.title));
                 rows.push({
@@ -228,7 +234,7 @@ function PairingManagement() {
         return rows.sort((a, b) =>
             order[a.owner] - order[b.owner] || a.title.localeCompare(b.title)
         );
-    }, [singers, manualMaleId, manualFemaleId]);
+    }, [singers, manualMaleId, manualFemaleId, suggestions.solo_songs]);
 
     // Excel template: existing pairings (decision pre-filled with
     // their current status, so a straight re-upload is a no-op),
@@ -533,6 +539,29 @@ function PairingManagement() {
     };
 
     // ==========================================================
+    // SOLO SONGS - approve / reject / undo (null)
+    // ==========================================================
+
+    const handleSoloDecision = async (solo, decision) => {
+        setActionKey(`solo:${solo.song_id}`);
+        setError("");
+        setSuccess("");
+
+        try {
+            const result = await decideSolo(solo.song_id, decision);
+            setSuccess(result.message || "Solo updated.");
+            await loadData();
+        }
+        catch (requestError) {
+            console.error("Solo decision error:", requestError);
+            setError(requestError.message || "Unable to update the solo.");
+        }
+        finally {
+            setActionKey(null);
+        }
+    };
+
+    // ==========================================================
     // PAIR AN OPEN (UNMATCHED) SONG
     //
     // The song's own singer already owns it - the manually
@@ -743,6 +772,105 @@ function PairingManagement() {
                                     </div>
                                 </div>
                             ))
+                        )}
+                    </div>
+
+                    {/* ==================================================
+                        SOLO SONGS
+                        -----------------------------------------------
+                        A singer's optional solo is never paired - the
+                        admin approves it. Only approved solos show on
+                        the singer's Song List.
+                    ================================================== */}
+
+                    <div className="pairing-section">
+                        <h2>Solo Songs</h2>
+                        <p className="pairing-section-hint">
+                            Solos aren't paired - approve them to add them to the singer's
+                            Song List as a Solo. Rejected or undecided solos stay hidden.
+                        </p>
+
+                        {suggestions.solo_songs.length === 0 ? (
+                            <div className="pairing-empty">
+                                No solo songs picked for this event.
+                            </div>
+                        ) : (
+                            <div className="pairing-table-wrapper">
+                                <table className="pairing-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Singer</th>
+                                            <th>Song</th>
+                                            <th>Movie</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        {suggestions.solo_songs.map(solo => {
+                                            const isActioning = actionKey === `solo:${solo.song_id}`;
+                                            const decided = solo.solo_status === "Approved" || solo.solo_status === "Rejected";
+
+                                            return (
+                                                <tr key={solo.song_id}>
+                                                    <td>{solo.singer_name}</td>
+                                                    <td>{solo.song_title}</td>
+                                                    <td>{solo.movie || "—"}</td>
+                                                    <td>
+                                                        <span
+                                                            className={`pairing-status-pill ${
+                                                                solo.solo_status === "Approved"
+                                                                    ? "approved"
+                                                                    : solo.solo_status === "Rejected"
+                                                                        ? "rejected"
+                                                                        : "potential"
+                                                            }`}
+                                                        >
+                                                            {solo.solo_status === "Approved"
+                                                                ? "Approved Solo"
+                                                                : solo.solo_status === "Rejected"
+                                                                    ? "Rejected"
+                                                                    : "Awaiting approval"}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {decided ? (
+                                                            <button
+                                                                type="button"
+                                                                className="pairing-action-btn"
+                                                                disabled={isActioning}
+                                                                onClick={() => handleSoloDecision(solo, null)}
+                                                            >
+                                                                {isActioning ? "..." : "Undo"}
+                                                            </button>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    className="pairing-action-btn approve"
+                                                                    disabled={isActioning}
+                                                                    onClick={() => handleSoloDecision(solo, "Approved")}
+                                                                >
+                                                                    {isActioning ? "..." : "Approve"}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="pairing-action-btn reject"
+                                                                    disabled={isActioning}
+                                                                    onClick={() => handleSoloDecision(solo, "Rejected")}
+                                                                >
+                                                                    {isActioning ? "..." : "Reject"}
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
 
