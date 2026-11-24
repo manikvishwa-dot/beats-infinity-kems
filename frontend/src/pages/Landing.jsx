@@ -482,7 +482,7 @@ function Landing() {
             <section id="crew" className="bil-section">
                 <div className="bil-section-head">
                     <span className="bil-tag">The Crew</span>
-                    <h2>The people <span className="bil-outline">behind the mic</span></h2>
+                    <h2>Meet our <span className="bil-outline">Core Team</span></h2>
                 </div>
 
                 <div className="bil-crew">
