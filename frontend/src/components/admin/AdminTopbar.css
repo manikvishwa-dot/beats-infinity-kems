@@ -1,9 +1,28 @@
 /* ==========================================================
-   ADMIN NAVIGATION - left sidebar (see AdminTopbar.jsx)
+   ADMIN NAVIGATION - responsive left sidebar (AdminTopbar.jsx)
+
+   >= 1200px   full sidebar (248px), or an icon rail if collapsed
+   901-1199px  icon rail automatically
+   <= 900px    top bar + slide-in drawer
+   A rail expands over the page on hover or keyboard (Tab) focus -
+   not after a mouse click, which would otherwise hold it open.
    ========================================================== */
 
 :root {
-    --admin-sidebar-w: 236px;
+    --admin-sidebar-w: 248px;
+    --admin-rail-w: 76px;
+    --admin-sidebar-current: var(--admin-sidebar-w);
+}
+
+html.admin-sidebar-collapsed {
+    --admin-sidebar-current: var(--admin-rail-w);
+}
+
+@media (min-width: 901px) and (max-width: 1199px) {
+    :root,
+    html.admin-sidebar-collapsed {
+        --admin-sidebar-current: var(--admin-rail-w);
+    }
 }
 
 /* Admin pages use the full window - the public site's 1126px
@@ -15,11 +34,14 @@ body:has(.admin-shell) #root {
 }
 
 .admin-shell {
-    padding-left: var(--admin-sidebar-w);
+    padding-left: var(--admin-sidebar-current);
     box-sizing: border-box;
+    transition: padding-left .25s ease;
 }
 
-/* ---------- Sidebar ---------- */
+/* ==========================================================
+   SIDEBAR
+   ========================================================== */
 
 .admin-sidebar {
     position: fixed;
@@ -31,38 +53,65 @@ body:has(.admin-shell) #root {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    background: rgba(13,13,13,0.96);
-    backdrop-filter: blur(18px);
-    border-right: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
     text-align: left;
+    background:
+        radial-gradient(120% 40% at 0% 0%, rgba(29,185,84,0.10), transparent 60%),
+        radial-gradient(120% 30% at 100% 100%, rgba(255,213,74,0.06), transparent 60%),
+        linear-gradient(180deg, #131313 0%, #0c0c0c 100%);
+    border-right: 1px solid rgba(255,255,255,0.07);
+    transition: width .25s ease, box-shadow .25s ease;
 }
+
+/* ---------- Brand ---------- */
 
 .admin-sidebar-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 20px 18px 18px;
+    padding: 16px 18px 14px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-
-.admin-sidebar-close {
-    display: none;
 }
 
 .admin-side-brand {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 11px;
     min-width: 0;
     text-decoration: none;
     color: #ffffff;
 }
 
-.admin-side-brand img {
-    height: 28px;
-    width: auto;
-    border-radius: 6px;
+.admin-side-logo {
+    flex: 0 0 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.admin-side-logo img {
+    width: 28px;
+    height: auto;
+}
+
+.admin-side-brand:hover .admin-side-logo {
+    transform: rotate(-6deg) scale(1.05);
+    box-shadow: 0 8px 22px rgba(29,185,84,0.25);
+}
+
+.admin-side-brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    white-space: nowrap;
+    transition: opacity .2s ease;
 }
 
 .admin-side-brand-name {
@@ -70,26 +119,72 @@ body:has(.admin-shell) #root {
     font-size: 12.5px;
     font-weight: 800;
     letter-spacing: .8px;
-    white-space: nowrap;
+    background: linear-gradient(90deg, #ffffff, #b9f7cf);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.admin-side-brand-sub {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #8a8a8a;
 }
 
 .admin-side-badge {
-    padding: 3px 8px;
+    padding: 1px 7px;
     border-radius: 999px;
-    background: rgba(255,213,74,0.14);
-    color: #FFD54A;
-    font-size: 9.5px;
+    background: rgba(29,185,84,0.15);
+    color: var(--admin-green-bright, #39EF79);
+    font-size: 9px;
     font-weight: 800;
-    letter-spacing: .8px;
+    letter-spacing: .7px;
 }
+
+.admin-side-badge.super {
+    background: rgba(255,213,74,0.15);
+    color: #FFD54A;
+}
+
+.admin-sidebar-close {
+    display: none;
+}
+
+/* ---------- Menu ---------- */
 
 .admin-sidebar-nav {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 14px 10px;
+    scrollbar-width: thin;
+}
+
+.admin-side-group {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 14px 12px;
+    gap: 1px;
+    padding-top: 6px;
+}
+
+.admin-side-group-title {
+    position: relative;
+    height: 22px;
+    padding: 0 12px;
+    line-height: 22px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: #5f5f5f;
+    transition: opacity .2s ease;
+}
+
+.admin-side-group.super .admin-side-group-title {
+    color: rgba(255,213,74,0.7);
 }
 
 .admin-side-link {
@@ -97,120 +192,294 @@ body:has(.admin-shell) #root {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    color: #b5b5b5;
+    height: 40px;
+    padding: 0 8px;
+    border-radius: 12px;
+    color: #b0b0b0;
     font-family: "Poppins", sans-serif;
     font-size: 14px;
     font-weight: 600;
+    white-space: nowrap;
     text-decoration: none;
-    transition: background .15s ease, color .15s ease;
+    transition: background .2s ease, color .2s ease;
 }
 
 .admin-side-link-icon {
-    width: 22px;
-    text-align: center;
-    font-size: 16px;
+    flex: 0 0 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    font-size: 15px;
+    background: rgba(255,255,255,0.04);
+    transition: transform .2s ease, background .2s ease, box-shadow .2s ease;
+}
+
+.admin-side-link-label {
+    transition: transform .2s ease, opacity .2s ease;
 }
 
 .admin-side-link:hover {
     color: #ffffff;
-    background: rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.05);
 }
 
+.admin-side-link:hover .admin-side-link-icon {
+    transform: scale(1.12) rotate(-4deg);
+    background: rgba(255,255,255,0.08);
+}
+
+.admin-side-link:hover .admin-side-link-label {
+    transform: translateX(3px);
+}
+
+.admin-side-link:focus-visible {
+    outline: 2px solid var(--admin-green-bright, #39EF79);
+    outline-offset: 2px;
+}
+
+/* Current page: green glow + bar */
 .admin-side-link.active {
     color: #ffffff;
-    background: rgba(29,185,84,0.16);
+    background: linear-gradient(90deg, rgba(29,185,84,0.24), rgba(29,185,84,0.04));
+}
+
+.admin-side-link.active .admin-side-link-icon {
+    background: rgba(29,185,84,0.22);
+    box-shadow: 0 0 16px rgba(57,239,121,0.25);
 }
 
 .admin-side-link.active::before {
     content: "";
     position: absolute;
-    left: -12px;
-    top: 8px;
-    bottom: 8px;
-    width: 3px;
-    border-radius: 0 3px 3px 0;
+    left: -14px;
+    top: 9px;
+    bottom: 9px;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
     background: var(--admin-green-bright, #39EF79);
+    box-shadow: 0 0 12px rgba(57,239,121,0.7);
+    animation: admin-active-in .3s ease;
 }
 
+@keyframes admin-active-in {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+}
+
+/* Super Admin links */
 .admin-side-link.super {
-    color: #FFD54A;
+    color: #e8c64a;
 }
 
-.admin-side-link.super:hover,
+.admin-side-link.super:hover {
+    color: #FFD54A;
+    background: rgba(255,213,74,0.07);
+}
+
 .admin-side-link.super.active {
     color: #FFD54A;
-    background: rgba(255,213,74,0.12);
+    background: linear-gradient(90deg, rgba(255,213,74,0.2), rgba(255,213,74,0.03));
+}
+
+.admin-side-link.super.active .admin-side-link-icon {
+    background: rgba(255,213,74,0.18);
+    box-shadow: 0 0 16px rgba(255,213,74,0.25);
 }
 
 .admin-side-link.super.active::before {
     background: #FFD54A;
+    box-shadow: 0 0 12px rgba(255,213,74,0.7);
 }
 
-.admin-sidebar-group {
-    margin: 14px 12px 4px;
-    font-size: 10.5px;
-    font-weight: 800;
-    letter-spacing: .8px;
-    text-transform: uppercase;
-    color: #666666;
-}
+/* ---------- Footer: profile + collapse ---------- */
 
 .admin-sidebar-footer {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 14px 16px 18px;
+    gap: 8px;
+    padding: 12px 14px 16px;
     border-top: 1px solid rgba(255,255,255,0.06);
 }
 
-.admin-sidebar-identity {
+.admin-sidebar-profile {
     display: flex;
     align-items: center;
     gap: 10px;
-    min-width: 0;
+    padding: 8px 6px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
 }
 
 .admin-sidebar-avatar {
-    flex: 0 0 34px;
-    height: 34px;
+    flex: 0 0 36px;
+    height: 36px;
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: rgba(29,185,84,0.16);
-    color: var(--admin-green-bright, #39EF79);
+    background: linear-gradient(135deg, #1DB954, #39EF79);
+    color: #0b0b0b;
     font-weight: 800;
-    font-size: 14px;
+    font-size: 15px;
+    box-shadow: 0 0 0 3px rgba(57,239,121,0.15);
+}
+
+.admin-sidebar-avatar.super {
+    background: linear-gradient(135deg, #e7a51d, #FFD54A);
+    box-shadow: 0 0 0 3px rgba(255,213,74,0.15);
 }
 
 .admin-sidebar-who {
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
     line-height: 1.3;
+    white-space: nowrap;
+    transition: opacity .2s ease;
 }
 
 .admin-sidebar-who strong {
     color: #ffffff;
     font-size: 13.5px;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .admin-sidebar-who em {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     font-style: normal;
-    font-size: 11.5px;
-    color: #888888;
+    font-size: 11px;
+    color: #8a8a8a;
 }
 
 .admin-sidebar-who em.super {
-    color: #FFD54A;
+    color: #e8c64a;
+}
+
+/* "online" dot */
+.admin-sidebar-who em i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--admin-green-bright, #39EF79);
+    box-shadow: 0 0 6px rgba(57,239,121,0.8);
 }
 
 .admin-sidebar-logout {
-    width: 100%;
+    flex: 0 0 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #9a9a9a;
+    cursor: pointer;
+    transition: background .2s ease, color .2s ease, opacity .2s ease;
+}
+
+.admin-sidebar-logout:hover,
+.admin-sidebar-logout:focus-visible {
+    background: rgba(255,95,109,0.14);
+    color: #ff6b6b;
+    outline: none;
+}
+
+.admin-sidebar-collapse {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 36px;
+    padding: 0 7px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #777777;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .2s ease, color .2s ease;
+}
+
+.admin-sidebar-collapse:hover {
+    color: #ffffff;
+    background: rgba(255,255,255,0.05);
+}
+
+.admin-sidebar-collapse-icon {
+    flex: 0 0 34px;
+    font-size: 16px;
+    text-align: center;
+    transition: transform .25s ease;
+}
+
+.admin-sidebar.collapsed .admin-sidebar-collapse-icon {
+    transform: rotate(180deg);
+}
+
+.admin-sidebar-collapse-label {
+    transition: opacity .2s ease;
+}
+
+/* ==========================================================
+   ICON RAIL (collapsed, or mid-size screens)
+   Hover / keyboard focus expands it over the page.
+   ========================================================== */
+
+@media (min-width: 901px) {
+
+    .admin-sidebar.rail {
+        width: var(--admin-rail-w);
+    }
+
+    .admin-sidebar.rail:hover,
+    .admin-sidebar.rail:has(:focus-visible) {
+        width: var(--admin-sidebar-w);
+        box-shadow: 24px 0 60px rgba(0,0,0,0.6);
+    }
+
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-side-brand-text,
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-side-link-label,
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-side-group-title,
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-sidebar-who,
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-sidebar-logout,
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-sidebar-collapse-label {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* Group titles become a thin divider on the rail */
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-side-group-title::after {
+        content: "";
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        top: 50%;
+        height: 1px;
+        background: rgba(255,255,255,0.08);
+    }
+
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-side-group:first-child .admin-side-group-title::after {
+        display: none;
+    }
+
+    .admin-sidebar.rail:not(:hover):not(:has(:focus-visible)) .admin-sidebar-profile {
+        background: transparent;
+        border-color: transparent;
+    }
+
+}
+
+/* Mid-size screens: always a rail, so no collapse button */
+@media (min-width: 901px) and (max-width: 1199px) {
+    .admin-sidebar-collapse {
+        display: none;
+    }
 }
 
 /* ---------- Back bar (top of the content area) ---------- */
@@ -234,7 +503,7 @@ body:has(.admin-shell) #root {
 }
 
 /* ==========================================================
-   PHONES / SMALL TABLETS - sidebar becomes a slide-in drawer
+   PHONES / SMALL TABLETS - slide-in drawer
    ========================================================== */
 
 @media (max-width: 900px) {
@@ -250,25 +519,30 @@ body:has(.admin-shell) #root {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 16px;
-        background: rgba(11,11,11,0.85);
+        padding: 10px 16px;
+        text-align: left;
+        background: rgba(11,11,11,0.86);
         backdrop-filter: blur(18px);
         border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
     .admin-mobilebar-toggle {
-        width: 40px;
-        height: 40px;
-        flex: 0 0 40px;
+        flex: 0 0 42px;
+        height: 42px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 4px;
         border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 10px;
+        border-radius: 12px;
         background: rgba(255,255,255,0.04);
         cursor: pointer;
+        transition: background .2s ease;
+    }
+
+    .admin-mobilebar-toggle:active {
+        background: rgba(255,255,255,0.1);
     }
 
     .admin-mobilebar-toggle span {
@@ -278,29 +552,27 @@ body:has(.admin-shell) #root {
         background: #ffffff;
     }
 
+    .admin-mobilebar-toggle span:nth-child(2) {
+        width: 12px;
+        margin-right: 6px;
+    }
+
     .admin-sidebar {
-        width: min(280px, 84vw);
+        width: min(290px, 86vw);
         transform: translateX(-100%);
-        transition: transform .25s ease;
-        box-shadow: none;
+        transition: transform .28s cubic-bezier(.2,.8,.2,1);
     }
 
     .admin-sidebar.open {
         transform: translateX(0);
-        box-shadow: 20px 0 50px rgba(0,0,0,0.6);
-    }
-
-    /* the phone top bar already shows the badge; role is in the footer */
-    .admin-sidebar-top .admin-side-badge {
-        display: none;
+        box-shadow: 24px 0 60px rgba(0,0,0,0.65);
     }
 
     .admin-sidebar-close {
         display: grid;
         place-items: center;
-        width: 34px;
-        height: 34px;
-        flex: 0 0 34px;
+        flex: 0 0 36px;
+        height: 36px;
         border: 1px solid rgba(255,255,255,0.12);
         border-radius: 10px;
         background: transparent;
@@ -309,12 +581,18 @@ body:has(.admin-shell) #root {
         cursor: pointer;
     }
 
+    /* The drawer is always full - no collapse on phones */
+    .admin-sidebar-collapse {
+        display: none;
+    }
+
     .admin-sidebar-backdrop {
         display: block;
         position: fixed;
         inset: 0;
         z-index: 55;
         background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(2px);
         animation: admin-backdrop-in .2s ease;
     }
 
@@ -327,4 +605,14 @@ body:has(.admin-shell) #root {
 @keyframes admin-backdrop-in {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-sidebar,
+    .admin-shell,
+    .admin-side-link,
+    .admin-side-link-icon,
+    .admin-side-link-label {
+        transition: none;
+    }
 }
