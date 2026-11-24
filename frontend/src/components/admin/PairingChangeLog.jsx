@@ -11,6 +11,9 @@ import "./FinalPairingList.css";
 
 const describe = value => {
     if (!value) return "";
+    if (value.singer) {
+        return `${value.singer} (${value.gender || "singer"}) added to the event${value.new_registration ? " - newly registered" : ""}`;
+    }
     const singers = [value.male_singer, value.female_singer].filter(Boolean).join(" + ");
     const solo = value.male_singer && value.female_singer ? "" : " (solo)";
     return `${singers || "—"}${solo} · ${value.song || "—"}${value.movie ? ` (${value.movie})` : ""}`;
@@ -116,7 +119,7 @@ function PairingChangeLog({ eventId }) {
                                         <td>{formatWhen(entry.created_at)}</td>
                                         <td>
                                             <span className={`change-log-action ${entry.action}`}>
-                                                {entry.action}
+                                                {entry.action === "singer_added" ? "singer added" : entry.action}
                                             </span>
                                         </td>
                                         <td>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ExcelToolbar from "./ExcelToolbar";
+import AddSingerDialog from "./AddSingerDialog";
 import {
     getFinalPairingList,
     saveFinalPairingList
@@ -48,35 +49,34 @@ const comparable = rows => JSON.stringify(
 );
 
 
-function SingerSelect({ value, singers, onChange, emptyLabel, ariaLabel }) {
+const ADD_SINGER = "__add_singer__";
 
-    const inEvent = singers.filter(singer => singer.in_event);
-    const others = singers.filter(singer => !singer.in_event);
+// Only this event's singers, then "+ Add a singer..." last
+function SingerSelect({ value, singers, onChange, onAddSinger, emptyLabel, ariaLabel }) {
+
+    const inEvent = singers.filter(singer => singer.in_event || singer.id === value);
 
     return (
         <select
             className={value ? "final-input" : "final-input is-empty"}
             value={value}
-            onChange={event => onChange(event.target.value)}
+            onChange={event => {
+                if (event.target.value === ADD_SINGER) {
+                    onAddSinger();
+                }
+                else {
+                    onChange(event.target.value);
+                }
+            }}
             aria-label={ariaLabel}
         >
             <option value="">{emptyLabel}</option>
 
-            {inEvent.length > 0 && (
-                <optgroup label="In this event">
-                    {inEvent.map(singer => (
-                        <option key={singer.id} value={singer.id}>{singer.singer_name}</option>
-                    ))}
-                </optgroup>
-            )}
+            {inEvent.map(singer => (
+                <option key={singer.id} value={singer.id}>{singer.singer_name}</option>
+            ))}
 
-            {others.length > 0 && (
-                <optgroup label="Other singers (replacements)">
-                    {others.map(singer => (
-                        <option key={singer.id} value={singer.id}>{singer.singer_name}</option>
-                    ))}
-                </optgroup>
-            )}
+            <option value={ADD_SINGER}>＋ Add a singer...</option>
         </select>
     );
 
@@ -96,6 +96,9 @@ function FinalPairingList({ eventId, onSaved }) {
     const [success, setSuccess] = useState("");
     const lastInputRef = useRef(null);
     const focusNewRow = useRef(false);
+
+    // { rowKey, field: "male_singer_id" | "female_singer_id", gender }
+    const [addingSinger, setAddingSinger] = useState(null);
 
     const applyResult = useCallback(result => {
 
@@ -171,6 +174,23 @@ function FinalPairingList({ eventId, onSaved }) {
         setRows(current => current.map(row =>
             row.key === key ? { ...row, [field]: value } : row
         ));
+    };
+
+    // A walk-in was added: show them in this event's dropdowns and
+    // put them on the row the admin was editing.
+    const handleSingerAdded = (singer, message) => {
+        setSingers(current => {
+            const exists = current.some(item => item.id === singer.id);
+            return exists
+                ? current.map(item => item.id === singer.id ? { ...item, in_event: true } : item)
+                : [...current, singer].sort((a, b) => a.singer_name.localeCompare(b.singer_name));
+        });
+        if (addingSinger) {
+            updateRow(addingSinger.rowKey, addingSinger.field, singer.id);
+        }
+        setAddingSinger(null);
+        setError("");
+        setSuccess(`${message} Remember to Save the final list.`);
     };
 
     const removeRow = key => {
@@ -346,8 +366,8 @@ function FinalPairingList({ eventId, onSaved }) {
                     <p className="pairing-section-hint">
                         The event-day running list. Change any singer, song or movie for last-minute
                         changes, then <b>Save</b>. Set Female Singer to <b>★ Solo</b> for a solo.
-                        Replacement singers who didn't register are under <i>Other singers</i>.
-                        Every change is recorded in the Change Log.
+                        Dropdowns list this event's singers - for a last-minute walk-in, choose
+                        <b> ＋ Add a singer...</b> at the bottom. Every change is recorded in the Change Log.
                     </p>
                 </div>
             </div>
@@ -402,6 +422,7 @@ function FinalPairingList({ eventId, onSaved }) {
                                             emptyLabel={row.female_singer_id ? "★ Solo" : "Select male singer"}
                                             ariaLabel={`Row ${index + 1} male singer`}
                                             onChange={value => updateRow(row.key, "male_singer_id", value)}
+                                            onAddSinger={() => setAddingSinger({ rowKey: row.key, field: "male_singer_id", gender: "male" })}
                                         />
                                     </td>
                                     <td>
@@ -411,6 +432,7 @@ function FinalPairingList({ eventId, onSaved }) {
                                             emptyLabel={row.male_singer_id ? "★ Solo" : "Select female singer"}
                                             ariaLabel={`Row ${index + 1} female singer`}
                                             onChange={value => updateRow(row.key, "female_singer_id", value)}
+                                            onAddSinger={() => setAddingSinger({ rowKey: row.key, field: "female_singer_id", gender: "female" })}
                                         />
                                     </td>
                                     <td>
@@ -480,6 +502,17 @@ function FinalPairingList({ eventId, onSaved }) {
                     </button>
                 </div>
             </div>
+
+            {addingSinger && (
+                <AddSingerDialog
+                    eventId={eventId}
+                    gender={addingSinger.gender}
+                    otherSingers={(addingSinger.gender === "male" ? maleSingers : femaleSingers)
+                        .filter(singer => !singer.in_event)}
+                    onAdded={handleSingerAdded}
+                    onClose={() => setAddingSinger(null)}
+                />
+            )}
 
             {perSinger.length > 0 && (
                 <p className="final-summary">

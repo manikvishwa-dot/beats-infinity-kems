@@ -18,7 +18,8 @@ const {
 const {
     getFinalList,
     saveFinalList,
-    getChangeLog
+    getChangeLog,
+    addEventSinger
 } = require("../../controllers/v1/finalPairingController");
 
 const {
@@ -129,6 +130,13 @@ router.put(
     "/pairings/final",
     requireAdmin,
     saveFinalList
+);
+
+// POST /api/v1/admin/pairings/final/singers - add a walk-in singer
+router.post(
+    "/pairings/final/singers",
+    requireAdmin,
+    addEventSinger
 );
 
 router.get(

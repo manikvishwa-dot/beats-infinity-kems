@@ -31,6 +31,12 @@ const httpError = (status, message) =>
 
 const cleanText = value => String(value ?? "").trim();
 
+const isMissingRosterTable = error =>
+    /event_singers/i.test(error?.message || "");
+
+const ROSTER_MIGRATION_MESSAGE =
+    "Adding singers needs the event roster table - run backend/migrations/2026-11-25_event_roster.sql in Supabase first.";
+
 const loadEvent = async eventId => {
 
     const { data, error } = await supabase
@@ -113,19 +119,45 @@ const loadFinalList = async eventId => {
 
     }
 
-    // Every singer, so last-minute replacements who didn't
-    // register for this event can still be picked.
-    const { data: allSingers, error: singersError } = await supabase
-        .from("singers")
-        .select("id,singer_name,gender")
-        .order("singer_name", { ascending: true });
+    // Every singer (for validation and the "Add a singer" picker),
+    // plus this event's roster - only roster singers are offered in
+    // the Final List dropdowns.
+    const [{ data: allSingers, error: singersError }, { data: roster, error: rosterError }] =
+        await Promise.all([
+            supabase
+                .from("singers")
+                .select("id,singer_name,gender")
+                .order("singer_name", { ascending: true }),
+            supabase
+                .from("event_singers")
+                .select("singer_id")
+                .eq("event_id", eventId)
+        ]);
 
     if (singersError) {
         throw singersError;
     }
 
+    // Roster table missing (migration not run) -> just no roster
+    if (rosterError && !isMissingRosterTable(rosterError)) {
+        throw rosterError;
+    }
+
     const singerById = new Map((allSingers || []).map(singer => [singer.id, singer]));
-    const eventSingerIds = new Set(eventSingers.map(singer => singer.id));
+
+    // In this event = registered (has a payment) + on the event
+    // roster + already on the Final List.
+    const eventSingerIds = new Set([
+        ...eventSingers.map(singer => singer.id),
+        ...(roster || []).map(row => row.singer_id),
+        ...pairings.flatMap(row => [row.male_singer_id, row.female_singer_id])
+    ]);
+
+    solosBySinger.forEach((solos, singerId) => {
+        if (solos.some(solo => solo.solo_status === "Approved")) {
+            eventSingerIds.add(singerId);
+        }
+    });
 
     const rows = [];
 
@@ -358,6 +390,212 @@ const setSolo = async (songId, values) => {
 };
 
 
+// strict: fail when the roster table is missing (Add a singer);
+// otherwise skip quietly (saving the list still works).
+const addToRoster = async (eventId, singerId, strict = false) => {
+
+    const { error } = await supabase
+        .from("event_singers")
+        .upsert(
+            { event_id: eventId, singer_id: singerId, source: "final_list" },
+            { onConflict: "event_id,singer_id", ignoreDuplicates: true }
+        );
+
+    if (error) {
+
+        if (isMissingRosterTable(error)) {
+            if (strict) throw httpError(500, ROSTER_MIGRATION_MESSAGE);
+            return;
+        }
+
+        throw error;
+
+    }
+
+};
+
+const normalizeMobile = value =>
+    String(value || "").replace(/\D/g, "").slice(-10);
+
+// Same placeholder registration uses for singers whose date of
+// birth isn't known yet (Forgot PIN skips the DOB check for it).
+const PLACEHOLDER_DOB = "2000-01-01";
+
+
+// ==========================================================
+// ADD A SINGER TO THE EVENT (last-minute walk-ins)
+//
+// POST /api/v1/admin/pairings/final/singers
+//
+// Body, existing singer: { event_id, singer_id }
+// Body, new singer:      { event_id, singer_name, gender,
+//                          mobile_number, date_of_birth? }
+//
+// A new singer whose mobile number is already registered reuses
+// that singer instead of creating a duplicate.
+// ==========================================================
+
+const addEventSinger = async (req, res) => {
+
+    try {
+
+        const eventId = await resolveEventId(req.body?.event_id);
+        await loadEvent(eventId);
+
+        // Check the roster table exists before creating anyone
+        const { error: rosterCheckError } = await supabase
+            .from("event_singers")
+            .select("id")
+            .limit(1);
+
+        if (rosterCheckError) {
+            if (isMissingRosterTable(rosterCheckError)) {
+                throw httpError(500, ROSTER_MIGRATION_MESSAGE);
+            }
+            throw rosterCheckError;
+        }
+
+        let singer = null;
+        let created = false;
+        let reused = false;
+
+        const singerId = cleanText(req.body?.singer_id);
+
+        if (singerId) {
+
+            if (!isValidUuid(singerId)) {
+                throw httpError(400, "Invalid singer.");
+            }
+
+            const { data, error } = await supabase
+                .from("singers")
+                .select("id,singer_name,gender")
+                .eq("id", singerId)
+                .maybeSingle();
+
+            if (error) throw error;
+            if (!data) throw httpError(404, "Singer not found.");
+
+            singer = data;
+
+        }
+        else {
+
+            const name = cleanText(req.body?.singer_name);
+            const genderInput = cleanText(req.body?.gender).toLowerCase();
+            const mobile = normalizeMobile(req.body?.mobile_number);
+            const dobInput = cleanText(req.body?.date_of_birth).slice(0, 10);
+
+            if (name.length < 2) {
+                throw httpError(400, "Enter the singer's name.");
+            }
+
+            if (genderInput !== "male" && genderInput !== "female") {
+                throw httpError(400, "Choose Male or Female.");
+            }
+
+            if (!/^\d{10}$/.test(mobile)) {
+                throw httpError(400, "Enter a 10-digit mobile number.");
+            }
+
+            if (dobInput && !/^\d{4}-\d{2}-\d{2}$/.test(dobInput)) {
+                throw httpError(400, "Date of birth looks wrong.");
+            }
+
+            const gender = genderInput === "male" ? "Male" : "Female";
+
+            const { data: existing, error: findError } = await supabase
+                .from("singers")
+                .select("id,singer_name,gender")
+                .eq("mobile_number", mobile)
+                .maybeSingle();
+
+            if (findError) throw findError;
+
+            if (existing) {
+
+                singer = existing;
+                reused = true;
+
+            }
+            else {
+
+                const { data, error } = await supabase
+                    .from("singers")
+                    .insert({
+                        singer_name: name,
+                        gender,
+                        mobile_number: mobile,
+                        date_of_birth: dobInput || PLACEHOLDER_DOB
+                    })
+                    .select("id,singer_name,gender")
+                    .single();
+
+                if (error) throw error;
+
+                singer = data;
+                created = true;
+
+            }
+
+        }
+
+        await addToRoster(eventId, singer.id, true);
+
+        const { error: logError } = await supabase
+            .from("pairing_change_log")
+            .insert({
+                event_id: eventId,
+                action: "singer_added",
+                kind: "singer",
+                before_value: null,
+                after_value: {
+                    singer: singer.singer_name,
+                    gender: singer.gender,
+                    new_registration: created
+                },
+                changed_by: req.admin?.id || null,
+                changed_by_name: req.admin?.full_name || req.admin?.username || null
+            });
+
+        if (logError) {
+            console.error("PAIRING CHANGE LOG (singer):", logError);
+        }
+
+        console.log(`✅ Singer added to event${created ? " (new registration)" : ""}:`, singer.singer_name);
+
+        return res.status(200).json({
+            success: true,
+            message: created
+                ? `${singer.singer_name} registered and added to this event.`
+                : reused
+                    ? `That mobile number is already registered as ${singer.singer_name} - added them to this event.`
+                    : `${singer.singer_name} added to this event.`,
+            singer: {
+                id: singer.id,
+                singer_name: singer.singer_name,
+                gender: singer.gender,
+                in_event: true
+            }
+        });
+
+    }
+
+    catch (error) {
+
+        console.error("ADD EVENT SINGER:", error);
+
+        return res.status(error.status || 500).json({
+            success: false,
+            message: error.status ? error.message : "Unable to add the singer.",
+            error: error.message
+        });
+
+    }
+
+};
+
+
 // ==========================================================
 // PUT /api/v1/admin/pairings/final
 //
@@ -575,6 +813,15 @@ const saveFinalList = async (req, res) => {
 
         }
 
+        // Everyone on the saved list belongs to this event's roster.
+        const listedSingerIds = [
+            ...new Set(rows.flatMap(row => [row.maleId, row.femaleId]).filter(Boolean))
+        ].filter(id => !current.eventSingerIds.has(id));
+
+        for (const singerId of listedSingerIds) {
+            await addToRoster(eventId, singerId);
+        }
+
         // Rows that left the list: keep them, marked Rejected.
         const replacedRefs = new Set(rows.map(row => row.ref).filter(Boolean));
 
@@ -715,5 +962,6 @@ const getChangeLog = async (req, res) => {
 module.exports = {
     getFinalList,
     saveFinalList,
-    getChangeLog
+    getChangeLog,
+    addEventSinger
 };

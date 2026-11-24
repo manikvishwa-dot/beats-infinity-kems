@@ -285,6 +285,26 @@ const saveFinalPairingList = async (eventId, rows) => {
 
 };
 
+// singer: { singer_id } for an existing singer, or
+//         { singer_name, gender, mobile_number, date_of_birth } for a new one
+const addEventSinger = async (eventId, singer) => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/final/singers`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ event_id: eventId, ...singer })
+        }
+    );
+
+    return handleResponse(response);
+
+};
+
 const getPairingChangeLog = async eventId => {
 
     const response = await fetch(
@@ -412,6 +432,7 @@ export {
     getFinalPairingList,
     saveFinalPairingList,
     getPairingChangeLog,
+    addEventSinger,
     getSingersPerEvent,
     getFinanceByEvent,
     getEventAnalytics,
