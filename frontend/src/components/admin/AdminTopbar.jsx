@@ -1,9 +1,23 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import ASSETS from "../../config/assets";
 import { getSession, logout } from "../../services/adminService";
 
 import "./AdminTopbar.css";
+
+// ==========================================================
+// ADMIN NAVIGATION - left sidebar
+//
+// Desktop: fixed sidebar (logo, menu, signed-in admin + Logout);
+// the page content sits to its right with a "← Back" bar on top.
+// Phones / small tablets: a slim top bar with ☰ that slides the
+// same sidebar in from the left.
+//
+// (Still named AdminTopbar so every admin page keeps working
+// unchanged - each renders <AdminTopbar /> first inside
+// .admin-shell.)
+// ==========================================================
 
 const NAV_ITEMS = [
 
@@ -25,17 +39,44 @@ const NAV_ITEMS = [
 
 ];
 
+const SUPER_ITEMS = [
+
+    { label: "Finance", path: "/superadmin", icon: "👑" },
+
+    { label: "Comparison Dashboard", path: "/superadmin/comparison", icon: "📈" }
+
+];
+
 function AdminTopbar({ loginPath = "/admin/login" }) {
 
     const location = useLocation();
     const navigate = useNavigate();
     const session = getSession();
 
+    const [menuOpen, setMenuOpen] = useState(false);
+
     const isSuperAdmin = session?.admin?.role === "super_admin";
     const isDashboard =
         location.pathname === "/admin" ||
         location.pathname === "/superadmin" ||
         location.pathname === "/superadmin/comparison";
+
+    // Esc closes the phone menu
+    useEffect(() => {
+        if (!menuOpen) {
+            return undefined;
+        }
+
+        const onKey = event => {
+            if (event.key === "Escape") setMenuOpen(false);
+        };
+
+        document.addEventListener("keydown", onKey);
+
+        return () => document.removeEventListener("keydown", onKey);
+    }, [menuOpen]);
+
+    const closeMenu = () => setMenuOpen(false);
 
     const handleLogout = async () => {
         await logout();
@@ -51,89 +92,132 @@ function AdminTopbar({ loginPath = "/admin/login" }) {
         }
     };
 
+    const renderLink = (item, superLink = false) => {
+        const active = location.pathname === item.path;
+
+        return (
+            <Link
+                key={item.path}
+                to={item.path}
+                onClick={closeMenu}
+                aria-current={active ? "page" : undefined}
+                className={[
+                    "admin-side-link",
+                    active ? "active" : "",
+                    superLink ? "super" : ""
+                ].filter(Boolean).join(" ")}
+            >
+                <span className="admin-side-link-icon" aria-hidden="true">{item.icon}</span>
+                <span className="admin-side-link-label">{item.label}</span>
+            </Link>
+        );
+    };
+
+    const brand = (
+        <Link to="/admin" className="admin-side-brand" onClick={closeMenu}>
+            <img src={ASSETS.logo} alt="" />
+            <span className="admin-side-brand-name">BEATS ∞ INFINITY</span>
+            <span className="admin-side-badge">{isSuperAdmin ? "SUPER" : "ADMIN"}</span>
+        </Link>
+    );
+
     return (
 
-        <header className="admin-topbar">
+        <>
 
-            <div className="admin-topbar-row admin-topbar-toprow">
+            {/* Phones / small tablets */}
+            <header className="admin-mobilebar">
+                <button
+                    type="button"
+                    className="admin-mobilebar-toggle"
+                    onClick={() => setMenuOpen(true)}
+                    aria-label="Open menu"
+                    aria-expanded={menuOpen}
+                    aria-controls="admin-sidebar"
+                >
+                    <span />
+                    <span />
+                    <span />
+                </button>
 
-                <Link to="/admin" className="admin-topbar-brand">
-                    <img src={ASSETS.logo} alt="Beats Infinity" />
-                    <span>BEATS ∞ INFINITY</span>
-                    <span className="admin-topbar-badge">ADMIN</span>
-                </Link>
+                {brand}
+            </header>
 
-                <div className="admin-topbar-actions">
-                    {!isDashboard && (
-                        <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={handleBack}>
-                            ← Back
-                        </button>
+            {menuOpen && (
+                <div
+                    className="admin-sidebar-backdrop"
+                    onClick={closeMenu}
+                    aria-hidden="true"
+                />
+            )}
+
+            <aside
+                id="admin-sidebar"
+                className={menuOpen ? "admin-sidebar open" : "admin-sidebar"}
+                aria-label="Admin menu"
+            >
+
+                <div className="admin-sidebar-top">
+                    {brand}
+
+                    <button
+                        type="button"
+                        className="admin-sidebar-close"
+                        onClick={closeMenu}
+                        aria-label="Close menu"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <nav className="admin-sidebar-nav">
+                    {NAV_ITEMS.map(item => renderLink(item))}
+
+                    {isSuperAdmin && (
+                        <>
+                            <span className="admin-sidebar-group">Super Admin</span>
+                            {SUPER_ITEMS.map(item => renderLink(item, true))}
+                        </>
                     )}
+                </nav>
 
-                    <div className="admin-topbar-identity">
-                        <span className="admin-topbar-username">
-                            {session?.admin?.username || "Admin"}
+                <div className="admin-sidebar-footer">
+                    <div className="admin-sidebar-identity">
+                        <span className="admin-sidebar-avatar" aria-hidden="true">
+                            {(session?.admin?.username || "A").charAt(0).toUpperCase()}
                         </span>
-                        <span className={isSuperAdmin ? "admin-topbar-role super" : "admin-topbar-role"}>
-                            {isSuperAdmin ? "Super Admin" : "Admin"}
+                        <span className="admin-sidebar-who">
+                            <strong>{session?.admin?.username || "Admin"}</strong>
+                            <em className={isSuperAdmin ? "super" : ""}>
+                                {isSuperAdmin ? "Super Admin" : "Admin"}
+                            </em>
                         </span>
                     </div>
 
-                    <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={handleLogout}>
+                    <button
+                        type="button"
+                        className="admin-btn admin-btn-ghost admin-btn-sm admin-sidebar-logout"
+                        onClick={handleLogout}
+                    >
                         Logout
                     </button>
                 </div>
 
-            </div>
+            </aside>
 
-            <div className="admin-topbar-divider" />
-
-            <nav className="admin-topbar-row admin-topbar-nav">
-                {NAV_ITEMS.map(item => (
-                    <Link
-                        key={item.path}
-                        to={item.path}
-                        className={
-                            location.pathname === item.path
-                                ? "admin-topbar-link active"
-                                : "admin-topbar-link"
-                        }
+            {!isDashboard && (
+                <div className="admin-backbar">
+                    <button
+                        type="button"
+                        className="admin-btn admin-btn-ghost admin-btn-sm"
+                        onClick={handleBack}
                     >
-                        <span className="admin-topbar-link-icon">{item.icon}</span>
-                        {item.label}
-                    </Link>
-                ))}
+                        ← Back
+                    </button>
+                </div>
+            )}
 
-                {isSuperAdmin && (
-                    <Link
-                        to="/superadmin"
-                        className={
-                            location.pathname === "/superadmin"
-                                ? "admin-topbar-link active super"
-                                : "admin-topbar-link super"
-                        }
-                    >
-                        <span className="admin-topbar-link-icon">👑</span>
-                        Finance
-                    </Link>
-                )}
-
-                {isSuperAdmin && (
-                    <Link
-                        to="/superadmin/comparison"
-                        className={
-                            location.pathname === "/superadmin/comparison"
-                                ? "admin-topbar-link active super"
-                                : "admin-topbar-link super"
-                        }
-                    >
-                        <span className="admin-topbar-link-icon">📈</span>
-                        Comparison Dashboard
-                    </Link>
-                )}
-            </nav>
-
-        </header>
+        </>
 
     );
 

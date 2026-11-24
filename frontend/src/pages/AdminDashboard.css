@@ -83,7 +83,7 @@
 .singer-table th:last-child,
 .singer-table td:last-child {
 
-    width: 16%;
+    width: 20%;
 
 }
 
@@ -351,7 +351,6 @@
 
 .payment-action-row {
     flex-wrap: wrap;
-    min-width: 200px;
 }
 
 .payment-action-btn {
