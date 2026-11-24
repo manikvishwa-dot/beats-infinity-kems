@@ -412,8 +412,17 @@ function Landing() {
 
                 <div className="bil-lineup">
                     {posters.map((poster, index) => (
-                        <figure key={`${poster.title}-${index}`} className={index === 0 ? "bil-poster bil-poster-wide" : "bil-poster"}>
-                            <img src={poster.src} alt={poster.title} loading="lazy" />
+                        <figure key={`${poster.title}-${index}`} className="bil-poster">
+                            {/* whole poster shown (no cropping); a blurred copy
+                                fills the frame so every card is the same size */}
+                            <div className="bil-poster-frame">
+                                <span
+                                    className="bil-poster-blur"
+                                    style={{ backgroundImage: `url("${poster.src}")` }}
+                                    aria-hidden="true"
+                                />
+                                <img src={poster.src} alt={poster.title} loading="lazy" />
+                            </div>
                             <figcaption>
                                 <span>{poster.month}</span>
                                 <strong>{poster.title}</strong>
