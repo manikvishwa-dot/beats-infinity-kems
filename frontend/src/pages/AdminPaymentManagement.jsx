@@ -74,8 +74,15 @@ const getStatusClass = (status) => {
 };
 
 const AdminPaymentManagement = () => {
+    // Pending first - that's the list an admin opens this page to clear.
     const [filter, setFilter] =
-        useState("All");
+        useState("Pending");
+
+    const [search, setSearch] =
+        useState("");
+
+    const [expandedId, setExpandedId] =
+        useState(null);
 
     const [payments, setPayments] =
         useState([]);
@@ -142,8 +149,11 @@ const AdminPaymentManagement = () => {
                 setError("");
 
                 const result =
+                    // Always load every status and filter in the browser,
+                    // so the tab counts stay correct and switching tabs
+                    // doesn't refetch.
                     await getPayments(
-                        filter,
+                        "All",
                         selectedEventIds.join(",")
                     );
 
@@ -166,7 +176,7 @@ const AdminPaymentManagement = () => {
                 setLoading(false);
             }
         },
-        [filter, selectedEventIds, eventsReady]
+        [selectedEventIds, eventsReady]
     );
 
     useEffect(() => {
@@ -195,6 +205,37 @@ const AdminPaymentManagement = () => {
             };
         },
         [payments]
+    );
+
+    const pendingTotal = useMemo(
+        () => payments
+            .filter(payment => payment.status === "Pending")
+            .reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+        [payments]
+    );
+
+    const visiblePayments = useMemo(
+        () => {
+            const term = search.trim().toLowerCase();
+
+            return payments.filter(payment => {
+                if (filter !== "All" && payment.status !== filter) {
+                    return false;
+                }
+
+                if (!term) {
+                    return true;
+                }
+
+                const singer = payment.singer || {};
+
+                return (
+                    (singer.singer_name || "").toLowerCase().includes(term) ||
+                    (singer.mobile_number || "").includes(term)
+                );
+            });
+        },
+        [payments, filter, search]
     );
 
     const handleMarkPaid = async (
@@ -272,7 +313,7 @@ const AdminPaymentManagement = () => {
     };
 
     const excelRows = useMemo(
-        () => payments.map(payment => ({
+        () => visiblePayments.map(payment => ({
             id: payment.id,
             singer_name: payment.singer?.singer_name || "",
             mobile_number: payment.singer?.mobile_number || "",
@@ -284,7 +325,7 @@ const AdminPaymentManagement = () => {
                 : "",
             status: payment.status
         })),
-        [payments]
+        [visiblePayments]
     );
 
     const handleImportRows = async parsedRows => {
@@ -349,18 +390,9 @@ const AdminPaymentManagement = () => {
                 hint="Only rows changed to Paid or Rejected are applied, and only for payments still Pending - marking Paid still submits the singer's duet songs for pairing. Other columns are for reference only."
             />
 
-            <section className="payment-filter-row">
-                {FILTERS.map(item => {
-                    const count =
-                        item === "All"
-                            ? counts.all
-                            : item === "Pending"
-                                ? counts.pending
-                                : item === "Paid"
-                                    ? counts.paid
-                                    : counts.rejected;
-
-                    return (
+            <section className="payment-controls">
+                <div className="payment-filter-row">
+                    {FILTERS.map(item => (
                         <button
                             type="button"
                             key={item}
@@ -373,11 +405,31 @@ const AdminPaymentManagement = () => {
                                 setFilter(item)
                             }
                         >
-                            {item} ({count})
+                            {item}
+                            <span className="payment-filter-count">
+                                {counts[item.toLowerCase()]}
+                            </span>
                         </button>
-                    );
-                })}
+                    ))}
+                </div>
+
+                <input
+                    type="search"
+                    className="payment-search"
+                    placeholder="Search name or mobile"
+                    value={search}
+                    onChange={event =>
+                        setSearch(event.target.value)
+                    }
+                />
             </section>
+
+            {counts.pending > 0 && (
+                <p className="payment-pending-summary">
+                    <strong>{counts.pending}</strong> awaiting confirmation ·{" "}
+                    <strong>₹{pendingTotal.toLocaleString("en-IN")}</strong> to verify
+                </p>
+            )}
 
             {error && (
                 <div className="admin-payment-error">
@@ -387,182 +439,192 @@ const AdminPaymentManagement = () => {
 
             {loading ? (
                 <div className="admin-payment-empty">
-                    <div>⏳</div>
-                    <h2>
-                        Loading payment requests...
-                    </h2>
+                    Loading payment requests...
                 </div>
-            ) : payments.length === 0 ? (
+            ) : visiblePayments.length === 0 ? (
                 <div className="admin-payment-empty">
-                    <div>💳</div>
-                    <h2>
-                        No payment requests
-                    </h2>
-                    <p>
-                        Payment requests will appear here after singers notify the admin.
-                    </p>
+                    {payments.length === 0
+                        ? "No payment requests yet. They appear here after singers notify the admin."
+                        : search.trim()
+                            ? "No payments match your search."
+                            : `No ${filter.toLowerCase()} payments.`}
                 </div>
             ) : (
-                <section className="payment-request-list">
-                    {payments.map(payment => {
-                        const singer =
-                            payment.singer || {};
+                <div className="admin-table-shell payment-table-shell">
+                    <table className="payment-table">
+                        <thead>
+                            <tr>
+                                <th>Singer</th>
+                                <th>Event</th>
+                                <th>Songs</th>
+                                <th className="num">Amount</th>
+                                <th>Requested</th>
+                                <th>Status</th>
+                                <th className="actions">Action</th>
+                            </tr>
+                        </thead>
 
-                        const isPending =
-                            payment.status ===
-                            "Pending";
+                        <tbody>
+                            {visiblePayments.map(payment => {
+                                const singer =
+                                    payment.singer || {};
 
-                        const isActioning =
-                            actionId === payment.id;
+                                const isPending =
+                                    payment.status ===
+                                    "Pending";
 
-                        return (
-                            <article
-                                key={payment.id}
-                                className="payment-request-card"
-                            >
-                                <div className="payment-card-topline">
-                                    <span
-                                        className={`payment-status-badge ${getStatusClass(payment.status)}`}
+                                const isActioning =
+                                    actionId === payment.id;
+
+                                const isExpanded =
+                                    expandedId === payment.id;
+
+                                const hasSongs =
+                                    payment.songs?.length > 0 ||
+                                    Boolean(payment.solo_song);
+
+                                const songLabel =
+                                    `${payment.song_count || 0} duet${payment.solo_song ? " + solo" : ""}`;
+
+                                return [
+                                    <tr
+                                        key={payment.id}
+                                        className={isExpanded ? "expanded" : undefined}
                                     >
-                                        {payment.status.toUpperCase()}
-                                    </span>
+                                        <td data-label="Singer" className="payment-singer-cell">
+                                            <div className="payment-singer-name">
+                                                {singer.singer_name ||
+                                                    "Unknown Singer"}
+                                            </div>
+                                            <div className="payment-muted">
+                                                {singer.mobile_number || "—"}
+                                            </div>
+                                        </td>
 
-                                    <div className="requested-date">
-                                        <span>
-                                            Requested on
-                                        </span>
-                                        <strong>
-                                            {formatDate(
-                                                payment.created_at
+                                        <td data-label="Event" className="payment-muted">
+                                            {payment.event_name || "—"}
+                                        </td>
+
+                                        <td data-label="Songs">
+                                            {hasSongs ? (
+                                                <button
+                                                    type="button"
+                                                    className="payment-songs-toggle"
+                                                    onClick={() =>
+                                                        setExpandedId(
+                                                            isExpanded
+                                                                ? null
+                                                                : payment.id
+                                                        )
+                                                    }
+                                                    aria-expanded={isExpanded}
+                                                >
+                                                    {songLabel}
+                                                    <span aria-hidden="true">
+                                                        {isExpanded ? " ▴" : " ▾"}
+                                                    </span>
+                                                </button>
+                                            ) : (
+                                                <span className="payment-muted">
+                                                    {songLabel}
+                                                </span>
                                             )}
-                                        </strong>
-                                    </div>
+                                        </td>
 
-                                    <span className="payment-event-badge">
-                                        📅 {payment.event_name || "—"}
-                                    </span>
-                                </div>
-
-                                <div className="payment-singer-row">
-                                    <div className="singer-avatar">
-                                        👤
-                                    </div>
-
-                                    <div className="singer-payment-info">
-                                        <h2>
-                                            {singer.singer_name ||
-                                                "Unknown Singer"}
-                                        </h2>
-
-                                        <p>
-                                            Mobile: {singer.mobile_number || "—"}
-                                        </p>
-
-                                        <p>
-                                            🎵 {payment.song_count || 0} Duet Songs
-                                            {payment.solo_song ? " + 1 Solo" : ""}
-                                        </p>
-                                    </div>
-
-                                    <div className="payment-amount-display">
-                                        <strong>
+                                        <td data-label="Amount" className="num payment-amount">
                                             ₹{Number(payment.amount || 0).toLocaleString("en-IN")}
-                                        </strong>
-                                        <span>
-                                            Registration Fee
-                                        </span>
-                                    </div>
-                                </div>
+                                        </td>
 
-                                <div className="payment-card-divider" />
+                                        <td data-label="Requested" className="payment-muted">
+                                            {formatDate(payment.created_at)}
+                                        </td>
 
-                                <div className="payment-card-status">
-                                    <strong>
-                                        🕘 Status: {payment.status.toUpperCase()}
-                                    </strong>
+                                        <td data-label="Status">
+                                            <span
+                                                className={`payment-status-badge ${getStatusClass(payment.status)}`}
+                                            >
+                                                {payment.status}
+                                            </span>
+                                        </td>
 
-                                    {payment.status === "Pending" && (
-                                        <p>
-                                            Payment marked as paid by singer. Awaiting admin confirmation.
-                                        </p>
-                                    )}
+                                        <td data-label="Action" className="actions">
+                                            {isPending ? (
+                                                <div className="payment-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="admin-btn admin-btn-primary admin-btn-sm"
+                                                        onClick={() =>
+                                                            handleMarkPaid(
+                                                                payment.id
+                                                            )
+                                                        }
+                                                        disabled={isActioning}
+                                                    >
+                                                        {isActioning
+                                                            ? "Saving…"
+                                                            : "✓ Paid"}
+                                                    </button>
 
-                                    {payment.status === "Paid" && (
-                                        <p>
-                                            Payment confirmed by admin. Paid on {formatDate(payment.paid_at)}.
-                                        </p>
-                                    )}
+                                                    <button
+                                                        type="button"
+                                                        className="admin-btn admin-btn-danger admin-btn-sm"
+                                                        onClick={() =>
+                                                            handleReject(
+                                                                payment.id
+                                                            )
+                                                        }
+                                                        disabled={isActioning}
+                                                        aria-label="Reject payment"
+                                                        title="Reject payment"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="payment-muted">
+                                                    {payment.status === "Paid"
+                                                        ? `Paid ${formatDate(payment.paid_at)}`
+                                                        : "—"}
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>,
 
-                                    {payment.status === "Rejected" && (
-                                        <p>
-                                            Payment request was rejected by admin.
-                                        </p>
-                                    )}
-                                </div>
-
-                                {payment.songs?.length > 0 && (
-                                    <details className="payment-song-details">
-                                        <summary>
-                                            View {payment.songs.length} duet songs
-                                            {payment.solo_song ? " + solo" : ""}
-                                        </summary>
-                                        <ol>
-                                            {payment.songs.map(song => (
-                                                <li key={song.id}>
-                                                    {song.title}
-                                                    {song.movie
-                                                        ? ` — ${song.movie}`
-                                                        : ""}
-                                                </li>
-                                            ))}
-                                        </ol>
-                                        {payment.solo_song && (
-                                            <p>
-                                                <strong>Solo:</strong>{" "}
-                                                {payment.solo_song.title}
-                                                {payment.solo_song.movie
-                                                    ? ` — ${payment.solo_song.movie}`
-                                                    : ""}
-                                            </p>
-                                        )}
-                                    </details>
-                                )}
-
-                                {isPending && (
-                                    <div className="payment-actions">
-                                        <button
-                                            type="button"
-                                            className="admin-btn admin-btn-primary"
-                                            onClick={() =>
-                                                handleMarkPaid(
-                                                    payment.id
-                                                )
-                                            }
-                                            disabled={isActioning}
+                                    isExpanded && (
+                                        <tr
+                                            key={`${payment.id}-songs`}
+                                            className="payment-songs-row"
                                         >
-                                            {isActioning
-                                                ? "Processing..."
-                                                : "✓ Mark as Paid"}
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            className="admin-btn admin-btn-danger"
-                                            onClick={() =>
-                                                handleReject(
-                                                    payment.id
-                                                )
-                                            }
-                                            disabled={isActioning}
-                                        >
-                                            ✕ Reject
-                                        </button>
-                                    </div>
-                                )}
-                            </article>
-                        );
-                    })}
-                </section>
+                                            <td colSpan={7}>
+                                                {payment.songs?.length > 0 && (
+                                                    <ol>
+                                                        {payment.songs.map(song => (
+                                                            <li key={song.id}>
+                                                                {song.title}
+                                                                {song.movie && (
+                                                                    <span className="payment-muted"> — {song.movie}</span>
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                    </ol>
+                                                )}
+                                                {payment.solo_song && (
+                                                    <p>
+                                                        <strong>Solo:</strong>{" "}
+                                                        {payment.solo_song.title}
+                                                        {payment.solo_song.movie && (
+                                                            <span className="payment-muted"> — {payment.solo_song.movie}</span>
+                                                        )}
+                                                    </p>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )
+                                ];
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             )}
             </main>
         </div>
