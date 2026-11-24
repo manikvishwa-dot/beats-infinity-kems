@@ -334,8 +334,6 @@
     font-size: 14px;
 }
 
-.payment-free-wrap { position: relative; }
-
 .payment-free-btn {
     height: 34px;
     padding: 0 13px;
@@ -359,44 +357,7 @@
 
 .payment-free-btn:disabled { opacity: .55; cursor: not-allowed; }
 
-.payment-free-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    z-index: 30;
-    min-width: 190px;
-    padding: 6px;
-    border-radius: 12px;
-    background: #181818;
-    border: 1px solid rgba(255,255,255,0.12);
-    box-shadow: 0 18px 40px rgba(0,0,0,0.55);
-    display: flex;
-    flex-direction: column;
-    animation: payment-songs-in .15s ease;
-}
 
-.payment-free-menu > span {
-    padding: 6px 10px 4px;
-    font-size: 10.5px;
-    font-weight: 800;
-    letter-spacing: .5px;
-    text-transform: uppercase;
-    color: #777777;
-}
-
-.payment-free-menu button {
-    padding: 9px 10px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: #eeeeee;
-    font-size: 13px;
-    font-weight: 600;
-    text-align: left;
-    cursor: pointer;
-}
-
-.payment-free-menu button:hover { background: rgba(95,200,255,0.12); color: #ffffff; }
 
 .payment-approve-btn,
 .payment-reject-btn {

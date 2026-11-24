@@ -9,6 +9,7 @@ import AdminTopbar from "../components/admin/AdminTopbar";
 import EventSelector from "../components/admin/EventSelector";
 import ExcelToolbar from "../components/admin/ExcelToolbar";
 import PastDuesAlert from "../components/admin/PastDuesAlert";
+import FreeEntryMenu from "../components/admin/FreeEntryMenu";
 import {
     getPayments,
     markPaymentAsPaid,
@@ -51,11 +52,7 @@ const FILTER_LABELS = {
 };
 
 // Free entry (Rs 0) - guests singing as a goodwill gesture and the
-// management team. Stored as Paid at Rs 0 with fee_waiver set.
-const WAIVERS = [
-    { value: "Guest Singer", icon: "🎤" },
-    { value: "Management Team", icon: "⭐" }
-];
+// management team: see components/admin/FreeEntryMenu.
 
 const isWalkIn = payment =>
     payment?.payment_type === "Walk-in";
@@ -137,8 +134,6 @@ const AdminPaymentManagement = () => {
     const [expandedId, setExpandedId] =
         useState(null);
 
-    const [freeMenuId, setFreeMenuId] =
-        useState(null);
 
     const [error, setError] =
         useState("");
@@ -237,22 +232,6 @@ const AdminPaymentManagement = () => {
     useEffect(() => {
         loadPayments();
     }, [loadPayments]);
-
-    useEffect(() => {
-        if (!freeMenuId) {
-            return undefined;
-        }
-
-        const close = event => {
-            if (!event.target.closest?.(".payment-free-wrap")) {
-                setFreeMenuId(null);
-            }
-        };
-
-        document.addEventListener("mousedown", close);
-
-        return () => document.removeEventListener("mousedown", close);
-    }, [freeMenuId]);
 
     useEffect(() => {
         if (!notice) {
@@ -435,8 +414,6 @@ const AdminPaymentManagement = () => {
         payment,
         waiver
     ) => {
-        setFreeMenuId(null);
-
         const name =
             payment.singer?.singer_name || "this singer";
 
@@ -774,43 +751,13 @@ const AdminPaymentManagement = () => {
                                         )}
 
                                         {canWaive && (
-                                            <div className="payment-free-wrap">
-                                                <button
-                                                    type="button"
-                                                    className={`payment-free-btn${freeMenuId === payment.id ? " open" : ""}`}
-                                                    onClick={() =>
-                                                        setFreeMenuId(
-                                                            freeMenuId === payment.id
-                                                                ? null
-                                                                : payment.id
-                                                        )
-                                                    }
-                                                    disabled={isActioning}
-                                                    title="Free entry (Rs 0) - guest or management team"
-                                                    aria-haspopup="menu"
-                                                    aria-expanded={freeMenuId === payment.id}
-                                                >
-                                                    ₹0 Payment
-                                                </button>
-
-                                                {freeMenuId === payment.id && (
-                                                    <div className="payment-free-menu" role="menu">
-                                                        <span>Free entry · ₹0</span>
-                                                        {WAIVERS.map(option => (
-                                                            <button
-                                                                type="button"
-                                                                role="menuitem"
-                                                                key={option.value}
-                                                                onClick={() =>
-                                                                    handleWaive(payment, option.value)
-                                                                }
-                                                            >
-                                                                {option.icon} {option.value}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <FreeEntryMenu
+                                                className="payment-free-btn"
+                                                disabled={isActioning}
+                                                onSelect={waiver =>
+                                                    handleWaive(payment, waiver)
+                                                }
+                                            />
                                         )}
                                     </div>
                                 </div>
