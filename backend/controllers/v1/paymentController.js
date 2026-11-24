@@ -215,16 +215,28 @@ const createPayment = async (req, res) => {
 
         // ------------------------------------------------------
         // DO NOT CREATE MULTIPLE PENDING PAYMENTS
+        //
+        // Per event only - a Pending payment left over from a
+        // past event stays with that event (and is flagged as a
+        // past due), it must not stand in for this event's one.
         // ------------------------------------------------------
+
+        const eventId = await getActiveEventId();
+
+        let pendingQuery = supabase
+            .from("payments")
+            .select("*")
+            .eq("singer_id", singer_id)
+            .eq("status", "Pending");
+
+        pendingQuery = eventId
+            ? pendingQuery.eq("event_id", eventId)
+            : pendingQuery.is("event_id", null);
 
         const {
             data: existingPending,
             error: pendingError
-        } = await supabase
-            .from("payments")
-            .select("*")
-            .eq("singer_id", singer_id)
-            .eq("status", "Pending")
+        } = await pendingQuery
             .order("created_at", {
                 ascending: false
             })
@@ -257,8 +269,6 @@ const createPayment = async (req, res) => {
         // ------------------------------------------------------
         // CREATE PAYMENT
         // ------------------------------------------------------
-
-        const eventId = await getActiveEventId();
 
         const {
             data: payment,
@@ -905,6 +915,110 @@ const reassignSongToSinger = async (req, res) => {
 };
 
 // ==========================================================
+// PAST-EVENT DUES
+//
+// Payments still "Pending" (singer said they paid, admin never
+// confirmed or rejected) that belong to any event OTHER than
+// the active one. They stay with their own event; this only
+// finds them so the singer is warned and the admin is alerted.
+// Warning only - nothing here blocks a new event's payment.
+// With no active event there is no "past", so nothing is due.
+// ==========================================================
+
+const loadPastEventDues = async ({ singerId = null, activeEventId }) => {
+
+    if (!activeEventId) {
+        return [];
+    }
+
+    let query = supabase
+        .from("payments")
+        .select("id,singer_id,amount,status,event_id,created_at")
+        .eq("status", "Pending")
+        .or(`event_id.is.null,event_id.neq.${activeEventId}`)
+        .order("created_at", { ascending: true });
+
+    if (singerId) {
+        query = query.eq("singer_id", singerId);
+    }
+
+    const { data: rows, error } = await query;
+
+    if (error) {
+        throw error;
+    }
+
+    if (!rows || rows.length === 0) {
+        return [];
+    }
+
+    const eventIds = [...new Set(rows.map(row => row.event_id).filter(Boolean))];
+    const singerIds = [...new Set(rows.map(row => row.singer_id).filter(Boolean))];
+
+    const [eventsResult, singersResult] = await Promise.all([
+        eventIds.length > 0
+            ? supabase.from("events").select("id,name").in("id", eventIds)
+            : Promise.resolve({ data: [] }),
+        singerIds.length > 0
+            ? supabase.from("singers").select("id,singer_name,mobile_number").in("id", singerIds)
+            : Promise.resolve({ data: [] })
+    ]);
+
+    const eventNameById = new Map(
+        (eventsResult.data || []).map(event => [event.id, event.name])
+    );
+
+    const singerById = new Map(
+        (singersResult.data || []).map(singer => [singer.id, singer])
+    );
+
+    return rows.map(row => ({
+        id: row.id,
+        singer_id: row.singer_id,
+        singer_name: singerById.get(row.singer_id)?.singer_name || "Unknown Singer",
+        mobile_number: singerById.get(row.singer_id)?.mobile_number || null,
+        amount: row.amount,
+        event_id: row.event_id,
+        event_name: eventNameById.get(row.event_id) || "an earlier event",
+        created_at: row.created_at
+    }));
+
+};
+
+// ==========================================================
+// GET PAST-EVENT DUES - ADMIN
+//
+// GET /api/v1/payments/past-dues
+// ==========================================================
+
+const getPastEventDues = async (req, res) => {
+    try {
+        const activeEventId = await getActiveEventId();
+
+        const dues = await loadPastEventDues({ activeEventId });
+
+        return res.status(200).json({
+            success: true,
+            count: dues.length,
+            total_amount: dues.reduce((sum, due) => sum + (Number(due.amount) || 0), 0),
+            dues
+        });
+    }
+    catch (error) {
+        console.error(
+            "GET PAST-EVENT DUES:",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to load past-event dues.",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================================
 // GET MY LATEST PAYMENT
 //
 // GET /api/v1/payments/my?singer_id=UUID
@@ -961,9 +1075,29 @@ const getMyPayment = async (req, res) => {
             });
         }
 
+        // Warning only - shown on the payment page, never blocks.
+        let pastDues = [];
+
+        try {
+            pastDues = (await loadPastEventDues({ singerId, activeEventId }))
+                .map(({ id, amount, event_name, created_at }) => ({
+                    id,
+                    amount,
+                    event_name,
+                    created_at
+                }));
+        }
+        catch (duesError) {
+            console.error(
+                "GET MY PAYMENT - PAST DUES:",
+                duesError
+            );
+        }
+
         return res.status(200).json({
             success: true,
-            payment: payment || null
+            payment: payment || null,
+            past_dues: pastDues
         });
     }
     catch (error) {
@@ -1551,5 +1685,6 @@ module.exports = {
     addSongToPayment,
     removeSongFromPayment,
     replaceSongInPayment,
-    reassignSongToSinger
+    reassignSongToSinger,
+    getPastEventDues
 };

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
 import EventSelector from "../components/admin/EventSelector";
+import PastDuesAlert from "../components/admin/PastDuesAlert";
 import { getSingersOverview } from "../services/adminDashboardService";
 import { getEvents } from "../services/eventService";
 import { markPaymentAsPaid, rejectPayment } from "../services/paymentService";
@@ -361,6 +362,11 @@ function AdminDashboard() {
                 <p className="admin-page-subtitle">
                     Singer registrations, song selections and payment status at a glance.
                 </p>
+
+                <PastDuesAlert
+                    refreshKey={singers}
+                    onViewEvent={eventId => setSelectedEventIds([eventId])}
+                />
 
                 <div className="admin-dashboard-event-row">
                     <EventSelector

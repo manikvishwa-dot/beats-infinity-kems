@@ -75,6 +75,12 @@ router.get(
     paymentController.getPayments
 );
 
+router.get(
+    "/past-dues",
+    requireAdmin,
+    paymentController.getPastEventDues
+);
+
 router.put(
     "/:id/mark-paid",
     requireAdmin,
@@ -120,6 +126,7 @@ router.put(
 console.log("✅ Payment routes loaded successfully");
 console.log("GET    /api/v1/payments/my?singer_id=UUID");
 console.log("GET    /api/v1/payments");
+console.log("GET    /api/v1/payments/past-dues");
 console.log("POST   /api/v1/payments");
 console.log("PUT    /api/v1/payments/:id/mark-paid");
 console.log("PUT    /api/v1/payments/:id/reject");

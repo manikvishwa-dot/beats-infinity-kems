@@ -8,6 +8,7 @@ import {
 import AdminTopbar from "../components/admin/AdminTopbar";
 import EventSelector from "../components/admin/EventSelector";
 import ExcelToolbar from "../components/admin/ExcelToolbar";
+import PastDuesAlert from "../components/admin/PastDuesAlert";
 import {
     getPayments,
     markPaymentAsPaid,
@@ -323,6 +324,14 @@ const AdminPaymentManagement = () => {
                     ↻ Refresh
                 </button>
             </header>
+
+            <PastDuesAlert
+                refreshKey={payments}
+                onViewEvent={eventId => {
+                    setFilter("Pending");
+                    setSelectedEventIds([eventId]);
+                }}
+            />
 
             <div className="admin-dashboard-event-row">
                 <EventSelector

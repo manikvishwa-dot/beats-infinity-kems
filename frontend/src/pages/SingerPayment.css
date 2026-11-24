@@ -120,6 +120,20 @@
     box-shadow: 0 12px 28px rgba(30, 25, 60, 0.08);
 }
 
+.payment-past-due {
+    margin-top: 24px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: #fff8e9;
+    border: 1px solid #f0d28b;
+    color: #674e10;
+}
+
+.payment-past-due strong { display: block; font-size: 16px; color: #674e10; }
+.payment-past-due ul { margin: 8px 0; padding-left: 20px; }
+.payment-past-due li { margin: 2px 0; }
+.payment-past-due p { margin: 0; font-size: 14px; }
+
 .payment-summary > div:first-child { display: flex; flex-direction: column; gap: 6px; }
 .payment-summary strong { color: #202033; font-size: 19px; }
 .payment-summary span, .payment-summary small { color: #7d7b8c; }

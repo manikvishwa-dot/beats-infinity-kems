@@ -115,6 +115,7 @@ const SingerPayment = () => {
 
     const [selection, setSelection] = useState(null);
     const [payment, setPayment] = useState(null);
+    const [pastDues, setPastDues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
@@ -149,6 +150,12 @@ const SingerPayment = () => {
                 if (result.success) {
                     setPayment(
                         result.payment || null
+                    );
+
+                    setPastDues(
+                        Array.isArray(result.past_dues)
+                            ? result.past_dues
+                            : []
                     );
                 }
             }
@@ -417,6 +424,29 @@ const SingerPayment = () => {
                             Your 5-song selection is ready.
                         </p>
                     </div>
+
+                    {pastDues.length > 0 && (
+                        <div className="payment-past-due" role="alert">
+                            <strong>
+                                ⚠️ You have a pending due from a past event
+                            </strong>
+
+                            <ul>
+                                {pastDues.map(due => (
+                                    <li key={due.id}>
+                                        ₹{due.amount} for <b>{due.event_name}</b>
+                                        {due.created_at && (
+                                            <> (since {new Date(due.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})</>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <p>
+                                It hasn't been confirmed by our Admin team yet. You can still continue with this event - please contact the Beats Infinity team to settle it.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="payment-summary">
                         <div>

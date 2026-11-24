@@ -73,6 +73,23 @@ const getMyPayment = async (singerId) => {
 };
 
 // ==========================================================
+// ADMIN - PENDING PAYMENTS FROM PAST EVENTS
+// ==========================================================
+
+const getPastEventDues = async () => {
+    const response = await fetch(
+        `${API_BASE_URL}/past-dues`,
+        {
+            headers: {
+                ...getAuthHeader()
+            }
+        }
+    );
+
+    return handleResponse(response);
+};
+
+// ==========================================================
 // ADMIN - GET PAYMENTS
 // ==========================================================
 
@@ -259,6 +276,7 @@ export {
     reassignSongToSinger,
     getMyPayment,
     getPayments,
+    getPastEventDues,
     markPaymentAsPaid,
     rejectPayment,
     bulkUpdatePaymentStatus
