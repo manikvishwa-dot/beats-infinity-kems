@@ -32,11 +32,18 @@ const PAYMENT_COLUMNS = [
 ];
 
 const FILTERS = [
-    "All",
     "Pending",
     "Paid",
-    "Rejected"
+    "Rejected",
+    "All"
 ];
+
+const FILTER_LABELS = {
+    Pending: "Awaiting approval",
+    Paid: "Confirmed",
+    Rejected: "Rejected",
+    All: "All requests"
+};
 
 const formatDate = (value) => {
     if (!value) {
@@ -47,14 +54,29 @@ const formatDate = (value) => {
         return new Date(value).toLocaleString(
             "en-IN",
             {
-                dateStyle: "medium",
-                timeStyle: "short"
+                day: "numeric",
+                month: "short",
+                hour: "numeric",
+                minute: "2-digit"
             }
         );
     }
     catch {
         return value;
     }
+};
+
+const formatRupees = (value) =>
+    `₹${Number(value || 0).toLocaleString("en-IN")}`;
+
+const getInitials = (name = "") => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) {
+        return "?";
+    }
+
+    return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
 };
 
 const getStatusClass = (status) => {
@@ -75,7 +97,10 @@ const getStatusClass = (status) => {
 
 const AdminPaymentManagement = () => {
     const [filter, setFilter] =
-        useState("All");
+        useState("Pending");
+
+    const [search, setSearch] =
+        useState("");
 
     const [payments, setPayments] =
         useState([]);
@@ -86,7 +111,13 @@ const AdminPaymentManagement = () => {
     const [actionId, setActionId] =
         useState(null);
 
+    const [expandedId, setExpandedId] =
+        useState(null);
+
     const [error, setError] =
+        useState("");
+
+    const [notice, setNotice] =
         useState("");
 
     const [events, setEvents] =
@@ -131,19 +162,27 @@ const AdminPaymentManagement = () => {
 
     }, []);
 
+    // Always fetches every status for the selected events and filters
+    // on the client, so the tile counts stay right whichever tab is
+    // open. `silent` keeps the list on screen while it refreshes -
+    // swapping it for a spinner after each approval threw the admin
+    // back to the top of a long page.
     const loadPayments = useCallback(
-        async () => {
+        async ({ silent = false } = {}) => {
             if (!eventsReady) {
                 return;
             }
 
             try {
-                setLoading(true);
+                if (!silent) {
+                    setLoading(true);
+                }
+
                 setError("");
 
                 const result =
                     await getPayments(
-                        filter,
+                        "All",
                         selectedEventIds.join(",")
                     );
 
@@ -166,57 +205,121 @@ const AdminPaymentManagement = () => {
                 setLoading(false);
             }
         },
-        [filter, selectedEventIds, eventsReady]
+        [selectedEventIds, eventsReady]
     );
 
     useEffect(() => {
         loadPayments();
     }, [loadPayments]);
 
-    const counts = useMemo(
+    useEffect(() => {
+        if (!notice) {
+            return undefined;
+        }
+
+        const timer = setTimeout(() => setNotice(""), 3500);
+
+        return () => clearTimeout(timer);
+    }, [notice]);
+
+    const stats = useMemo(
         () => {
-            return {
-                all: payments.length,
-                pending: payments.filter(
-                    payment =>
-                        payment.status ===
-                        "Pending"
-                ).length,
-                paid: payments.filter(
-                    payment =>
-                        payment.status ===
-                        "Paid"
-                ).length,
-                rejected: payments.filter(
-                    payment =>
-                        payment.status ===
-                        "Rejected"
-                ).length
+            const base = {
+                Pending: { count: 0, amount: 0 },
+                Paid: { count: 0, amount: 0 },
+                Rejected: { count: 0, amount: 0 },
+                All: { count: 0, amount: 0 }
             };
+
+            payments.forEach(payment => {
+                const amount = Number(payment.amount || 0);
+                const bucket = base[payment.status] || base.Pending;
+
+                bucket.count += 1;
+                bucket.amount += amount;
+                base.All.count += 1;
+                base.All.amount += amount;
+            });
+
+            return base;
         },
         [payments]
     );
 
+    const visiblePayments = useMemo(
+        () => {
+            const query = search.trim().toLowerCase();
+
+            const rows = payments.filter(payment => {
+                if (filter !== "All" && payment.status !== filter) {
+                    return false;
+                }
+
+                if (!query) {
+                    return true;
+                }
+
+                const singer = payment.singer || {};
+
+                return (
+                    (singer.singer_name || "").toLowerCase().includes(query) ||
+                    (singer.mobile_number || "").includes(query)
+                );
+            });
+
+            // Oldest pending request first, so the queue is worked top-down.
+            if (filter === "Pending") {
+                rows.sort((a, b) =>
+                    new Date(a.created_at) - new Date(b.created_at)
+                );
+            }
+
+            return rows;
+        },
+        [payments, filter, search]
+    );
+
+    const updateLocalStatus = (paymentId, status) => {
+        setPayments(current =>
+            current.map(payment =>
+                payment.id === paymentId
+                    ? {
+                        ...payment,
+                        status,
+                        paid_at: status === "Paid"
+                            ? new Date().toISOString()
+                            : payment.paid_at
+                    }
+                    : payment
+            )
+        );
+    };
+
     const handleMarkPaid = async (
-        paymentId
+        payment
     ) => {
+        const name =
+            payment.singer?.singer_name || "this singer";
+
         const confirmed = window.confirm(
-            "Confirm that this payment has been received? The singer's duet songs will then be submitted for pairing."
+            `Confirm ${formatRupees(payment.amount)} received from ${name}? Their duet songs will then be submitted for pairing.`
         );
 
         if (!confirmed) {
             return;
         }
 
-        setActionId(paymentId);
+        setActionId(payment.id);
         setError("");
 
         try {
             await markPaymentAsPaid(
-                paymentId
+                payment.id
             );
 
-            await loadPayments();
+            updateLocalStatus(payment.id, "Paid");
+            setNotice(`✓ ${name} marked as paid`);
+            loadPayments({ silent: true });
         }
         catch (requestError) {
             console.error(
@@ -235,25 +338,30 @@ const AdminPaymentManagement = () => {
     };
 
     const handleReject = async (
-        paymentId
+        payment
     ) => {
+        const name =
+            payment.singer?.singer_name || "this singer";
+
         const confirmed = window.confirm(
-            "Reject this payment request?"
+            `Reject the payment request from ${name}?`
         );
 
         if (!confirmed) {
             return;
         }
 
-        setActionId(paymentId);
+        setActionId(payment.id);
         setError("");
 
         try {
             await rejectPayment(
-                paymentId
+                payment.id
             );
 
-            await loadPayments();
+            updateLocalStatus(payment.id, "Rejected");
+            setNotice(`${name}'s request rejected`);
+            loadPayments({ silent: true });
         }
         catch (requestError) {
             console.error(
@@ -272,7 +380,7 @@ const AdminPaymentManagement = () => {
     };
 
     const excelRows = useMemo(
-        () => payments.map(payment => ({
+        () => visiblePayments.map(payment => ({
             id: payment.id,
             singer_name: payment.singer?.singer_name || "",
             mobile_number: payment.singer?.mobile_number || "",
@@ -284,7 +392,7 @@ const AdminPaymentManagement = () => {
                 : "",
             status: payment.status
         })),
-        [payments]
+        [visiblePayments]
     );
 
     const handleImportRows = async parsedRows => {
@@ -296,11 +404,21 @@ const AdminPaymentManagement = () => {
 
         const response = await bulkUpdatePaymentStatus(rows);
 
-        await loadPayments();
+        await loadPayments({ silent: true });
 
         return { message: response.message };
 
     };
+
+    const filterWord =
+        filter === "All" ? "" : `${filter.toLowerCase()} `;
+
+    const emptyMessage =
+        search.trim()
+            ? { icon: "🔍", title: "No matches", text: `No ${filterWord}requests match "${search.trim()}".` }
+            : filter === "Pending"
+                ? { icon: "🎉", title: "All caught up", text: "No payments are waiting for approval." }
+                : { icon: "💳", title: `No ${filterWord}payment requests`, text: "Payment requests appear here after singers notify the admin." };
 
     return (
         <div className="admin-shell">
@@ -317,8 +435,8 @@ const AdminPaymentManagement = () => {
 
                 <button
                     type="button"
-                    className="admin-btn admin-btn-ghost"
-                    onClick={loadPayments}
+                    className="admin-btn admin-btn-ghost admin-btn-sm"
+                    onClick={() => loadPayments()}
                     disabled={loading}
                 >
                     ↻ Refresh
@@ -333,51 +451,65 @@ const AdminPaymentManagement = () => {
                 }}
             />
 
-            <div className="admin-dashboard-event-row">
+            <div className="payment-controls-row">
                 <EventSelector
                     events={events}
                     selectedIds={selectedEventIds}
                     onChange={setSelectedEventIds}
                 />
+
+                <details className="payment-excel-panel">
+                    <summary>📊 Excel import / export</summary>
+                    <ExcelToolbar
+                        columns={PAYMENT_COLUMNS}
+                        rows={excelRows}
+                        filename="beats-infinity-payments"
+                        onImportRows={handleImportRows}
+                        hint="Exports the rows currently shown. On import, only rows changed to Paid or Rejected are applied, and only for payments still Pending - marking Paid still submits the singer's duet songs for pairing. Other columns are for reference only."
+                    />
+                </details>
             </div>
 
-            <ExcelToolbar
-                columns={PAYMENT_COLUMNS}
-                rows={excelRows}
-                filename="beats-infinity-payments"
-                onImportRows={handleImportRows}
-                hint="Only rows changed to Paid or Rejected are applied, and only for payments still Pending - marking Paid still submits the singer's duet songs for pairing. Other columns are for reference only."
-            />
-
-            <section className="payment-filter-row">
-                {FILTERS.map(item => {
-                    const count =
-                        item === "All"
-                            ? counts.all
-                            : item === "Pending"
-                                ? counts.pending
-                                : item === "Paid"
-                                    ? counts.paid
-                                    : counts.rejected;
-
-                    return (
-                        <button
-                            type="button"
-                            key={item}
-                            className={
-                                filter === item
-                                    ? `payment-filter active ${getStatusClass(item)}`
-                                    : `payment-filter ${getStatusClass(item)}`
-                            }
-                            onClick={() =>
-                                setFilter(item)
-                            }
-                        >
-                            {item} ({count})
-                        </button>
-                    );
-                })}
+            <section className="payment-stat-row">
+                {FILTERS.map(item => (
+                    <button
+                        type="button"
+                        key={item}
+                        className={
+                            filter === item
+                                ? `payment-stat ${getStatusClass(item)} active`
+                                : `payment-stat ${getStatusClass(item)}`
+                        }
+                        onClick={() => setFilter(item)}
+                    >
+                        <span className="payment-stat-label">
+                            {FILTER_LABELS[item]}
+                        </span>
+                        <strong className="payment-stat-count">
+                            {stats[item].count}
+                        </strong>
+                        <span className="payment-stat-amount">
+                            {formatRupees(stats[item].amount)}
+                        </span>
+                    </button>
+                ))}
             </section>
+
+            <div className="payment-search-row">
+                <div className="payment-search">
+                    <span aria-hidden="true">🔍</span>
+                    <input
+                        type="search"
+                        placeholder="Search by singer name or mobile"
+                        value={search}
+                        onChange={event => setSearch(event.target.value)}
+                    />
+                </div>
+
+                <span className="payment-showing">
+                    Showing {visiblePayments.length} of {stats[filter].count}
+                </span>
+            </div>
 
             {error && (
                 <div className="admin-payment-error">
@@ -392,19 +524,15 @@ const AdminPaymentManagement = () => {
                         Loading payment requests...
                     </h2>
                 </div>
-            ) : payments.length === 0 ? (
+            ) : visiblePayments.length === 0 ? (
                 <div className="admin-payment-empty">
-                    <div>💳</div>
-                    <h2>
-                        No payment requests
-                    </h2>
-                    <p>
-                        Payment requests will appear here after singers notify the admin.
-                    </p>
+                    <div>{emptyMessage.icon}</div>
+                    <h2>{emptyMessage.title}</h2>
+                    <p>{emptyMessage.text}</p>
                 </div>
             ) : (
-                <section className="payment-request-list">
-                    {payments.map(payment => {
+                <section className="payment-list">
+                    {visiblePayments.map(payment => {
                         const singer =
                             payment.singer || {};
 
@@ -415,154 +543,145 @@ const AdminPaymentManagement = () => {
                         const isActioning =
                             actionId === payment.id;
 
+                        const isExpanded =
+                            expandedId === payment.id;
+
+                        const statusClass =
+                            getStatusClass(payment.status);
+
+                        const songCount =
+                            payment.songs?.length || payment.song_count || 0;
+
+                        const hasSongs =
+                            payment.songs?.length > 0 || Boolean(payment.solo_song);
+
                         return (
                             <article
                                 key={payment.id}
-                                className="payment-request-card"
+                                className={`payment-row ${statusClass}${isExpanded ? " expanded" : ""}`}
                             >
-                                <div className="payment-card-topline">
-                                    <span
-                                        className={`payment-status-badge ${getStatusClass(payment.status)}`}
-                                    >
-                                        {payment.status.toUpperCase()}
-                                    </span>
+                                <div className="payment-row-main">
+                                    <div className={`payment-avatar ${statusClass}`}>
+                                        {getInitials(singer.singer_name)}
+                                    </div>
 
-                                    <div className="requested-date">
-                                        <span>
-                                            Requested on
-                                        </span>
+                                    <div className="payment-row-who">
                                         <strong>
-                                            {formatDate(
-                                                payment.created_at
-                                            )}
-                                        </strong>
-                                    </div>
-
-                                    <span className="payment-event-badge">
-                                        📅 {payment.event_name || "—"}
-                                    </span>
-                                </div>
-
-                                <div className="payment-singer-row">
-                                    <div className="singer-avatar">
-                                        👤
-                                    </div>
-
-                                    <div className="singer-payment-info">
-                                        <h2>
                                             {singer.singer_name ||
                                                 "Unknown Singer"}
-                                        </h2>
-
-                                        <p>
-                                            Mobile: {singer.mobile_number || "—"}
-                                        </p>
-
-                                        <p>
-                                            🎵 {payment.song_count || 0} Duet Songs
-                                            {payment.solo_song ? " + 1 Solo" : ""}
-                                        </p>
-                                    </div>
-
-                                    <div className="payment-amount-display">
-                                        <strong>
-                                            ₹{Number(payment.amount || 0).toLocaleString("en-IN")}
                                         </strong>
                                         <span>
-                                            Registration Fee
+                                            {singer.mobile_number || "—"}
+                                            {selectedEventIds.length !== 1 && payment.event_name
+                                                ? ` · ${payment.event_name}`
+                                                : ""}
                                         </span>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className="payment-songs-chip"
+                                        onClick={() =>
+                                            setExpandedId(isExpanded ? null : payment.id)
+                                        }
+                                        aria-expanded={isExpanded}
+                                        disabled={!hasSongs}
+                                    >
+                                        🎵 {songCount} duet{songCount === 1 ? "" : "s"}
+                                        {payment.solo_song ? " + solo" : ""}
+                                        {hasSongs && (
+                                            <span className="payment-chevron">▾</span>
+                                        )}
+                                    </button>
+
+                                    <div className="payment-row-date">
+                                        <span>
+                                            {payment.status === "Paid" ? "Paid" : "Requested"}
+                                        </span>
+                                        {formatDate(
+                                            payment.status === "Paid"
+                                                ? payment.paid_at
+                                                : payment.created_at
+                                        )}
+                                    </div>
+
+                                    <div className="payment-row-amount">
+                                        {formatRupees(payment.amount)}
+                                    </div>
+
+                                    <div className="payment-row-actions">
+                                        {isPending ? (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="payment-approve-btn"
+                                                    onClick={() =>
+                                                        handleMarkPaid(payment)
+                                                    }
+                                                    disabled={isActioning}
+                                                >
+                                                    {isActioning
+                                                        ? "Saving…"
+                                                        : "✓ Approve"}
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    className="payment-reject-btn"
+                                                    onClick={() =>
+                                                        handleReject(payment)
+                                                    }
+                                                    disabled={isActioning}
+                                                    title="Reject"
+                                                    aria-label="Reject"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <span className={`payment-status-pill ${statusClass}`}>
+                                                {payment.status}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="payment-card-divider" />
+                                {isExpanded && (
+                                    <div className="payment-row-songs">
+                                        {payment.songs?.length > 0 && (
+                                            <ol>
+                                                {payment.songs.map(song => (
+                                                    <li key={song.id}>
+                                                        <span>{song.title}</span>
+                                                        {song.movie && (
+                                                            <em>{song.movie}</em>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                        )}
 
-                                <div className="payment-card-status">
-                                    <strong>
-                                        🕘 Status: {payment.status.toUpperCase()}
-                                    </strong>
-
-                                    {payment.status === "Pending" && (
-                                        <p>
-                                            Payment marked as paid by singer. Awaiting admin confirmation.
-                                        </p>
-                                    )}
-
-                                    {payment.status === "Paid" && (
-                                        <p>
-                                            Payment confirmed by admin. Paid on {formatDate(payment.paid_at)}.
-                                        </p>
-                                    )}
-
-                                    {payment.status === "Rejected" && (
-                                        <p>
-                                            Payment request was rejected by admin.
-                                        </p>
-                                    )}
-                                </div>
-
-                                {payment.songs?.length > 0 && (
-                                    <details className="payment-song-details">
-                                        <summary>
-                                            View {payment.songs.length} duet songs
-                                            {payment.solo_song ? " + solo" : ""}
-                                        </summary>
-                                        <ol>
-                                            {payment.songs.map(song => (
-                                                <li key={song.id}>
-                                                    {song.title}
-                                                    {song.movie
-                                                        ? ` — ${song.movie}`
-                                                        : ""}
-                                                </li>
-                                            ))}
-                                        </ol>
                                         {payment.solo_song && (
-                                            <p>
-                                                <strong>Solo:</strong>{" "}
-                                                {payment.solo_song.title}
-                                                {payment.solo_song.movie
-                                                    ? ` — ${payment.solo_song.movie}`
-                                                    : ""}
+                                            <p className="payment-solo">
+                                                <strong>Solo</strong>
+                                                <span>{payment.solo_song.title}</span>
+                                                {payment.solo_song.movie && (
+                                                    <em>{payment.solo_song.movie}</em>
+                                                )}
                                             </p>
                                         )}
-                                    </details>
-                                )}
-
-                                {isPending && (
-                                    <div className="payment-actions">
-                                        <button
-                                            type="button"
-                                            className="admin-btn admin-btn-primary"
-                                            onClick={() =>
-                                                handleMarkPaid(
-                                                    payment.id
-                                                )
-                                            }
-                                            disabled={isActioning}
-                                        >
-                                            {isActioning
-                                                ? "Processing..."
-                                                : "✓ Mark as Paid"}
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            className="admin-btn admin-btn-danger"
-                                            onClick={() =>
-                                                handleReject(
-                                                    payment.id
-                                                )
-                                            }
-                                            disabled={isActioning}
-                                        >
-                                            ✕ Reject
-                                        </button>
                                     </div>
                                 )}
                             </article>
                         );
                     })}
                 </section>
+            )}
+
+            {notice && (
+                <div className="payment-toast" role="status">
+                    {notice}
+                </div>
             )}
             </main>
         </div>
