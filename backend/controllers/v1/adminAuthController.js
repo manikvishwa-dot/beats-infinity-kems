@@ -58,8 +58,12 @@ const login = async (req, res) => {
         }
 
 
+        // Usernames are case-insensitive ("Admin" = "admin").
+        // ilike with %, _ and \ escaped = exact match ignoring case.
+        const typedUsername = String(username).trim();
+
         const {
-            data: admin,
+            data: matches,
             error
         } = await supabase
 
@@ -67,12 +71,17 @@ const login = async (req, res) => {
 
             .select("*")
 
-            .eq(
+            .ilike(
                 "username",
-                String(username).trim()
+                typedUsername.replace(/[\\%_]/g, "\\$&")
             )
 
-            .maybeSingle();
+            .limit(5);
+
+        // if two accounts differ only by case, prefer the exact one
+        const admin =
+            (matches || []).find(row => row.username === typedUsername) ||
+            ((matches || []).length === 1 ? matches[0] : null);
 
 
         if (error) {
