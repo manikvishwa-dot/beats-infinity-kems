@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect, useState } from "react";
 
 import "./SingerDashboard.css";
 
@@ -13,6 +13,7 @@ import MySongs
 
 import DobPrompt
     from "../components/dashboard/DobPrompt/DobPrompt";
+import { getMyPairing } from "../services/pairingService";
 
 
 function SingerDashboard() {
@@ -75,6 +76,35 @@ function SingerDashboard() {
 
 
     // ==========================================================
+    // SONGS SET BY THE ADMIN
+    //
+    // A singer the admin put on the event's Final List (walk-in,
+    // uploaded list) already has their songs - show those (the
+    // Song List above) instead of asking them to pick 6.
+    // null = still checking.
+    // ==========================================================
+
+    const [addedByAdmin, setAddedByAdmin] = useState(null);
+
+    useEffect(() => {
+        if (!singerId) return undefined;
+
+        let alive = true;
+
+        getMyPairing(singerId)
+            .then(result => {
+                if (alive) setAddedByAdmin(Boolean(result?.added_by_admin));
+            })
+            .catch(() => {
+                if (alive) setAddedByAdmin(false);
+            });
+
+        return () => {
+            alive = false;
+        };
+    }, [singerId]);
+
+    // ==========================================================
     // RENDER
     // ==========================================================
 
@@ -90,9 +120,18 @@ function SingerDashboard() {
                 singerId={singerId}
             />
 
-            <MySongs
-                singerId={singerId}
-            />
+            {addedByAdmin === false && (
+                <MySongs
+                    singerId={singerId}
+                />
+            )}
+
+            {addedByAdmin && (
+                <p className="singer-dashboard-note">
+                    Your songs for this event were arranged by the Beats Infinity team - they're listed above.
+                    Need a change? Please contact the organisers.
+                </p>
+            )}
 
         </main>
 

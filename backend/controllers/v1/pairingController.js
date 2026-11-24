@@ -1357,8 +1357,30 @@ const getMyPairing = async (req, res) => {
         const singerById =
             new Map(singers.map(singer => [singer.id, singer]));
 
-        const me =
+        let me =
             singerById.get(singerId);
+
+        // true = this singer didn't pick songs themselves - the
+        // admin put them on the Final List (walk-in / uploaded
+        // list), so the dashboard shows those songs, not the picker
+        let addedByAdmin = false;
+
+        // Singers added from the Final List (walk-ins, an uploaded
+        // list) have no registration of their own, so they aren't
+        // in the map above - look them up directly.
+        if (!me) {
+            const { data: found } = await supabase
+                .from("singers")
+                .select("id,singer_name,gender")
+                .eq("id", singerId)
+                .maybeSingle();
+
+            if (found) {
+                me = found;
+                singerById.set(found.id, found);
+                addedByAdmin = true;
+            }
+        }
 
         const mySelections =
             selectionsBySinger.get(singerId) || [];
@@ -1368,6 +1390,27 @@ const getMyPairing = async (req, res) => {
         const myApprovedSolos =
             (solosBySinger.get(singerId) || [])
                 .filter(solo => solo.solo_status === "Approved" && solo.title);
+
+        // Solos given to me on the Final List
+        if (activeEventId) {
+            const { data: listSolos } = await supabase
+                .from("songs")
+                .select("id,title,movie,solo_status")
+                .eq("event_id", activeEventId)
+                .eq("solo_singer_id", singerId)
+                .eq("solo_status", "Approved");
+
+            (listSolos || []).forEach(song => {
+                if (song.title && !myApprovedSolos.some(solo => solo.song_id === song.id)) {
+                    myApprovedSolos.push({
+                        song_id: song.id,
+                        title: song.title,
+                        movie: song.movie,
+                        solo_status: "Approved"
+                    });
+                }
+            });
+        }
 
         const myGender =
             String(me?.gender || "").trim().toLowerCase();
@@ -1381,6 +1424,7 @@ const getMyPairing = async (req, res) => {
                 success: true,
                 event_name: eventName,
                 payment_status: myPaymentStatus,
+                added_by_admin: addedByAdmin,
                 songs: []
             });
 
@@ -1439,6 +1483,7 @@ const getMyPairing = async (req, res) => {
                 success: true,
                 event_name: eventName,
                 payment_status: myPaymentStatus,
+                added_by_admin: addedByAdmin,
                 songs: []
             });
 
@@ -1657,6 +1702,7 @@ const getMyPairing = async (req, res) => {
             success: true,
             event_name: eventName,
             payment_status: myPaymentStatus,
+                added_by_admin: addedByAdmin,
             songs: songsOut
         });
 
