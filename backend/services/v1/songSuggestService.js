@@ -14,10 +14,14 @@ const { supabase } = require("../../config/supabase");
 // findMovies("Kadhalikkum Pennin Kaigal")
 //   -> movie names for a chosen song. Sources, in order:
 //      1. songs singers already picked
-//      2. Apple Music (iTunes Search API, India store)
+//      2. JioSaavn (best Tamil film catalogue - album = movie)
+//      3. YouTube video titles (only when JioSaavn isn't sure)
+//      4. Apple Music (iTunes Search API, India store)
 //
-// No API keys, no paid services. Results are cached in memory
-// for a day to stay well inside the free sources' rate limits.
+// No paid services. Results are cached in memory for a day to
+// stay well inside the free sources' rate limits. A source that
+// FAILS (timeout, quota) is not cached - the next lookup tries
+// it again instead of showing "no movie" for a whole day.
 // ==========================================================
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -25,6 +29,8 @@ const CACHE_MAX = 2000;
 
 const cache = new Map();
 
+// compute() returns null when the source failed - not cached,
+// and handed back to the caller as [].
 const cached = async (key, compute) => {
 
     const hit = cache.get(key);
@@ -34,6 +40,10 @@ const cached = async (key, compute) => {
     }
 
     const value = await compute();
+
+    if (value === null) {
+        return [];
+    }
 
     if (cache.size >= CACHE_MAX) {
         cache.delete(cache.keys().next().value);
@@ -207,7 +217,7 @@ const googleSuggest = (query) => cached(`g:${query.toLowerCase()}`, async () => 
     } catch (error) {
 
         console.warn("Song suggest - Google:", error.message);
-        return [];
+        return null;
 
     }
 
@@ -231,7 +241,7 @@ const itunesSearch = (term) => cached(`i:${term.toLowerCase()}`, async () => {
     } catch (error) {
 
         console.warn("Movie lookup - iTunes:", error.message);
-        return [];
+        return null;
 
     }
 
@@ -404,7 +414,7 @@ const cleanMoviePart = (part) =>
 const decodeHtml = (text) =>
     String(text || "")
         .replace(/&amp;/g, "&")
-        .replace(/&#39;/g, "'")
+        .replace(/&#0?39;/g, "'")
         .replace(/&quot;/g, "\"");
 
 const youtubeTitles = (title) => cached(`y:${title.toLowerCase()}`, async () => {
@@ -441,11 +451,147 @@ const youtubeTitles = (title) => cached(`y:${title.toLowerCase()}`, async () => 
             "Movie lookup - YouTube:",
             error.response?.data?.error?.message || error.message
         );
-        return [];
+        return null;
 
     }
 
 });
+
+
+// ----------------------------------------------------------
+// JIOSAAVN - the fullest Tamil film catalogue. Each song comes
+// with its album, which for film songs is the movie:
+//   "Super Star Yarnu Ketta"                   album "Raja Chinna Roja"
+//   "Inji Idupazhaga (From \"Thevar Magan\")"   album "Kamal Haasan Hit Songs"
+// Re-releases sit in compilations ("Hits of ...", "Vintage
+// Vibes ..."), so:
+//   (From "Movie") in the title     -> +2 for that movie
+//   album name                      -> +1, unless it looks like a compilation
+// Tamil results only. Uses JioSaavn's public web search (no key);
+// if it ever fails, the other sources still answer.
+// ----------------------------------------------------------
+
+const COMPILATION = new RegExp(
+    "\\b(" + [
+        "hits?", "vibes", "edition", "vol", "volume", "best", "classics?",
+        "collections?", "evergreen", "songs", "era", "beats", "top", "sings",
+        "love", "poetry", "golden", "melod(y|ies)", "jukebox", "duets?",
+        "super", "pov", "this is", "back to", "playlist", "mashup", "remix",
+        "lofi", "unplugged", "special", "tribute", "favou?rites?", "essentials",
+        "covers?", "versions?", "connection", "instrumental", "karaoke",
+        "reprise", "live", "\\d{2,4}'?s"
+    ].join("|") + ")\\b",
+    "i"
+);
+
+const FROM_MOVIE = /\(From\s*["“'‘]{1,2}(.+?)["”'’]{1,2}\)/i;
+
+const saavnSearch = (title) => cached(`s:${title.toLowerCase()}`, async () => {
+
+    try {
+
+        const response = await axios.get(
+            "https://www.jiosaavn.com/api.php",
+            {
+                params: {
+                    __call: "search.getResults",
+                    _format: "json",
+                    _marker: 0,
+                    api_version: 4,
+                    ctx: "web6dot0",
+                    n: 15,
+                    p: 1,
+                    q: title
+                },
+                headers: { "User-Agent": "Mozilla/5.0" },
+                timeout: 5000
+            }
+        );
+
+        const results = response.data?.results;
+
+        if (!Array.isArray(results)) {
+            return null;
+        }
+
+        return results
+            .filter((song) => String(song.language || "").toLowerCase() === "tamil")
+            .map((song) => ({
+                title: decodeHtml(song.title),
+                album: decodeHtml(song.more_info?.album)
+            }));
+
+    } catch (error) {
+
+        console.warn("Movie lookup - JioSaavn:", error.response?.status || error.message);
+        return null;
+
+    }
+
+});
+
+// Returns [{ movie, score }] best first.
+const saavnMovies = async (title) => {
+
+    const songs = await saavnSearch(title);
+
+    // skeleton -> { score, spellings: { "Thevar Magan": 2 } }
+    const candidates = new Map();
+
+    const vote = (movie, score) => {
+
+        const clean = String(movie || "").replace(/\s*\((Tamil|Original.*?)\)\s*/gi, " ").replace(/\s+/g, " ").trim();
+        const key = skeleton(clean);
+
+        if (!clean || key.length < 2) return;
+
+        const entry = candidates.get(key) || { score: 0, spellings: {} };
+        entry.score += score;
+        entry.spellings[clean] = (entry.spellings[clean] || 0) + 1;
+        candidates.set(key, entry);
+
+    };
+
+    for (const song of songs) {
+
+        const songName = song.title.replace(FROM_MOVIE, "").trim();
+
+        if (!titlesMatch(songName, title)) {
+            continue;
+        }
+
+        const fromTitle = song.title.match(FROM_MOVIE);
+        const fromAlbum = song.album.match(FROM_MOVIE);
+
+        if (fromTitle) {
+            vote(fromTitle[1], 2);
+        }
+        else if (fromAlbum) {
+            vote(fromAlbum[1], 2);
+        }
+        // An album named after the song itself is a single or an
+        // indie release, not a movie.
+        else if (
+            song.album &&
+            !COMPILATION.test(song.album) &&
+            !titlesMatch(song.album, songName)
+        ) {
+            vote(song.album, 1);
+        }
+
+    }
+
+    return [...candidates.values()]
+        .sort((a, b) => b.score - a.score)
+        .map((entry) => ({
+            movie: titleCase(
+                Object.entries(entry.spellings)
+                    .sort((a, b) => b[1] - a[1])[0][0]
+            ),
+            score: entry.score
+        }));
+
+};
 
 const youtubeMovieGuess = async (title) => {
 
@@ -539,7 +685,9 @@ const findMovies = async (rawTitle) => {
 
     const add = (movie) => {
         const clean = String(movie || "").trim();
-        if (clean && !movies.some((m) => skeleton(m) === skeleton(clean))) {
+        // Sound-alike spellings are the same movie
+        // ("Thiruppatchi" / "Thirupaachi").
+        if (clean && !movies.some((m) => skeleton(m) === skeleton(clean) || titlesMatch(m, clean))) {
             movies.push(clean);
         }
     };
@@ -557,17 +705,32 @@ const findMovies = async (rawTitle) => {
         return movies.slice(0, 4);
     }
 
-    const [youtubeMovies, tracks] = await Promise.all([
-        youtubeMovieGuess(title),
+    const [saavn, tracks] = await Promise.all([
+        saavnMovies(title),
         itunesSearch(title)
     ]);
 
-    // 2. YouTube video titles first - they reflect the song people
-    //    actually mean ("Kadhal Neethana" -> Time), even with
-    //    different spellings.
-    youtubeMovies.forEach(add);
+    // 2. JioSaavn - confident when a movie scored 2+ (a
+    //    "(From "Movie")" tag, or the album seen more than once).
+    //    Runner-ups are kept only if they're nearly as strong -
+    //    two films can have a song with the same name.
+    const saavnBest = saavn[0]?.score || 0;
+    const saavnConfident = saavnBest >= 2;
 
-    // 3. Apple Music - other films with a song of the same name
+    saavn
+        .filter((entry) => entry.score >= Math.max(1, saavnBest * 0.5))
+        .forEach((entry) => add(entry.movie));
+
+    // 3. YouTube video titles - only when JioSaavn isn't sure.
+    //    Title-parsing sometimes picks up actor names
+    //    ("Kamal Haasan Revathi"), so it's a fallback, not a lead.
+    //    Skipping it also saves the daily YouTube quota.
+    if (!saavnConfident) {
+        (await youtubeMovieGuess(title)).forEach(add);
+    }
+
+    // 4. Apple Music - proper soundtrack data, other films with a
+    //    song of the same name
     tracks
         .filter((track) => titlesMatch(track.trackName, title))
         .forEach((track) => add(cleanMovieName(track.collectionName, track.trackName)));
@@ -584,5 +747,6 @@ module.exports = {
     stripNoise,
     titlesMatch,
     youtubeMovieGuess,
+    saavnMovies,
     cleanMovieName
 };
