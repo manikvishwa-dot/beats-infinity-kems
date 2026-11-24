@@ -979,9 +979,19 @@ const applyPairingDecision = async ({
     // pairing form), that trivially satisfies this too.
     // ----------------------------------------------------
 
+    // The song's own event - used to check the manual pairing
+    // against THAT event's selections, and stamped on the pairing.
+    const { data: songRow } = await supabase
+        .from("songs")
+        .select("event_id")
+        .eq("id", song_id)
+        .maybeSingle();
+
+    const eventId = songRow?.event_id || null;
+
     if (pairingSource === "manual") {
 
-        const { selectionsBySinger, songMap } = await loadSingerSongMap();
+        const { selectionsBySinger, songMap } = await loadSingerSongMap(eventId);
 
         const maleSelections = selectionsBySinger.get(male_singer_id) || [];
         const femaleSelections = selectionsBySinger.get(female_singer_id) || [];
@@ -1013,18 +1023,10 @@ const applyPairingDecision = async ({
     // the same combination.
     // ----------------------------------------------------
 
-    // Stamped from the song's own event_id - a pairing belongs to
-    // whichever event the singer's selection was actually made
-    // under, regardless of which event happens to be active right
-    // now when the admin gets around to deciding it.
-    const { data: songRow } = await supabase
-        .from("songs")
-        .select("event_id")
-        .eq("id", song_id)
-        .maybeSingle();
-
-    const eventId = songRow?.event_id || null;
-
+    // Stamped from the song's own event_id (looked up above) - a
+    // pairing belongs to whichever event the singer's selection was
+    // actually made under, regardless of which event happens to be
+    // active right now when the admin gets around to deciding it.
     const { data: existing } = await supabase
         .from("pairings")
         .select("id")

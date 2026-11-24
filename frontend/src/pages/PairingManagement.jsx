@@ -176,8 +176,14 @@ function PairingManagement() {
         [suggestions.open_songs]
     );
 
-    // Songs common to the two currently-selected manual singers
-    const commonSongs = useMemo(() => {
+    // Songs either of the two selected singers picked. Only ONE of
+    // them needs to own the song (the backend checks the same rule),
+    // so a male singer can be paired with any female singer - e.g.
+    // two male singers who chose the same song each get their own
+    // female partner. Songs both picked are listed first.
+    //
+    // [{ song_id, title, owner: "both" | "male" | "female" }]
+    const manualSongs = useMemo(() => {
         const male = singers.find(singer => singer.singer_id === manualMaleId);
         const female = singers.find(singer => singer.singer_id === manualFemaleId);
 
@@ -185,16 +191,39 @@ function PairingManagement() {
             return [];
         }
 
-        const femaleSongSet = new Set(
+        const key = title => String(title || "").trim().toLowerCase();
+
+        const femaleByTitle = new Map(
             (female.songs || [])
-                .map(song => song.title)
-                .filter(Boolean)
+                .filter(song => song.title && song.song_id)
+                .map(song => [key(song.title), song])
         );
 
-        return (male.songs || [])
-            .map(song => song.title)
-            .filter(Boolean)
-            .filter(title => femaleSongSet.has(title));
+        const maleTitles = new Set();
+        const rows = [];
+
+        (male.songs || [])
+            .filter(song => song.title && song.song_id)
+            .forEach(song => {
+                maleTitles.add(key(song.title));
+                rows.push({
+                    song_id: song.song_id,
+                    title: song.title,
+                    owner: femaleByTitle.has(key(song.title)) ? "both" : "male"
+                });
+            });
+
+        femaleByTitle.forEach((song, title) => {
+            if (!maleTitles.has(title)) {
+                rows.push({ song_id: song.song_id, title: song.title, owner: "female" });
+            }
+        });
+
+        const order = { both: 0, male: 1, female: 2 };
+
+        return rows.sort((a, b) =>
+            order[a.owner] - order[b.owner] || a.title.localeCompare(b.title)
+        );
     }, [singers, manualMaleId, manualFemaleId]);
 
     // Excel template: existing pairings (decision pre-filled with
@@ -322,25 +351,24 @@ function PairingManagement() {
         setError("");
         setSuccess("");
 
-        if (!manualMaleId || !manualFemaleId || !manualSongTitle) {
+        if (
+            !manualMaleId ||
+            !manualFemaleId ||
+            !manualSongs.some(song => song.song_id === manualSongTitle)
+        ) {
             setError("Please select both singers and a song.");
             return;
         }
 
-        // The overview only gives us song titles; resolve the
-        // actual song_id from whatever pairing data references it
-        // (the backend re-validates song membership regardless).
-        const matchWithSongId =
-            suggestions.potential_matches.find(
-                item => item.song_title === manualSongTitle
-            ) ||
-            suggestions.existing_pairings.find(
-                item => item.song_title === manualSongTitle
-            );
+        // manualSongTitle holds the chosen song's own song_id (the
+        // backend re-validates song membership regardless).
+        const chosenSong = manualSongs.find(
+            song => song.song_id === manualSongTitle
+        );
 
-        if (!matchWithSongId) {
+        if (!chosenSong) {
             setError(
-                "Unable to resolve the selected song. Please pick a song from the Potential Matches list, or refresh the page."
+                "Unable to resolve the selected song. Please refresh the page and try again."
             );
             return;
         }
@@ -349,7 +377,7 @@ function PairingManagement() {
 
         try {
             await decidePairing(
-                matchWithSongId.song_id,
+                chosenSong.song_id,
                 manualMaleId,
                 manualFemaleId,
                 "Approved",
@@ -694,22 +722,31 @@ function PairingManagement() {
                             </div>
 
                             <div className="manual-pairing-field">
-                                <label>Common Song</label>
+                                <label>Song</label>
                                 <select
-                                    value={manualSongTitle}
+                                    value={
+                                        manualSongs.some(song => song.song_id === manualSongTitle)
+                                            ? manualSongTitle
+                                            : ""
+                                    }
                                     onChange={event => setManualSongTitle(event.target.value)}
                                     disabled={!manualMaleId || !manualFemaleId}
                                 >
                                     <option value="">
                                         {!manualMaleId || !manualFemaleId
                                             ? "Select both singers first"
-                                            : commonSongs.length === 0
-                                                ? "No common songs"
+                                            : manualSongs.length === 0
+                                                ? "Neither singer has songs"
                                                 : "Select a song"}
                                     </option>
-                                    {commonSongs.map(title => (
-                                        <option key={title} value={title}>
-                                            {title}
+                                    {manualSongs.map(song => (
+                                        <option key={song.song_id} value={song.song_id}>
+                                            {song.title}
+                                            {song.owner === "both"
+                                                ? " (both picked)"
+                                                : song.owner === "male"
+                                                    ? " (male singer's pick)"
+                                                    : " (female singer's pick)"}
                                         </option>
                                     ))}
                                 </select>
