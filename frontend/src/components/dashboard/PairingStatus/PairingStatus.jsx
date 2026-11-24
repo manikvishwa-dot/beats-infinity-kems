@@ -249,19 +249,27 @@ function PairingStatus({ singerId }) {
                                         {index + 1}
                                     </td>
 
-                                    <td className="col-male" data-label="Male Singer">
+                                    <td
+                                        className="col-male"
+                                        data-label={String(song.male_singer_gender || "").toLowerCase() === "female" ? "Female Singer" : "Male Singer"}
+                                    >
                                         <span className="cell-inner">
-                                            <span className="mic male"><MicIcon /></span>
+                                            {/* Two women singing together -> both mics pink */}
+                                            <span className={String(song.male_singer_gender || "").toLowerCase() === "female" ? "mic female" : "mic male"}><MicIcon /></span>
                                             {song.male_singer_name || "—"}
                                         </span>
                                     </td>
 
-                                    <td className="col-female" data-label="Female Singer">
+                                    <td
+                                        className="col-female"
+                                        data-label={String(song.female_singer_gender || "").toLowerCase() === "male" ? "Male Singer" : "Female Singer"}
+                                    >
                                         {song.status === "Solo" ? (
                                             <span className="solo-chip">★ Solo</span>
                                         ) : (
                                             <span className="cell-inner">
-                                                <span className="mic female"><MicIcon /></span>
+                                                {/* Two men singing together -> both mics blue */}
+                                                <span className={String(song.female_singer_gender || "").toLowerCase() === "male" ? "mic male" : "mic female"}><MicIcon /></span>
                                                 {song.female_singer_name || "—"}
                                             </span>
                                         )}

@@ -1559,6 +1559,10 @@ const getMyPairing = async (req, res) => {
                 status: "Paired",
                 male_singer_name: nameOf(row.male_singer_id),
                 female_singer_name: nameOf(row.female_singer_id),
+                // Two men / two women can share a song (confirmed on
+                // the Final List) - the dashboard colours each mic
+                male_singer_gender: singerById.get(row.male_singer_id)?.gender || null,
+                female_singer_gender: singerById.get(row.female_singer_id)?.gender || null,
                 partner_name: nameOf(
                     row.male_singer_id === singerId
                         ? row.female_singer_id
