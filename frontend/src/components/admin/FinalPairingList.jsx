@@ -7,7 +7,8 @@ import { analyzeUpload, normalizeName, resolveUpload } from "../../utils/pairing
 import {
     getFinalPairingList,
     registerEventSingers,
-    saveFinalPairingList
+    saveFinalPairingList,
+    setFinalRowCompleted
 } from "../../services/adminDashboardService";
 
 import "./FinalPairingList.css";
@@ -105,6 +106,12 @@ function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
     // { rowKey, field: "male_singer_id" | "female_singer_id", gender }
     const [addingSinger, setAddingSinger] = useState(null);
 
+    // Event day: rows ticked as sung turn green. Saved at once,
+    // separate from "Save final list".
+    const [completionReady, setCompletionReady] = useState(true);
+    const [onlyRemaining, setOnlyRemaining] = useState(false);
+    const [togglingRef, setTogglingRef] = useState("");
+
     const applyResult = useCallback(result => {
 
         const loaded = (result.rows || []).map(withKey);
@@ -114,6 +121,7 @@ function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
         setSavedSnapshot(comparable(loaded));
         setSingers(result.singers || []);
         setEventName(result.event_name || "");
+        setCompletionReady(result.completion_ready !== false);
 
     }, []);
 
@@ -428,6 +436,39 @@ function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
 
     };
 
+    // ------------------------------------------------------
+    // COMPLETED TICK - saved straight away; on failure the tick
+    // is put back.
+    // ------------------------------------------------------
+
+    const savedCount = rows.filter(row => row.ref).length;
+    const doneCount = rows.filter(row => row.ref && row.completed).length;
+
+    const toggleCompleted = async (row, completed) => {
+
+        if (!row.ref) return;
+
+        const setTick = value => setRows(current =>
+            current.map(item => item.ref === row.ref ? { ...item, completed: value } : item)
+        );
+
+        setTick(completed);
+        setTogglingRef(row.ref);
+        setError("");
+
+        try {
+            await setFinalRowCompleted(eventId, row.ref, completed);
+        }
+        catch (requestError) {
+            setTick(!completed);
+            setError(requestError.message || "Unable to update the song.");
+        }
+        finally {
+            setTogglingRef("");
+        }
+
+    };
+
     if (loading) {
         return <div className="pairing-empty">Loading the final list...</div>;
     }
@@ -458,11 +499,39 @@ function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
             {error && <div className="pairing-error">⚠️ {error}</div>}
             {success && <div className="pairing-success">✅ {success}</div>}
 
+            {!completionReady && (
+                <div className="pairing-error">
+                    ⚠️ The "Completed" ticks need a one-time database update - run
+                    {" "}<b>backend/migrations/2026-11-25_final_list_progress.sql</b> in the Supabase SQL editor.
+                </div>
+            )}
+
+            {savedCount > 0 && (
+                <div className="final-progress">
+                    <div className="final-progress-text">
+                        <b>{doneCount}</b> of <b>{savedCount}</b> songs sung
+                        <span className="final-progress-left">· {savedCount - doneCount} to go</span>
+                    </div>
+                    <div className="final-progress-track" aria-hidden="true">
+                        <div className="final-progress-fill" style={{ width: `${(doneCount / savedCount) * 100}%` }} />
+                    </div>
+                    <label className="final-progress-filter">
+                        <input
+                            type="checkbox"
+                            checked={onlyRemaining}
+                            onChange={event => setOnlyRemaining(event.target.checked)}
+                        />
+                        Show only songs still to sing
+                    </label>
+                </div>
+            )}
+
             <div className="final-table-wrap">
                 <table className="final-table">
                     <thead>
                         <tr>
                             <th className="final-col-num">#</th>
+                            <th className="final-col-done">Completed</th>
                             <th>Male Singer</th>
                             <th>Female Singer</th>
                             <th>Song</th>
@@ -474,7 +543,7 @@ function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
                     <tbody>
                         {rows.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="final-empty">
+                                <td colSpan={7} className="final-empty">
                                     No pairings yet - click <b>+ Add row</b> or approve pairings on the Review tab.
                                 </td>
                             </tr>
@@ -487,11 +556,36 @@ function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
                                 normalize(genderById.get(row.male_singer_id)) === normalize(genderById.get(row.female_singer_id));
 
                             return (
-                                <tr key={row.key} className={row.ref ? "" : "is-new"}>
+                                <tr
+                                    key={row.key}
+                                    className={[row.ref ? "" : "is-new", row.completed ? "is-done" : ""].join(" ").trim()}
+                                    hidden={onlyRemaining && row.completed}
+                                >
                                     <td className="final-col-num">
                                         {index + 1}
                                         {isSolo && <span className="final-solo-tag">Solo</span>}
                                         {isDuo && <span className="final-solo-tag duo" title="Two singers of the same gender singing together">Together</span>}
+                                    </td>
+                                    <td className="final-col-done">
+                                        <label
+                                            className="final-done-check"
+                                            title={
+                                                !row.ref
+                                                    ? "Save the list first"
+                                                    : !completionReady
+                                                        ? "Needs a one-time database update"
+                                                        : row.completed ? "Sung - click to undo" : "Tick once this song is sung"
+                                            }
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(row.completed)}
+                                                disabled={!row.ref || !completionReady || togglingRef === row.ref}
+                                                onChange={event => toggleCompleted(row, event.target.checked)}
+                                                aria-label={`Row ${index + 1} completed`}
+                                            />
+                                            <span aria-hidden="true">✓</span>
+                                        </label>
                                     </td>
                                     <td>
                                         <SingerSelect

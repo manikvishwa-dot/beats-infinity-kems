@@ -43,6 +43,32 @@ const isMissingRosterTable = error =>
 const ROSTER_MIGRATION_MESSAGE =
     "Adding singers needs the event roster table - run backend/migrations/2026-11-25_event_roster.sql in Supabase first.";
 
+// "Completed" ticks (final_list_progress). Table missing = the
+// migration hasn't been run yet.
+const isMissingProgressTable = error =>
+    error?.code === "42P01" || error?.code === "PGRST205" ||
+    /final_list_progress/i.test(String(error?.message || ""));
+
+const PROGRESS_MIGRATION_MESSAGE =
+    "Ticking songs as completed needs a one-time database update - run backend/migrations/2026-11-25_final_list_progress.sql in the Supabase SQL editor.";
+
+// Set of refs ticked as completed, or null if the table is missing
+const loadCompletedRefs = async eventId => {
+
+    const { data, error } = await supabase
+        .from("final_list_progress")
+        .select("row_ref")
+        .eq("event_id", eventId);
+
+    if (error) {
+        if (isMissingProgressTable(error)) return null;
+        throw error;
+    }
+
+    return new Set((data || []).map(row => row.row_ref));
+
+};
+
 const loadEvent = async eventId => {
 
     const { data, error } = await supabase
@@ -232,7 +258,10 @@ const getFinalList = async (req, res) => {
         const eventId = await resolveEventId(req.query.event_id);
         const event = await loadEvent(eventId);
 
-        const { rows, allSingers, eventSingerIds } = await loadFinalList(eventId);
+        const [{ rows, allSingers, eventSingerIds }, completedRefs] = await Promise.all([
+            loadFinalList(eventId),
+            loadCompletedRefs(eventId)
+        ]);
 
         return res.status(200).json({
             success: true,
@@ -243,8 +272,11 @@ const getFinalList = async (req, res) => {
                 male_singer_id: row.male_singer_id || "",
                 female_singer_id: row.female_singer_id || "",
                 song_title: row.song_title,
-                movie: row.movie || ""
+                movie: row.movie || "",
+                completed: Boolean(completedRefs?.has(row.ref))
             })),
+            // false = the "completed" migration hasn't been run
+            completion_ready: completedRefs !== null,
             singers: allSingers.map(singer => ({
                 id: singer.id,
                 singer_name: singer.singer_name,
@@ -1256,6 +1288,74 @@ const saveFinalList = async (req, res) => {
 // GET /api/v1/admin/pairings/change-log?event_id=UUID
 // ==========================================================
 
+// ==========================================================
+// PUT /api/v1/admin/pairings/final/completed
+// { event_id, ref, completed: true|false }
+//
+// Event day: tick a song once it has been sung. Saved at once -
+// separate from "Save final list".
+// ==========================================================
+
+const setRowCompleted = async (req, res) => {
+
+    try {
+
+        const eventId = await resolveEventId(req.body?.event_id);
+        await loadEvent(eventId);
+
+        const ref = cleanText(req.body?.ref);
+        const completed = req.body?.completed === true;
+
+        if (!ref) {
+            throw httpError(400, "ref is required.");
+        }
+
+        const { byRef } = await loadFinalList(eventId);
+
+        if (!byRef.has(ref)) {
+            throw httpError(409, "This song isn't on the saved list any more - reload the page.");
+        }
+
+        const query = completed
+            ? supabase
+                .from("final_list_progress")
+                .upsert({
+                    event_id: eventId,
+                    row_ref: ref,
+                    completed_at: new Date().toISOString(),
+                    completed_by: req.admin?.full_name || req.admin?.username || null
+                }, { onConflict: "event_id,row_ref" })
+            : supabase
+                .from("final_list_progress")
+                .delete()
+                .eq("event_id", eventId)
+                .eq("row_ref", ref);
+
+        const { error } = await query;
+
+        if (error) {
+            if (isMissingProgressTable(error)) throw httpError(503, PROGRESS_MIGRATION_MESSAGE);
+            throw error;
+        }
+
+        return res.status(200).json({ success: true, ref, completed });
+
+    }
+
+    catch (error) {
+
+        console.error("SET ROW COMPLETED:", error);
+
+        return res.status(error.status || 500).json({
+            success: false,
+            message: error.status ? error.message : "Unable to update the song.",
+            error: error.message
+        });
+
+    }
+
+};
+
 const getChangeLog = async (req, res) => {
 
     try {
@@ -1302,6 +1402,7 @@ module.exports = {
     getFinalList,
     saveFinalList,
     getChangeLog,
+    setRowCompleted,
     addEventSinger,
     registerEventSingers
 };

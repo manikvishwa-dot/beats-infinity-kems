@@ -267,6 +267,25 @@ const getFinalPairingList = async eventId => {
 
 };
 
+// Event day: tick a saved row as sung (saved at once)
+const setFinalRowCompleted = async (eventId, ref, completed) => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/final/completed`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ event_id: eventId, ref, completed })
+        }
+    );
+
+    return handleResponse(response);
+
+};
+
 const saveFinalPairingList = async (eventId, rows) => {
 
     const response = await fetch(
@@ -462,6 +481,7 @@ export {
     decideSolo,
     getFinalPairingList,
     saveFinalPairingList,
+    setFinalRowCompleted,
     getPairingChangeLog,
     addEventSinger,
     registerEventSingers,

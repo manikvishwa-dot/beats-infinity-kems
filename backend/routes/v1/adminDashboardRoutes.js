@@ -20,6 +20,7 @@ const {
     saveFinalList,
     getChangeLog,
     addEventSinger,
+    setRowCompleted,
     registerEventSingers
 } = require("../../controllers/v1/finalPairingController");
 
@@ -140,6 +141,13 @@ router.post(
     "/pairings/final/singers",
     requireAdmin,
     addEventSinger
+);
+
+// Event day: tick a song as completed (saved at once)
+router.put(
+    "/pairings/final/completed",
+    requireAdmin,
+    setRowCompleted
 );
 
 // Register several singers at once (names from an uploaded list)

@@ -833,3 +833,128 @@ select.final-input {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* ==========================================================
+   EVENT DAY - "Completed" tick: sung rows turn green
+   ========================================================== */
+
+.final-col-done {
+    width: 92px;
+    text-align: center !important;
+}
+
+.final-done-check {
+    position: relative;
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+}
+
+.final-done-check input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.final-done-check span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 9px;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.03);
+    color: transparent;
+    font-size: 17px;
+    font-weight: 800;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.final-done-check:hover span {
+    border-color: #39EF79;
+}
+
+.final-done-check input:checked + span {
+    background: #1fbf5f;
+    border-color: #1fbf5f;
+    color: #ffffff;
+}
+
+.final-done-check input:focus-visible + span {
+    outline: 2px solid #39EF79;
+    outline-offset: 2px;
+}
+
+.final-done-check input:disabled,
+.final-done-check input:disabled + span {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.final-table tr.is-done td {
+    background: rgba(31, 191, 95, 0.16);
+    border-bottom-color: rgba(31, 191, 95, 0.22);
+}
+
+.final-table tr.is-done td:first-child {
+    box-shadow: inset 4px 0 0 #1fbf5f;
+}
+
+.final-table tr.is-done .final-input {
+    background: rgba(31, 191, 95, 0.10);
+    border-color: rgba(31, 191, 95, 0.35);
+}
+
+.final-progress {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    margin: 0 0 14px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.final-progress-text {
+    color: #e6e6e6;
+    font-size: 14px;
+}
+
+.final-progress-text b {
+    color: #ffffff;
+}
+
+.final-progress-left {
+    margin-left: 6px;
+    color: #9a9a9a;
+}
+
+.final-progress-track {
+    flex: 1 1 180px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.final-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: #1fbf5f;
+    transition: width 0.25s ease;
+}
+
+.final-progress-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #cfcfd8;
+    font-size: 13px;
+    cursor: pointer;
+}
