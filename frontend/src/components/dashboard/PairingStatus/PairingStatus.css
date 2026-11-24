@@ -1,44 +1,212 @@
+/* ==========================================================
+   MY PAIRING STATUS - "Song List" card
+   ========================================================== */
+
+.pairing-status-section,
+.pairing-status-section *,
+.pairing-status-section *::before,
+.pairing-status-section *::after {
+
+    box-sizing: border-box;
+
+}
+
 .pairing-status-section {
 
-    max-width: 900px;
+    --sl-male: #4FC3F7;
+    --sl-female: #F06EB4;
+    --sl-gold-1: #FFD27A;
+    --sl-gold-2: #F59E3B;
+    --sl-line: rgba(255, 255, 255, 0.08);
 
-    margin: 20px auto;
+    max-width: 1000px;
+
+    margin: 24px auto;
+
+    padding: 26px 22px 22px;
+
+    border-radius: 22px;
+
+    background:
+        radial-gradient(120% 80% at 0% 0%, rgba(168, 62, 140, 0.35), transparent 55%),
+        radial-gradient(90% 70% at 100% 0%, rgba(64, 98, 214, 0.32), transparent 55%),
+        linear-gradient(180deg, #15142b 0%, #0e0d1c 100%);
+
+    border: 1px solid rgba(255, 255, 255, 0.06);
+
+    font-family: "Poppins", system-ui, sans-serif;
+
+    color: #EDEDF5;
 
 }
 
-.pairing-status-heading {
 
-    margin: 0 0 12px;
+/* ----------------------------------------------------------
+   HEADER - mic badge + script title + spaced subtitle
+   ---------------------------------------------------------- */
 
-    color: #EEEEEE;
+.song-list-header {
 
-    font-family: "Poppins", sans-serif;
+    position: relative;
 
-    font-size: 20px;
+    display: flex;
 
-    text-align: center;
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 14px;
+
+    margin-bottom: 22px;
 
 }
 
-.pairing-status-heading:has(+ .pairing-status-event) {
+.song-list-wave {
 
-    margin-bottom: 2px;
+    width: 64px;
+
+    height: 26px;
+
+    background:
+        repeating-linear-gradient(90deg,
+            rgba(255, 210, 122, 0.85) 0 2px,
+            transparent 2px 6px);
+
+    -webkit-mask: radial-gradient(60% 50% at 100% 50%, #000 40%, transparent 100%);
+    mask: radial-gradient(60% 50% at 100% 50%, #000 40%, transparent 100%);
+
+    opacity: 0.7;
 
 }
 
-.pairing-status-event {
+.song-list-badge {
 
-    margin: 0 0 12px;
+    display: grid;
 
-    color: #39EF79;
+    place-items: center;
 
-    font-family: "Poppins", sans-serif;
+    width: 54px;
 
-    font-size: 14px;
+    height: 54px;
+
+    border-radius: 50%;
+
+    color: #1b1530;
+
+    background: linear-gradient(145deg, var(--sl-gold-1), var(--sl-gold-2));
+
+    box-shadow: 0 0 22px rgba(245, 158, 59, 0.45);
+
+    flex-shrink: 0;
+
+}
+
+.song-list-badge svg {
+
+    width: 28px;
+
+    height: 28px;
+
+}
+
+.song-list-titles {
+
+    text-align: left;
+
+}
+
+.song-list-title {
+
+    margin: 0;
+
+    font-family: "Segoe Script", "Brush Script MT", "Lucida Handwriting", "Snell Roundhand", cursive;
+
+    font-size: 40px;
+
+    font-weight: 700;
+
+    line-height: 1.05;
+
+    background: linear-gradient(180deg, #FFE6A8 0%, var(--sl-gold-2) 100%);
+
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    color: transparent;
+
+}
+
+.song-list-subtitle {
+
+    margin: 6px 0 0;
+
+    color: #F3F3F8;
+
+    font-size: 12px;
 
     font-weight: 600;
 
+    letter-spacing: 0.32em;
+
+    text-transform: uppercase;
+
+}
+
+
+/* ----------------------------------------------------------
+   PAYMENT STATUS
+   ---------------------------------------------------------- */
+
+.song-list-payment {
+
+    margin: -8px 0 18px;
+
     text-align: center;
+
+}
+
+.payment-pill {
+
+    display: inline-block;
+
+    padding: 6px 14px;
+
+    border-radius: 999px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+}
+
+.payment-pill.paid {
+
+    color: #39EF79;
+
+    background: rgba(57, 239, 121, 0.12);
+
+    border: 1px solid rgba(57, 239, 121, 0.35);
+
+}
+
+.payment-pill.pending {
+
+    color: #FFD54A;
+
+    background: rgba(255, 213, 74, 0.1);
+
+    border: 1px solid rgba(255, 213, 74, 0.35);
+
+}
+
+.payment-pill.rejected,
+.pairing-status-badge.rejected {
+
+    color: #FF8A80;
+
+    background: rgba(255, 138, 128, 0.1);
+
+    border: 1px solid rgba(255, 138, 128, 0.35);
 
 }
 
@@ -47,77 +215,327 @@
    TABLE
    ---------------------------------------------------------- */
 
-.pairing-status-table-wrap {
+.song-list-card {
 
     overflow-x: auto;
 
     border-radius: 16px;
 
-    border: 1px solid rgba(255,255,255,0.09);
+    border: 1px solid rgba(140, 120, 255, 0.35);
 
-    background: rgba(255,255,255,0.03);
+    background: rgba(16, 16, 34, 0.75);
+
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 
 }
 
-.pairing-status-table {
+.song-list-table {
 
     width: 100%;
 
     border-collapse: collapse;
 
-    font-family: "Poppins", sans-serif;
-
-    font-size: 14px;
-
-    color: #DDDDDD;
+    font-size: 15px;
 
     text-align: left;
 
 }
 
-.pairing-status-table th {
+.song-list-table th {
 
-    padding: 12px 16px;
+    padding: 14px 18px;
 
-    color: #9a9a9a;
+    color: #FFFFFF;
 
-    font-size: 12px;
+    font-size: 15px;
 
     font-weight: 600;
 
-    letter-spacing: 0.04em;
-
-    text-transform: uppercase;
-
-    border-bottom: 1px solid rgba(255,255,255,0.09);
-
     white-space: nowrap;
+
+    border-bottom: 1px solid rgba(140, 120, 255, 0.4);
 
 }
 
-.pairing-status-table td {
+.song-list-table th.col-num {
 
-    padding: 12px 16px;
+    background: rgba(92, 60, 160, 0.55);
+
+}
+
+.song-list-table th.col-male {
+
+    background: linear-gradient(90deg, #1f4fae, #2a5bc4);
+
+}
+
+.song-list-table th.col-female {
+
+    background: linear-gradient(90deg, #8e2f86, #a23a8f);
+
+}
+
+.song-list-table th.col-song {
+
+    background: linear-gradient(90deg, #4a33a8, #5a3ab2);
+
+}
+
+.song-list-table th.col-movie {
+
+    background: linear-gradient(90deg, #5a3ab2, #6a3aa6);
+
+}
+
+.th-inner,
+.cell-inner {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+.th-inner svg {
+
+    width: 20px;
+
+    height: 20px;
+
+    flex-shrink: 0;
+
+}
+
+.song-list-table td {
+
+    padding: 14px 18px;
+
+    color: #E6E6F0;
+
+    border-top: 1px solid var(--sl-line);
 
     vertical-align: middle;
 
 }
 
-.pairing-status-table tbody tr + tr td {
+.song-list-table td + td,
+.song-list-table th + th {
 
-    border-top: 1px solid rgba(255,255,255,0.06);
+    border-left: 1px solid var(--sl-line);
 
 }
 
-.pairing-status-table tr.paired td {
+.song-list-table tbody tr:hover td {
+
+    background: rgba(255, 255, 255, 0.03);
+
+}
+
+.song-list-table .col-num {
+
+    width: 52px;
+
+    text-align: center;
+
+    font-weight: 700;
 
     color: #FFFFFF;
 
 }
 
-.pairing-status-song {
+.song-list-table td.col-song {
+
+    font-weight: 700;
+
+    color: #FFFFFF;
+
+}
+
+.mic,
+.clapper {
+
+    display: inline-grid;
+
+    place-items: center;
+
+    flex-shrink: 0;
+
+}
+
+.mic svg,
+.clapper svg {
+
+    width: 20px;
+
+    height: 20px;
+
+}
+
+.mic.male {
+
+    color: var(--sl-male);
+
+}
+
+.mic.female {
+
+    color: var(--sl-female);
+
+}
+
+.clapper {
+
+    color: #D7D7E6;
+
+}
+
+.movie-cell {
+
+    display: flex;
+
+    width: 100%;
+
+}
+
+.movie-name {
+
+    flex: 1;
+
+}
+
+.play-link {
+
+    display: inline-grid;
+
+    place-items: center;
+
+    width: 30px;
+
+    height: 30px;
+
+    margin-left: 12px;
+
+    color: #FFFFFF;
+
+    border-radius: 50%;
+
+    flex-shrink: 0;
+
+    transition: color 0.15s ease, transform 0.15s ease;
+
+}
+
+.play-link svg {
+
+    width: 28px;
+
+    height: 28px;
+
+}
+
+.play-link:hover,
+.play-link:focus-visible {
+
+    color: var(--sl-gold-1);
+
+    transform: scale(1.08);
+
+}
+
+.song-list-empty {
+
+    margin: 0;
+
+    padding: 18px;
+
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.04);
+
+    color: #BDBDCC;
+
+    text-align: center;
+
+}
+
+
+/* ----------------------------------------------------------
+   NOT PAIRED YET
+   ---------------------------------------------------------- */
+
+.song-list-waiting {
+
+    margin-top: 18px;
+
+}
+
+.song-list-waiting h3 {
+
+    margin: 0 0 10px;
+
+    color: #BDBDCC;
+
+    font-size: 13px;
 
     font-weight: 600;
+
+    letter-spacing: 0.12em;
+
+    text-transform: uppercase;
+
+}
+
+.song-list-waiting > ul:first-of-type {
+
+    margin: 0;
+
+    padding: 0;
+
+    list-style: none;
+
+    border-radius: 14px;
+
+    border: 1px solid var(--sl-line);
+
+    background: rgba(255, 255, 255, 0.03);
+
+}
+
+.song-list-waiting > ul:first-of-type li {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+    padding: 10px 14px;
+
+}
+
+.song-list-waiting > ul:first-of-type li + li {
+
+    border-top: 1px solid var(--sl-line);
+
+}
+
+.waiting-song {
+
+    font-weight: 600;
+
+    color: #F0F0F6;
+
+}
+
+.waiting-movie {
+
+    font-weight: 400;
+
+    color: #9a9aac;
 
 }
 
@@ -135,15 +553,7 @@
 
     white-space: nowrap;
 
-}
-
-.pairing-status-badge.paired {
-
-    color: #39EF79;
-
-    background: rgba(57,239,121,0.12);
-
-    border: 1px solid rgba(57,239,121,0.35);
+    flex-shrink: 0;
 
 }
 
@@ -151,9 +561,9 @@
 
     color: #FFD54A;
 
-    background: rgba(255,213,74,0.1);
+    background: rgba(255, 213, 74, 0.1);
 
-    border: 1px solid rgba(255,213,74,0.35);
+    border: 1px solid rgba(255, 213, 74, 0.35);
 
 }
 
@@ -161,9 +571,9 @@
 
     color: #4FC3F7;
 
-    background: rgba(79,195,247,0.1);
+    background: rgba(79, 195, 247, 0.1);
 
-    border: 1px solid rgba(79,195,247,0.3);
+    border: 1px solid rgba(79, 195, 247, 0.3);
 
 }
 
@@ -175,7 +585,7 @@
 
     list-style: none;
 
-    color: #9a9a9a;
+    color: #9a9aac;
 
     font-size: 13px;
 
@@ -185,21 +595,69 @@
 
 
 /* ----------------------------------------------------------
-   PHONES - each row becomes a small labelled card
+   PHONES - each pairing becomes a small card
    ---------------------------------------------------------- */
 
-@media (max-width: 640px) {
+@media (max-width: 680px) {
 
-    .pairing-status-table thead {
+    .pairing-status-section {
+
+        padding: 20px 12px 16px;
+
+        border-radius: 18px;
+
+    }
+
+    .song-list-wave {
 
         display: none;
 
     }
 
-    .pairing-status-table,
-    .pairing-status-table tbody,
-    .pairing-status-table tr,
-    .pairing-status-table td {
+    .song-list-badge {
+
+        width: 44px;
+
+        height: 44px;
+
+    }
+
+    .song-list-title {
+
+        font-size: 32px;
+
+    }
+
+    .song-list-subtitle {
+
+        font-size: 10px;
+
+        letter-spacing: 0.24em;
+
+    }
+
+    .song-list-card {
+
+        border: 0;
+
+        background: transparent;
+
+        box-shadow: none;
+
+        overflow: visible;
+
+    }
+
+    .song-list-table thead {
+
+        display: none;
+
+    }
+
+    .song-list-table,
+    .song-list-table tbody,
+    .song-list-table tr,
+    .song-list-table td {
 
         display: block;
 
@@ -207,49 +665,84 @@
 
     }
 
-    .pairing-status-table tr {
+    .song-list-table tr {
 
-        padding: 10px 14px;
-
-    }
-
-    .pairing-status-table tbody tr + tr td {
-
-        border-top: 0;
-
-    }
-
-    .pairing-status-table tbody tr + tr {
-
-        border-top: 1px solid rgba(255,255,255,0.08);
-
-    }
-
-    .pairing-status-table td {
+        position: relative;
 
         display: flex;
 
-        justify-content: space-between;
+        flex-direction: column;
 
-        gap: 12px;
+        margin-bottom: 12px;
 
-        padding: 4px 0;
+        padding: 12px 14px 12px 52px;
 
-        text-align: right;
+        border-radius: 14px;
+
+        border: 1px solid rgba(140, 120, 255, 0.35);
+
+        background: rgba(16, 16, 34, 0.8);
 
     }
 
-    .pairing-status-table td::before {
+    .song-list-table td,
+    .song-list-table td + td {
 
-        content: attr(data-label);
+        padding: 3px 0;
 
-        color: #9a9a9a;
+        border: 0;
 
-        font-size: 12px;
+    }
 
-        text-align: left;
+    .song-list-table tbody tr:hover td {
 
-        flex-shrink: 0;
+        background: transparent;
+
+    }
+
+    .song-list-table td.col-num {
+
+        position: absolute;
+
+        top: 12px;
+
+        left: 12px;
+
+        width: 28px;
+
+        height: 28px;
+
+        padding: 0;
+
+        display: grid;
+
+        place-items: center;
+
+        border-radius: 50%;
+
+        background: rgba(92, 60, 160, 0.7);
+
+        font-size: 13px;
+
+    }
+
+    .song-list-table td.col-song {
+
+        order: -1;
+
+        font-size: 16px;
+
+    }
+
+    .song-list-table td.col-song::before {
+
+        content: none;
+
+    }
+
+    .play-link {
+
+        margin-left: auto;
 
     }
 

@@ -1272,6 +1272,7 @@ const getMyPairing = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 event_name: eventName,
+                payment_status: myPaymentStatus,
                 songs: []
             });
 
@@ -1325,6 +1326,7 @@ const getMyPairing = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 event_name: eventName,
+                payment_status: myPaymentStatus,
                 songs: []
             });
 
@@ -1494,7 +1496,10 @@ const getMyPairing = async (req, res) => {
 
                 let status = "Not Paired";
 
-                if (!paymentConfirmed) {
+                if (myPaymentStatus === "Rejected") {
+                    status = "Payment Rejected";
+                }
+                else if (!paymentConfirmed) {
                     status = "Awaiting Payment";
                 }
                 else {
@@ -1521,6 +1526,7 @@ const getMyPairing = async (req, res) => {
         return res.status(200).json({
             success: true,
             event_name: eventName,
+            payment_status: myPaymentStatus,
             songs: songsOut
         });
 
