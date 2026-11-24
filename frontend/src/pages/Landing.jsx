@@ -83,7 +83,7 @@ const crewFiles = import.meta.glob(
 );
 
 // display order; anyone not listed goes at the end
-const CREW_ORDER = ["manik", "geetha", "ramya", "anand", "selva", "advaith", "vignesh"];
+const CREW_ORDER = ["manik", "ramya", "geetha", "anand", "selva", "advaith", "vignesh"];
 
 const crewRank = (name) => {
     const rank = CREW_ORDER.indexOf(name.toLowerCase());
