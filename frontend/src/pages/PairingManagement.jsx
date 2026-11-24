@@ -65,6 +65,10 @@ function PairingManagement() {
     // final | review | open | report | log
     const [activeTab, setActiveTab] = useState("final");
 
+    // Bumped by "Retry" to load the events again
+    const [eventsAttempt, setEventsAttempt] = useState(0);
+    const [eventsError, setEventsError] = useState("");
+
     useEffect(() => {
 
         getEvents()
@@ -72,6 +76,7 @@ function PairingManagement() {
 
                 const allEvents = result.events || [];
                 setEvents(allEvents);
+                setEventsError("");
 
                 const active = allEvents.find(item => item.is_active);
                 setSelectedEventIds(current =>
@@ -82,6 +87,11 @@ function PairingManagement() {
             .catch(requestError => {
 
                 console.error("Load events error:", requestError);
+                setEventsError(
+                    requestError.message === "Failed to fetch"
+                        ? "Couldn't reach the server - check your connection and retry."
+                        : requestError.message || "Unable to load events."
+                );
 
             })
             .finally(() => {
@@ -96,7 +106,15 @@ function PairingManagement() {
 
             });
 
-    }, []);
+    }, [eventsAttempt]);
+
+    const retryEvents = () => {
+        setEventsReady(false);
+        setEventsError("");
+        setEventsAttempt(current => current + 1);
+    };
+
+    const sessionExpired = /session|log in again/i.test(eventsError);
 
     // The Potential Matches / Open Songs / Manual Pairing sections
     // are a live matching engine that only ever operates on ONE
@@ -648,6 +666,9 @@ function PairingManagement() {
                         events={events}
                         selectedIds={selectedEventIds}
                         onChange={setSelectedEventIds}
+                        loading={!eventsReady}
+                        loadError={eventsError}
+                        onRetry={retryEvents}
                     />
                     {selectedEventIds.length > 1 && (
                         <span className="pairing-event-compare-hint">
@@ -655,6 +676,19 @@ function PairingManagement() {
                         </span>
                     )}
                 </div>
+
+                {eventsError && (
+                    <div className="pairing-error pairing-events-error">
+                        ⚠️ Events couldn't be loaded: {eventsError}{" "}
+                        {sessionExpired ? (
+                            <a href="/admin/login" className="pairing-events-error-link">Log in again</a>
+                        ) : (
+                            <button type="button" className="admin-btn admin-btn-outline admin-btn-sm" onClick={retryEvents}>
+                                Retry
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 <div className="pairing-tabs" role="tablist" aria-label="Pairing sections">
                     {tabs.map(tab => (
@@ -687,7 +721,13 @@ function PairingManagement() {
                             onSaved={loadData}
                         />
                     ) : (
-                        <div className="pairing-empty">Select an event to see its final pairing list.</div>
+                        <div className="pairing-empty">
+                            {!eventsReady
+                                ? "Loading events..."
+                                : eventsError
+                                    ? "The events couldn't be loaded - see the message above."
+                                    : "Select an event to see its final pairing list."}
+                        </div>
                     )
                 )}
 

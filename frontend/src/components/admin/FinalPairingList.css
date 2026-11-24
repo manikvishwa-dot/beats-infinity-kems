@@ -422,6 +422,28 @@ select.final-input {
 
 }
 
+.pairing-events-error {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+.pairing-events-error-link {
+
+    color: #FFFFFF;
+
+    font-weight: 700;
+
+    text-decoration: underline;
+
+}
+
 /* ----------------------------------------------------------
    ADD A SINGER DIALOG
    ---------------------------------------------------------- */

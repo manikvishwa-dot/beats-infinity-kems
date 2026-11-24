@@ -7,7 +7,10 @@ const MAX_SELECTABLE = 3;
 // Multi-select event picker, capped at MAX_SELECTABLE - used to
 // scope an admin view to one event, or compare up to 3 side by
 // side. `events` is the full list ({id, name, is_active, ...}).
-function EventSelector({ events, selectedIds, onChange }) {
+// Optional: loading (events still on their way), loadError (why
+// they couldn't be loaded) and onRetry - so a failed load isn't
+// mistaken for "there are no events".
+function EventSelector({ events, selectedIds, onChange, loading = false, loadError = "", onRetry }) {
 
     const [open, setOpen] = useState(false);
     const containerRef = useRef(null);
@@ -53,7 +56,11 @@ function EventSelector({ events, selectedIds, onChange }) {
         .map(event => event.name);
 
     const label =
-        selectedNames.length === 0
+        loading && events.length === 0
+            ? "Loading events..."
+            : loadError && events.length === 0
+                ? "Events couldn't load"
+                : selectedNames.length === 0
             ? "Select event(s)"
             : selectedNames.length === 1
                 ? selectedNames[0]
@@ -69,7 +76,24 @@ function EventSelector({ events, selectedIds, onChange }) {
             {open && (
                 <div className="event-selector-panel">
                     {events.length === 0 ? (
-                        <div className="event-selector-empty">No events yet</div>
+                        loading ? (
+                            <div className="event-selector-empty">Loading events...</div>
+                        ) : loadError ? (
+                            <div className="event-selector-empty">
+                                ⚠️ {loadError}
+                                {onRetry && (
+                                    <button
+                                        type="button"
+                                        className="admin-btn admin-btn-outline admin-btn-sm event-selector-retry"
+                                        onClick={onRetry}
+                                    >
+                                        Retry
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="event-selector-empty">No events yet</div>
+                        )
                     ) : (
                         events.map(event => {
 

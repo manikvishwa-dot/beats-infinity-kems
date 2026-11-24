@@ -106,6 +106,14 @@
 
 }
 
+.event-selector-retry {
+
+    display: block;
+
+    margin: 10px auto 0;
+
+}
+
 .event-selector-option {
 
     display: flex;
