@@ -49,10 +49,22 @@ const comparable = rows => JSON.stringify(
 );
 
 
+// singerId -> number of rows (songs) they're on
+const countSongs = list => {
+    const counts = new Map();
+    list.forEach(row => {
+        [row.male_singer_id, row.female_singer_id].filter(Boolean).forEach(id => {
+            counts.set(id, (counts.get(id) || 0) + 1);
+        });
+    });
+    return counts;
+};
+
+
 const ADD_SINGER = "__add_singer__";
 
 // Only this event's singers, then "+ Add a singer..." last
-function SingerSelect({ value, singers, onChange, onAddSinger, emptyLabel, ariaLabel }) {
+function SingerSelect({ value, singers, counts, onChange, onAddSinger, emptyLabel, ariaLabel }) {
 
     const inEvent = singers.filter(singer => singer.in_event || singer.id === value);
 
@@ -73,7 +85,9 @@ function SingerSelect({ value, singers, onChange, onAddSinger, emptyLabel, ariaL
             <option value="">{emptyLabel}</option>
 
             {inEvent.map(singer => (
-                <option key={singer.id} value={singer.id}>{singer.singer_name}</option>
+                <option key={singer.id} value={singer.id}>
+                    {singer.singer_name} ({counts.get(singer.id) || 0})
+                </option>
             ))}
 
             <option value={ADD_SINGER}>＋ Add a singer...</option>
@@ -339,17 +353,29 @@ function FinalPairingList({ eventId, onSaved }) {
     // SONGS PER SINGER
     // ------------------------------------------------------
 
+    // Live from the rows on screen (unsaved edits included), compared
+    // with the last saved list for the +1 / -1 badges.
+    const songCounts = useMemo(() => countSongs(rows), [rows]);
+    const savedCounts = useMemo(() => countSongs(serverRows), [serverRows]);
+
+    // Everyone in this event (0 songs included) plus anyone on a row
     const perSinger = useMemo(() => {
-        const counts = new Map();
-        rows.forEach(row => {
-            [row.male_singer_id, row.female_singer_id].filter(Boolean).forEach(id => {
-                counts.set(id, (counts.get(id) || 0) + 1);
-            });
-        });
-        return [...counts.entries()]
-            .map(([id, count]) => ({ name: nameById.get(id) || "Unknown", count }))
+        const build = list => list
+            .filter(singer =>
+                singer.in_event ||
+                songCounts.has(singer.id) ||
+                savedCounts.has(singer.id)
+            )
+            .map(singer => ({
+                id: singer.id,
+                name: singer.singer_name,
+                count: songCounts.get(singer.id) || 0,
+                change: (songCounts.get(singer.id) || 0) - (savedCounts.get(singer.id) || 0)
+            }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [rows, nameById]);
+
+        return { male: build(maleSingers), female: build(femaleSingers) };
+    }, [maleSingers, femaleSingers, songCounts, savedCounts]);
 
     const soloCount = rows.filter(row => !(row.male_singer_id && row.female_singer_id) && (row.male_singer_id || row.female_singer_id)).length;
 
@@ -382,6 +408,47 @@ function FinalPairingList({ eventId, onSaved }) {
 
             {error && <div className="pairing-error">⚠️ {error}</div>}
             {success && <div className="pairing-success">✅ {success}</div>}
+
+            {(perSinger.male.length > 0 || perSinger.female.length > 0) && (
+                <section className="final-counts" aria-label="Songs per singer">
+                    <div className="final-counts-head">
+                        <h3>Songs per singer</h3>
+                        <span>
+                            {rows.length} {rows.length === 1 ? "song" : "songs"}
+                            {soloCount > 0 ? ` · ${soloCount} solo` : ""}
+                            {dirty ? " · unsaved changes shown" : ""}
+                        </span>
+                    </div>
+
+                    {[
+                        { label: "Male", list: perSinger.male },
+                        { label: "Female", list: perSinger.female }
+                    ].filter(group => group.list.length > 0).map(group => (
+                        <div className="final-counts-group" key={group.label}>
+                            <span className="final-counts-label">{group.label}</span>
+                            <div className="final-counts-chips">
+                                {group.list.map(item => (
+                                    <span
+                                        key={item.id}
+                                        className={`final-count-chip${item.count === 0 ? " is-zero" : ""}`}
+                                        title={item.change !== 0
+                                            ? `${item.name}: ${item.count} songs (${item.change > 0 ? "+" : ""}${item.change} since last save)`
+                                            : `${item.name}: ${item.count} songs`}
+                                    >
+                                        {item.name}
+                                        <b>{item.count}</b>
+                                        {item.change !== 0 && (
+                                            <em className={item.change > 0 ? "is-up" : "is-down"}>
+                                                {item.change > 0 ? `+${item.change}` : item.change}
+                                            </em>
+                                        )}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </section>
+            )}
 
             <div className="final-table-wrap">
                 <table className="final-table">
@@ -419,6 +486,7 @@ function FinalPairingList({ eventId, onSaved }) {
                                         <SingerSelect
                                             value={row.male_singer_id}
                                             singers={maleSingers}
+                                            counts={songCounts}
                                             emptyLabel={row.female_singer_id ? "★ Solo" : "Select male singer"}
                                             ariaLabel={`Row ${index + 1} male singer`}
                                             onChange={value => updateRow(row.key, "male_singer_id", value)}
@@ -429,6 +497,7 @@ function FinalPairingList({ eventId, onSaved }) {
                                         <SingerSelect
                                             value={row.female_singer_id}
                                             singers={femaleSingers}
+                                            counts={songCounts}
                                             emptyLabel={row.male_singer_id ? "★ Solo" : "Select female singer"}
                                             ariaLabel={`Row ${index + 1} female singer`}
                                             onChange={value => updateRow(row.key, "female_singer_id", value)}
@@ -512,14 +581,6 @@ function FinalPairingList({ eventId, onSaved }) {
                     onAdded={handleSingerAdded}
                     onClose={() => setAddingSinger(null)}
                 />
-            )}
-
-            {perSinger.length > 0 && (
-                <p className="final-summary">
-                    {rows.length} {rows.length === 1 ? "song" : "songs"}
-                    {soloCount > 0 ? ` (${soloCount} solo)` : ""} · Songs per singer:{" "}
-                    {perSinger.map(item => `${item.name} ${item.count}`).join(" · ")}
-                </p>
             )}
 
         </div>

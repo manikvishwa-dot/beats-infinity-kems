@@ -6,6 +6,13 @@
 
     margin: 0 0 6px;
 
+    /* the site-wide h2 colour is meant for light pages */
+    color: #ffffff;
+
+    font-family: "Poppins", sans-serif;
+
+    font-weight: 700;
+
 }
 
 .final-table-wrap {
@@ -251,16 +258,6 @@ select.final-input {
     font-size: 13px;
 
     font-weight: 600;
-
-}
-
-.final-summary {
-
-    margin: 14px 0 0;
-
-    color: #9a9aa8;
-
-    font-size: 13px;
 
 }
 
@@ -663,4 +660,110 @@ select.final-input {
 
     }
 
+}
+
+/* ---------- Songs per singer (live) ---------- */
+
+.final-counts {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-radius: var(--admin-radius, 16px);
+    border: 1px solid var(--admin-border, rgba(255, 255, 255, 0.09));
+    background: var(--admin-glass, rgba(255, 255, 255, 0.04));
+}
+
+.final-counts-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 14px;
+    margin-bottom: 10px;
+}
+
+.final-counts-head h3 {
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+    font-size: 15px;
+    color: #ffffff;
+}
+
+.final-counts-head span {
+    font-size: 12.5px;
+    color: #8a8a8a;
+}
+
+.final-counts-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.final-counts-group + .final-counts-group {
+    margin-top: 10px;
+}
+
+.final-counts-label {
+    flex: 0 0 54px;
+    padding-top: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #777777;
+}
+
+.final-counts-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.final-count-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 6px 4px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #dddddd;
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
+.final-count-chip b {
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    text-align: center;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: #0b0b0b;
+    background: var(--admin-green-bright, #39EF79);
+}
+
+.final-count-chip.is-zero {
+    border-color: rgba(255, 183, 77, 0.35);
+    color: #FFB74D;
+}
+
+.final-count-chip.is-zero b {
+    background: rgba(255, 183, 77, 0.2);
+    color: #FFB74D;
+}
+
+.final-count-chip em {
+    font-style: normal;
+    font-size: 11px;
+    font-weight: 800;
+    padding-right: 4px;
+}
+
+.final-count-chip em.is-up { color: #39EF79; }
+.final-count-chip em.is-down { color: #ff6b6b; }
+
+@media (max-width: 600px) {
+    .final-counts-group { flex-direction: column; gap: 6px; }
+    .final-counts-label { flex: none; padding-top: 0; }
 }
