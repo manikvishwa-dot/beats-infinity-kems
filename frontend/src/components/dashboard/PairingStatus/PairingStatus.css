@@ -42,157 +42,214 @@
 
 }
 
-.pairing-status-list {
 
-    display: flex;
+/* ----------------------------------------------------------
+   TABLE
+   ---------------------------------------------------------- */
 
-    flex-direction: column;
+.pairing-status-table-wrap {
 
-    gap: 12px;
+    overflow-x: auto;
+
+    border-radius: 16px;
+
+    border: 1px solid rgba(255,255,255,0.09);
+
+    background: rgba(255,255,255,0.03);
 
 }
 
-.pairing-status-card {
+.pairing-status-table {
 
-    display: flex;
+    width: 100%;
 
-    align-items: center;
+    border-collapse: collapse;
 
-    gap: 18px;
+    font-family: "Poppins", sans-serif;
 
-    padding: 18px 24px;
+    font-size: 14px;
 
-    border-radius: 18px;
-
-    background: rgba(76,175,80,0.08);
-
-    border: 1px solid rgba(76,175,80,0.3);
+    color: #DDDDDD;
 
     text-align: left;
 
 }
 
-.pairing-status-card.pending {
+.pairing-status-table th {
 
-    background: rgba(255,213,74,0.08);
+    padding: 12px 16px;
 
-    border-color: rgba(255,213,74,0.35);
+    color: #9a9a9a;
 
-}
-
-.pairing-status-card.not-paired {
-
-    background: rgba(79,195,247,0.08);
-
-    border-color: rgba(79,195,247,0.3);
-
-}
-
-.pairing-status-icon {
-
-    font-size: 30px;
-
-    flex-shrink: 0;
-
-}
-
-.pairing-status-body {
-
-    flex: 1;
-
-    min-width: 0;
-
-}
-
-.pairing-status-card h3 {
-
-    margin: 0 0 6px;
-
-    color: #4CAF50;
-
-    font-family: "Poppins", sans-serif;
-
-    font-size: 16px;
-
-}
-
-.pairing-status-card.pending h3 {
-
-    color: #FFD54A;
-
-}
-
-.pairing-status-card.not-paired h3 {
-
-    color: #4FC3F7;
-
-}
-
-.pairing-status-card p {
-
-    margin: 0;
-
-    color: #DDDDDD;
-
-    font-size: 14px;
-
-}
-
-.pairing-status-partner {
-
-    display: flex;
-
-    flex-direction: column;
-
-    align-items: flex-end;
-
-    text-align: right;
-
-    flex-shrink: 0;
-
-    gap: 4px;
-
-    padding-left: 16px;
-
-}
-
-.partner-name {
-
-    font-family: "Poppins", sans-serif;
-
-    font-size: 17px;
+    font-size: 12px;
 
     font-weight: 600;
 
-    color: #4CAF50;
+    letter-spacing: 0.04em;
+
+    text-transform: uppercase;
+
+    border-bottom: 1px solid rgba(255,255,255,0.09);
+
+    white-space: nowrap;
 
 }
 
-.partner-wish {
+.pairing-status-table td {
+
+    padding: 12px 16px;
+
+    vertical-align: middle;
+
+}
+
+.pairing-status-table tbody tr + tr td {
+
+    border-top: 1px solid rgba(255,255,255,0.06);
+
+}
+
+.pairing-status-table tr.paired td {
+
+    color: #FFFFFF;
+
+}
+
+.pairing-status-song {
+
+    font-weight: 600;
+
+}
+
+.pairing-status-badge {
+
+    display: inline-block;
+
+    padding: 4px 10px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+
+}
+
+.pairing-status-badge.paired {
+
+    color: #39EF79;
+
+    background: rgba(57,239,121,0.12);
+
+    border: 1px solid rgba(57,239,121,0.35);
+
+}
+
+.pairing-status-badge.pending {
+
+    color: #FFD54A;
+
+    background: rgba(255,213,74,0.1);
+
+    border: 1px solid rgba(255,213,74,0.35);
+
+}
+
+.pairing-status-badge.not-paired {
+
+    color: #4FC3F7;
+
+    background: rgba(79,195,247,0.1);
+
+    border: 1px solid rgba(79,195,247,0.3);
+
+}
+
+.pairing-status-legend {
+
+    margin: 10px 4px 0;
+
+    padding: 0;
+
+    list-style: none;
+
+    color: #9a9a9a;
 
     font-size: 13px;
 
-    color: #DDDDDD;
+    line-height: 1.6;
 
 }
 
-@media (max-width: 560px) {
 
-    .pairing-status-card {
+/* ----------------------------------------------------------
+   PHONES - each row becomes a small labelled card
+   ---------------------------------------------------------- */
 
-        flex-wrap: wrap;
+@media (max-width: 640px) {
+
+    .pairing-status-table thead {
+
+        display: none;
 
     }
 
-    .pairing-status-partner {
+    .pairing-status-table,
+    .pairing-status-table tbody,
+    .pairing-status-table tr,
+    .pairing-status-table td {
 
-        align-items: flex-start;
+        display: block;
+
+        width: 100%;
+
+    }
+
+    .pairing-status-table tr {
+
+        padding: 10px 14px;
+
+    }
+
+    .pairing-status-table tbody tr + tr td {
+
+        border-top: 0;
+
+    }
+
+    .pairing-status-table tbody tr + tr {
+
+        border-top: 1px solid rgba(255,255,255,0.08);
+
+    }
+
+    .pairing-status-table td {
+
+        display: flex;
+
+        justify-content: space-between;
+
+        gap: 12px;
+
+        padding: 4px 0;
+
+        text-align: right;
+
+    }
+
+    .pairing-status-table td::before {
+
+        content: attr(data-label);
+
+        color: #9a9a9a;
+
+        font-size: 12px;
 
         text-align: left;
 
-        padding-left: 48px;
-
-        width: 100%;
+        flex-shrink: 0;
 
     }
 

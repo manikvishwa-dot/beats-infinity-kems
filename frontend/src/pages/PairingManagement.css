@@ -72,6 +72,75 @@
 
 }
 
+.pairing-bulk-bar {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    gap: 10px 14px;
+
+    margin: 0 0 16px;
+
+    padding: 10px 14px;
+
+    border-radius: 12px;
+
+    background: rgba(255,255,255,0.04);
+
+    border: 1px solid rgba(255,255,255,0.09);
+
+}
+
+.pairing-bulk-all {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    color: #DDDDDD;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+}
+
+.pairing-bulk-count {
+
+    flex: 1;
+
+    color: #9a9a9a;
+
+    font-size: 13px;
+
+}
+
+.pairing-check-col {
+
+    width: 36px;
+
+    text-align: center !important;
+
+}
+
+.pairing-bulk-bar input[type="checkbox"],
+.pairing-check-col input[type="checkbox"] {
+
+    width: 16px;
+
+    height: 16px;
+
+    accent-color: #39EF79;
+
+    cursor: pointer;
+
+}
+
 .pairing-section-hint {
 
     margin: -6px 0 18px;

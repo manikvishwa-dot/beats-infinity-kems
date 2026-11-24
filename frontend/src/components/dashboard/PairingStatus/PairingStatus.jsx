@@ -100,56 +100,63 @@ function PairingStatus({ singerId }) {
                 <p className="pairing-status-event">{eventName}</p>
             )}
 
-            <div className="pairing-status-list">
+            <div className="pairing-status-table-wrap">
 
-                {songs.map(song => {
+                <table className="pairing-status-table">
 
-                    const meta = STATUS_META[song.status] || STATUS_META.Pending;
+                    <thead>
+                        <tr>
+                            <th>Male Singer</th>
+                            <th>Female Singer</th>
+                            <th>Song</th>
+                            <th>Movie</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
 
-                    return (
+                    <tbody>
+                        {songs.map(song => {
 
-                        <div
-                            className={`pairing-status-card ${meta.className}`}
-                            key={song.song_id}
-                        >
+                            const meta = STATUS_META[song.status] || STATUS_META.Pending;
 
-                            <div className="pairing-status-icon">
-                                {meta.icon}
-                            </div>
+                            return (
+                                <tr
+                                    className={meta.className}
+                                    key={`${song.song_id}-${song.male_singer_name}-${song.female_singer_name}`}
+                                >
+                                    <td data-label="Male Singer">{song.male_singer_name || "—"}</td>
+                                    <td data-label="Female Singer">{song.female_singer_name || "—"}</td>
+                                    <td data-label="Song" className="pairing-status-song">{song.song_title}</td>
+                                    <td data-label="Movie">{song.movie || "—"}</td>
+                                    <td data-label="Status">
+                                        <span className={`pairing-status-badge ${meta.className}`}>
+                                            {meta.icon} {song.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            );
 
-                            <div className="pairing-status-body">
-                                <h3>{song.song_title}</h3>
+                        })}
+                    </tbody>
 
-                                {song.status === "Awaiting Payment" && (
-                                    <p>Payment awaiting admin confirmation - pairing starts once it's confirmed.</p>
-                                )}
-
-                                {song.status === "Pending" && (
-                                    <p>Pairing decision pending - check back soon.</p>
-                                )}
-
-                                {song.status === "Not Paired" && (
-                                    <p>
-                                        Don't worry, these songs can be accommodated on
-                                        upcoming events if it fits the theme.
-                                    </p>
-                                )}
-                            </div>
-
-                            {song.status === "Paired" && (
-                                <div className="pairing-status-partner">
-                                    <span className="partner-name">{song.partner_name}</span>
-                                    <span className="partner-wish">Wish you a Happy Singing</span>
-                                </div>
-                            )}
-
-                        </div>
-
-                    );
-
-                })}
+                </table>
 
             </div>
+
+            <ul className="pairing-status-legend">
+                {songs.some(song => song.status === "Paired") && (
+                    <li>🎉 <b>Paired</b> - wish you a happy singing!</li>
+                )}
+                {songs.some(song => song.status === "Awaiting Payment") && (
+                    <li>💳 <b>Awaiting Payment</b> - pairing starts once the admin confirms your payment.</li>
+                )}
+                {songs.some(song => song.status === "Pending") && (
+                    <li>⏳ <b>Pending</b> - pairing decision pending, check back soon.</li>
+                )}
+                {songs.some(song => song.status === "Not Paired") && (
+                    <li>💬 <b>Not Paired</b> - don't worry, these songs can be accommodated in upcoming events if they fit the theme.</li>
+                )}
+            </ul>
 
         </section>
 

@@ -54,6 +54,10 @@ function PairingManagement() {
     // Open-songs partner picker: songId -> selected partner singer_id
     const [openSongPartners, setOpenSongPartners] = useState({});
 
+    // Potential Matches ticked for a bulk Approve / Reject
+    const [selectedMatchKeys, setSelectedMatchKeys] = useState(() => new Set());
+    const [bulkSaving, setBulkSaving] = useState(false);
+
     useEffect(() => {
 
         getEvents()
@@ -403,6 +407,132 @@ function PairingManagement() {
     };
 
     // ==========================================================
+    // BULK SAVE
+    //
+    // Runs each pairing through the same endpoint (and the same
+    // backend checks) one after another, then reloads once. A row
+    // that fails doesn't stop the rest - failures are listed.
+    // ==========================================================
+
+    const matchKeyOf = candidate =>
+        `${candidate.song_id}:${candidate.male_singer_id}:${candidate.female_singer_id}`;
+
+    const runBulk = async (items, label) => {
+        setBulkSaving(true);
+        setError("");
+        setSuccess("");
+
+        let saved = 0;
+        const failed = [];
+        const failedIds = new Set();
+
+        for (const item of items) {
+            try {
+                await decidePairing(
+                    item.song_id,
+                    item.male_singer_id,
+                    item.female_singer_id,
+                    item.decision,
+                    item.source
+                );
+                saved += 1;
+            }
+            catch (requestError) {
+                failed.push(`${item.song_title}: ${requestError.message || "failed"}`);
+                failedIds.add(item.song_id);
+            }
+        }
+
+        await loadData();
+        setBulkSaving(false);
+
+        if (saved > 0) {
+            setSuccess(`${saved} ${saved === 1 ? "pairing" : "pairings"} ${label}.`);
+        }
+
+        if (failed.length > 0) {
+            setError(`${failed.length} not saved - ${failed.join("; ")}`);
+        }
+
+        return { saved, failed, failedIds };
+    };
+
+    const toggleMatch = candidate => {
+        const key = matchKeyOf(candidate);
+        setSelectedMatchKeys(current => {
+            const next = new Set(current);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    };
+
+    const toggleAllMatches = () => {
+        setSelectedMatchKeys(current =>
+            current.size === suggestions.potential_matches.length
+                ? new Set()
+                : new Set(suggestions.potential_matches.map(matchKeyOf))
+        );
+    };
+
+    const handleBulkDecision = async decision => {
+        const chosen = suggestions.potential_matches.filter(
+            candidate => selectedMatchKeys.has(matchKeyOf(candidate))
+        );
+
+        if (chosen.length === 0) {
+            return;
+        }
+
+        await runBulk(
+            chosen.map(candidate => ({
+                song_id: candidate.song_id,
+                song_title: candidate.song_title,
+                male_singer_id: candidate.male_singer_id,
+                female_singer_id: candidate.female_singer_id,
+                decision,
+                source: candidate.source || "auto"
+            })),
+            decision === "Approved" ? "approved" : "rejected"
+        );
+
+        setSelectedMatchKeys(new Set());
+    };
+
+    const assignedOpenSongs = openSongsMale.filter(
+        openSong => openSongPartners[openSong.song_id]
+    );
+
+    const handleSaveAllOpen = async () => {
+        if (assignedOpenSongs.length === 0) {
+            return;
+        }
+
+        const { failedIds } = await runBulk(
+            assignedOpenSongs.map(openSong => ({
+                song_id: openSong.song_id,
+                song_title: openSong.song_title,
+                male_singer_id: openSong.singer_id,
+                female_singer_id: openSongPartners[openSong.song_id],
+                decision: "Approved",
+                source: "manual"
+            })),
+            "paired"
+        );
+
+        // Keep the partner choice only on rows that failed, so they
+        // can be fixed and saved again.
+        setOpenSongPartners(current => {
+            const next = {};
+            assignedOpenSongs.forEach(openSong => {
+                if (failedIds.has(openSong.song_id)) {
+                    next[openSong.song_id] = current[openSong.song_id];
+                }
+            });
+            return next;
+        });
+    };
+
+    // ==========================================================
     // PAIR AN OPEN (UNMATCHED) SONG
     //
     // The song's own singer already owns it - the manually
@@ -501,6 +631,45 @@ function PairingManagement() {
                     <div className="pairing-section">
                         <h2>Potential Matches</h2>
 
+                        {suggestions.potential_matches.length > 0 && (
+                            <div className="pairing-bulk-bar">
+                                <label className="pairing-bulk-all">
+                                    <input
+                                        type="checkbox"
+                                        checked={
+                                            selectedMatchKeys.size > 0 &&
+                                            selectedMatchKeys.size === suggestions.potential_matches.length
+                                        }
+                                        onChange={toggleAllMatches}
+                                        disabled={bulkSaving}
+                                    />
+                                    Select all ({suggestions.potential_matches.length})
+                                </label>
+
+                                <span className="pairing-bulk-count">
+                                    {selectedMatchKeys.size} selected
+                                </span>
+
+                                <button
+                                    type="button"
+                                    className="pairing-action-btn approve"
+                                    disabled={bulkSaving || selectedMatchKeys.size === 0}
+                                    onClick={() => handleBulkDecision("Approved")}
+                                >
+                                    {bulkSaving ? "Saving..." : "Approve selected"}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="pairing-action-btn reject"
+                                    disabled={bulkSaving || selectedMatchKeys.size === 0}
+                                    onClick={() => handleBulkDecision("Rejected")}
+                                >
+                                    Reject selected
+                                </button>
+                            </div>
+                        )}
+
                         {matchesByMaleSinger.length === 0 ? (
                             <div className="pairing-empty">
                                 No potential matches right now - this appears when a male and
@@ -517,6 +686,7 @@ function PairingManagement() {
                                         <table className="pairing-table">
                                             <thead>
                                                 <tr>
+                                                    <th className="pairing-check-col" />
                                                     <th>Song</th>
                                                     <th>Female Singer</th>
                                                     <th>Status</th>
@@ -531,6 +701,15 @@ function PairingManagement() {
 
                                                     return (
                                                         <tr key={key}>
+                                                            <td className="pairing-check-col">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    aria-label={`Select ${candidate.song_title} with ${candidate.female_singer_name}`}
+                                                                    checked={selectedMatchKeys.has(key)}
+                                                                    onChange={() => toggleMatch(candidate)}
+                                                                    disabled={bulkSaving}
+                                                                />
+                                                            </td>
                                                             <td>{candidate.song_title}</td>
                                                             <td>{candidate.female_singer_name}</td>
                                                             <td>
@@ -584,6 +763,25 @@ function PairingManagement() {
                         </p>
 
                         <h3 className="pairing-singer-group-title">👨 Male Singers</h3>
+
+                        {openSongsMale.length > 0 && (
+                            <div className="pairing-bulk-bar">
+                                <span className="pairing-bulk-count">
+                                    Pick a partner on as many rows as you like, then save them together.
+                                </span>
+
+                                <button
+                                    type="button"
+                                    className="pairing-action-btn approve"
+                                    disabled={bulkSaving || assignedOpenSongs.length === 0}
+                                    onClick={handleSaveAllOpen}
+                                >
+                                    {bulkSaving
+                                        ? "Saving..."
+                                        : `Save all assigned pairings (${assignedOpenSongs.length})`}
+                                </button>
+                            </div>
+                        )}
 
                         {openSongsMale.length === 0 ? (
                             <div className="pairing-empty">

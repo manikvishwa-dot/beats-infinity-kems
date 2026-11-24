@@ -1266,7 +1266,6 @@ const getMyPairing = async (req, res) => {
 
         if (
             !me ||
-            mySelections.length === 0 ||
             (myGender !== "male" && myGender !== "female")
         ) {
 
@@ -1278,79 +1277,13 @@ const getMyPairing = async (req, res) => {
 
         }
 
-        // Payment not confirmed yet - these picks aren't in pairing.
-        if (myPaymentStatus && myPaymentStatus !== "Paid") {
-
-            return res.status(200).json({
-                success: true,
-                event_name: eventName,
-                songs: mySelections
-                    .filter(({ title }) => Boolean(title))
-                    .map(({ song_id, title }) => ({
-                        song_id,
-                        song_title: title,
-                        status: "Awaiting Payment",
-                        partner_name: null
-                    }))
-            });
-
-        }
-
         const oppositeGender =
             myGender === "male" ? "female" : "male";
 
 
         // ----------------------------------------------------
-        // Opposite-gender singers, grouped by normalized title -
-        // who could theoretically be paired against each of my
-        // songs.
-        // ----------------------------------------------------
-
-        const oppositeByTitle =
-            new Map();
-
-        selectionsBySinger.forEach(
-            (selections, otherId) => {
-
-                if (otherId === singerId) {
-                    return;
-                }
-
-                const other =
-                    singerById.get(otherId);
-
-                if (
-                    String(other?.gender || "").trim().toLowerCase() !==
-                    oppositeGender
-                ) {
-                    return;
-                }
-
-                selections.forEach(({ title }) => {
-
-                    if (!title) {
-                        return;
-                    }
-
-                    const key =
-                        normalizeTitle(title);
-
-                    if (!oppositeByTitle.has(key)) {
-                        oppositeByTitle.set(key, []);
-                    }
-
-                    oppositeByTitle.get(key).push(otherId);
-
-                });
-
-            }
-        );
-
-
-        // ----------------------------------------------------
         // Every decision (Approved or Rejected) already made
-        // involving me, in the active event, grouped by the
-        // song's normalized title.
+        // involving me, in the active event.
         // ----------------------------------------------------
 
         let decidedQuery =
@@ -1384,116 +1317,211 @@ const getMyPairing = async (req, res) => {
 
         }
 
-        const approvedPartnerByTitle =
+        const approvedRows =
+            (decidedRows || []).filter(row => row.status === "Approved");
+
+        if (mySelections.length === 0 && approvedRows.length === 0) {
+
+            return res.status(200).json({
+                success: true,
+                event_name: eventName,
+                songs: []
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // Song + partner details for Approved pairings. A pairing
+        // can be on my PARTNER's song (admin paired me on a song I
+        // didn't pick), so look up any song not already known.
+        // ----------------------------------------------------
+
+        const missingSongIds = [
+            ...new Set(
+                approvedRows
+                    .map(row => row.song_id)
+                    .filter(id => !songMap.has(id))
+            )
+        ];
+
+        if (missingSongIds.length > 0) {
+
+            const { data: extraSongs } = await supabase
+                .from("songs")
+                .select("id,title,movie,event_id")
+                .in("id", missingSongIds);
+
+            (extraSongs || []).forEach(song => songMap.set(song.id, song));
+
+        }
+
+        const partnerIds = [
+            ...new Set(
+                approvedRows.map(row =>
+                    row.male_singer_id === singerId
+                        ? row.female_singer_id
+                        : row.male_singer_id
+                )
+            )
+        ].filter(id => !singerById.has(id));
+
+        if (partnerIds.length > 0) {
+
+            const { data: partners } = await supabase
+                .from("singers")
+                .select("id,singer_name,gender")
+                .in("id", partnerIds);
+
+            (partners || []).forEach(partner => singerById.set(partner.id, partner));
+
+        }
+
+        const nameOf = id =>
+            singerById.get(id)?.singer_name || "Unknown Singer";
+
+        const songsOut = [];
+        const pairedTitles = new Set();
+
+        approvedRows.forEach(row => {
+
+            const song = songMap.get(row.song_id);
+
+            if (!song?.title) {
+                return;
+            }
+
+            pairedTitles.add(normalizeTitle(song.title));
+
+            songsOut.push({
+                song_id: row.song_id,
+                song_title: song.title,
+                movie: song.movie || null,
+                status: "Paired",
+                male_singer_name: nameOf(row.male_singer_id),
+                female_singer_name: nameOf(row.female_singer_id),
+                partner_name: nameOf(
+                    row.male_singer_id === singerId
+                        ? row.female_singer_id
+                        : row.male_singer_id
+                )
+            });
+
+        });
+
+
+        // ----------------------------------------------------
+        // My own picks that aren't paired yet.
+        //
+        // Payment not confirmed -> "Awaiting Payment" (not in
+        // pairing yet). Otherwise "Pending" while an opposite-
+        // gender singer who picked the same title is undecided,
+        // else "Not Paired".
+        // ----------------------------------------------------
+
+        const paymentConfirmed =
+            !myPaymentStatus || myPaymentStatus === "Paid";
+
+        const oppositeByTitle =
             new Map();
+
+        selectionsBySinger.forEach(
+            (selections, otherId) => {
+
+                if (otherId === singerId) {
+                    return;
+                }
+
+                if (
+                    String(singerById.get(otherId)?.gender || "").trim().toLowerCase() !==
+                    oppositeGender
+                ) {
+                    return;
+                }
+
+                selections.forEach(({ title }) => {
+
+                    if (!title) {
+                        return;
+                    }
+
+                    const key = normalizeTitle(title);
+
+                    if (!oppositeByTitle.has(key)) {
+                        oppositeByTitle.set(key, []);
+                    }
+
+                    oppositeByTitle.get(key).push(otherId);
+
+                });
+
+            }
+        );
 
         const decidedPartnersByTitle =
             new Map();
 
         (decidedRows || []).forEach(row => {
 
-            const title =
-                songMap.get(row.song_id)?.title;
+            const title = songMap.get(row.song_id)?.title;
 
             if (!title) {
                 return;
             }
 
-            const key =
-                normalizeTitle(title);
-
-            const partnerId =
-                row.male_singer_id === singerId
-                    ? row.female_singer_id
-                    : row.male_singer_id;
-
-            if (row.status === "Approved") {
-                approvedPartnerByTitle.set(key, partnerId);
-            }
+            const key = normalizeTitle(title);
 
             if (!decidedPartnersByTitle.has(key)) {
                 decidedPartnersByTitle.set(key, new Set());
             }
 
-            decidedPartnersByTitle.get(key).add(partnerId);
+            decidedPartnersByTitle.get(key).add(
+                row.male_singer_id === singerId
+                    ? row.female_singer_id
+                    : row.male_singer_id
+            );
 
         });
 
+        const myName = me.singer_name || "Unknown Singer";
 
-        // ----------------------------------------------------
-        // Partner names for anything Approved.
-        // ----------------------------------------------------
+        mySelections
+            .filter(({ title }) => Boolean(title))
+            .filter(({ title }) => !pairedTitles.has(normalizeTitle(title)))
+            .forEach(({ song_id, title }) => {
 
-        const approvedPartnerIds =
-            [...new Set(approvedPartnerByTitle.values())];
+                const key = normalizeTitle(title);
 
-        let partnerNameById =
-            new Map();
+                let status = "Not Paired";
 
-        if (approvedPartnerIds.length > 0) {
+                if (!paymentConfirmed) {
+                    status = "Awaiting Payment";
+                }
+                else {
+                    const candidateIds = oppositeByTitle.get(key) || [];
+                    const decidedIds = decidedPartnersByTitle.get(key) || new Set();
 
-            const { data: partners } = await supabase
-                .from("singers")
-                .select("id,singer_name")
-                .in("id", approvedPartnerIds);
-
-            partnerNameById =
-                new Map((partners || []).map(p => [p.id, p.singer_name]));
-
-        }
-
-
-        // ----------------------------------------------------
-        // BUILD PER-SONG STATUS
-        // ----------------------------------------------------
-
-        const songs =
-            mySelections
-
-                .filter(({ title }) => Boolean(title))
-
-                .map(({ song_id, title }) => {
-
-                    const key =
-                        normalizeTitle(title);
-
-                    if (approvedPartnerByTitle.has(key)) {
-
-                        const partnerId =
-                            approvedPartnerByTitle.get(key);
-
-                        return {
-                            song_id,
-                            song_title: title,
-                            status: "Paired",
-                            partner_name:
-                                partnerNameById.get(partnerId) || "Unknown Singer"
-                        };
-
+                    if (candidateIds.some(id => !decidedIds.has(id))) {
+                        status = "Pending";
                     }
+                }
 
-                    const candidateIds =
-                        oppositeByTitle.get(key) || [];
-
-                    const decidedIds =
-                        decidedPartnersByTitle.get(key) || new Set();
-
-                    const hasUndecidedCandidate =
-                        candidateIds.some(id => !decidedIds.has(id));
-
-                    return {
-                        song_id,
-                        song_title: title,
-                        status: hasUndecidedCandidate ? "Pending" : "Not Paired",
-                        partner_name: null
-                    };
-
+                songsOut.push({
+                    song_id,
+                    song_title: title,
+                    movie: songMap.get(song_id)?.movie || null,
+                    status,
+                    male_singer_name: myGender === "male" ? myName : null,
+                    female_singer_name: myGender === "female" ? myName : null,
+                    partner_name: null
                 });
+
+            });
 
         return res.status(200).json({
             success: true,
             event_name: eventName,
-            songs
+            songs: songsOut
         });
 
     }
