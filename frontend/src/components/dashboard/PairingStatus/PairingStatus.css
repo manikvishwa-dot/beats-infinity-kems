@@ -20,6 +20,28 @@
 
 }
 
+.pairing-status-heading:has(+ .pairing-status-event) {
+
+    margin-bottom: 2px;
+
+}
+
+.pairing-status-event {
+
+    margin: 0 0 12px;
+
+    color: #39EF79;
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    text-align: center;
+
+}
+
 .pairing-status-list {
 
     display: flex;

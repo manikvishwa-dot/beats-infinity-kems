@@ -1211,6 +1211,39 @@ const getMyPairing = async (req, res) => {
         const activeEventId =
             await getActiveEventId();
 
+        // Event name for the dashboard heading, and my own latest
+        // payment for this event - picks whose payment the admin
+        // hasn't confirmed yet are shown as awaiting confirmation,
+        // not as "Not Paired".
+        let eventName = null;
+        let myPaymentStatus = null;
+
+        if (activeEventId) {
+
+            const [eventResult, paymentResult] = await Promise.all([
+
+                supabase
+                    .from("events")
+                    .select("name")
+                    .eq("id", activeEventId)
+                    .maybeSingle(),
+
+                supabase
+                    .from("payments")
+                    .select("status")
+                    .eq("singer_id", singerId)
+                    .eq("event_id", activeEventId)
+                    .order("created_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle()
+
+            ]);
+
+            eventName = eventResult.data?.name || null;
+            myPaymentStatus = paymentResult.data?.status || null;
+
+        }
+
         const {
             singers,
             songMap,
@@ -1237,7 +1270,26 @@ const getMyPairing = async (req, res) => {
 
             return res.status(200).json({
                 success: true,
+                event_name: eventName,
                 songs: []
+            });
+
+        }
+
+        // Payment not confirmed yet - these picks aren't in pairing.
+        if (myPaymentStatus && myPaymentStatus !== "Paid") {
+
+            return res.status(200).json({
+                success: true,
+                event_name: eventName,
+                songs: mySelections
+                    .filter(({ title }) => Boolean(title))
+                    .map(({ song_id, title }) => ({
+                        song_id,
+                        song_title: title,
+                        status: "Awaiting Payment",
+                        partner_name: null
+                    }))
             });
 
         }
@@ -1438,6 +1490,7 @@ const getMyPairing = async (req, res) => {
 
         return res.status(200).json({
             success: true,
+            event_name: eventName,
             songs
         });
 

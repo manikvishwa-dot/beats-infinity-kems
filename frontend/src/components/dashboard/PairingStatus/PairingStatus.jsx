@@ -16,12 +16,17 @@ const STATUS_META = {
     "Not Paired": {
         icon: "💬",
         className: "not-paired"
+    },
+    "Awaiting Payment": {
+        icon: "💳",
+        className: "pending"
     }
 };
 
 function PairingStatus({ singerId }) {
 
     const [songs, setSongs] = useState([]);
+    const [eventName, setEventName] = useState("");
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -44,6 +49,7 @@ function PairingStatus({ singerId }) {
                 if (!cancelled) {
 
                     setSongs(Array.isArray(result.songs) ? result.songs : []);
+                    setEventName(result.event_name || "");
 
                 }
 
@@ -90,6 +96,10 @@ function PairingStatus({ singerId }) {
 
             <h2 className="pairing-status-heading">My Pairing Status</h2>
 
+            {eventName && (
+                <p className="pairing-status-event">{eventName}</p>
+            )}
+
             <div className="pairing-status-list">
 
                 {songs.map(song => {
@@ -109,6 +119,10 @@ function PairingStatus({ singerId }) {
 
                             <div className="pairing-status-body">
                                 <h3>{song.song_title}</h3>
+
+                                {song.status === "Awaiting Payment" && (
+                                    <p>Payment awaiting admin confirmation - pairing starts once it's confirmed.</p>
+                                )}
 
                                 {song.status === "Pending" && (
                                     <p>Pairing decision pending - check back soon.</p>
