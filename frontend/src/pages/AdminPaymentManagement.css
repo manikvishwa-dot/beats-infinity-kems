@@ -583,3 +583,108 @@
     .payment-row-songs { padding: 0 14px 14px 14px; }
     .payment-row-songs ol { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================
+   REDUCED FEE - editable amount
+   ========================================================== */
+
+.payment-amount-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    margin-right: -8px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.payment-amount-btn:hover,
+.payment-amount-btn:focus-visible {
+    border-color: rgba(255, 213, 74, 0.4);
+    background: rgba(255, 213, 74, 0.08);
+    outline: none;
+}
+
+.payment-amount-pencil {
+    font-size: 12px;
+    opacity: 0.45;
+}
+
+.payment-amount-btn:hover .payment-amount-pencil {
+    opacity: 1;
+}
+
+/* The editor floats over the date column (to its left) so the
+   row's grid - and the buttons beside it - never move. */
+.payment-row-amount {
+    position: relative;
+}
+
+.payment-amount-edit {
+    position: absolute;
+    top: 50%;
+    right: -4px;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+    border-radius: 14px;
+    background: #1b1b1b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+    transform: translateY(-50%);
+}
+
+.payment-amount-input {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 8px;
+    height: 32px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 213, 74, 0.55);
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.payment-amount-input input {
+    width: 58px;
+    border: none;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    font-size: 14.5px;
+    text-align: right;
+    outline: none;
+}
+
+.payment-amount-save,
+.payment-amount-cancel {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.payment-amount-save {
+    border: none;
+    background: #1fbf5f;
+    color: #ffffff;
+}
+
+.payment-amount-save:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.payment-amount-cancel {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: #cfcfcf;
+}

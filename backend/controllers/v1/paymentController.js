@@ -1565,6 +1565,97 @@ const markPaymentAsPaid = async (req, res) => {
 // exactly as for a paying singer.
 // ==========================================================
 
+// ==========================================================
+// CHANGE AMOUNT - ADMIN (reduced fee)
+//
+// PUT /api/v1/payments/:id/amount   { amount }
+//
+// For singers who pay less than the usual fee. Works on Pending
+// and Paid payments; revenue totals follow the new amount. A
+// free entry (Guest / Management) given a real amount becomes a
+// normal paying entry again.
+// ==========================================================
+
+const MAX_PAYMENT_AMOUNT = 100000;
+
+const updatePaymentAmount = async (req, res) => {
+    try {
+        const paymentId = cleanString(req.params.id);
+        const raw = req.body?.amount;
+        const amount = Number(raw);
+
+        if (!paymentId) {
+            return res.status(400).json({
+                success: false,
+                message: "Payment ID is required."
+            });
+        }
+
+        if (raw === "" || raw === null || raw === undefined || !Number.isInteger(amount) || amount < 1 || amount > MAX_PAYMENT_AMOUNT) {
+            return res.status(400).json({
+                success: false,
+                message: "Enter the amount in whole rupees (1 or more). For a free entry use the \u20b90 buttons."
+            });
+        }
+
+        const existing = await loadPaymentRow(paymentId);
+
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Payment not found."
+            });
+        }
+
+        if (existing.status === "Rejected") {
+            return res.status(400).json({
+                success: false,
+                message: "This payment was rejected - its amount can't be changed."
+            });
+        }
+
+        const update = { amount, updated_at: new Date().toISOString() };
+
+        if (existing.fee_waiver) {
+            update.fee_waiver = null;
+        }
+
+        const { data: payment, error } = await supabase
+            .from("payments")
+            .update(update)
+            .eq("id", paymentId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("UPDATE PAYMENT AMOUNT:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: "Unable to change the amount.",
+                error: error.message
+            });
+        }
+
+        console.log(`✅ AMOUNT CHANGED: ${paymentId} ${existing.amount} -> ${amount}`);
+
+        return res.status(200).json({
+            success: true,
+            message: `Amount changed to \u20b9${amount.toLocaleString("en-IN")}.`,
+            payment
+        });
+    }
+    catch (error) {
+        console.error("UPDATE PAYMENT AMOUNT EXCEPTION:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error.",
+            error: error.message
+        });
+    }
+};
+
 const waivePaymentFee = async (req, res) => {
     try {
         const paymentId = cleanString(req.params.id);
@@ -1907,6 +1998,7 @@ module.exports = {
     rejectPayment,
     bulkUpdatePaymentStatus,
     waivePaymentFee,
+    updatePaymentAmount,
     addSongToPayment,
     removeSongFromPayment,
     replaceSongInPayment,

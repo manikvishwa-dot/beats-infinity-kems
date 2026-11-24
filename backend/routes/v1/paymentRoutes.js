@@ -99,6 +99,13 @@ router.put(
     paymentController.waivePaymentFee
 );
 
+// Reduced fee - change what this singer pays
+router.put(
+    "/:id/amount",
+    requireAdmin,
+    paymentController.updatePaymentAmount
+);
+
 router.put(
     "/bulk-status",
     requireAdmin,

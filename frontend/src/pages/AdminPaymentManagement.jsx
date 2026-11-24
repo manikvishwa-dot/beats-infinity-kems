@@ -15,6 +15,7 @@ import {
     markPaymentAsPaid,
     rejectPayment,
     waivePayment,
+    updatePaymentAmount,
     bulkUpdatePaymentStatus
 } from "../services/paymentService";
 import { getEvents } from "../services/eventService";
@@ -410,6 +411,54 @@ const AdminPaymentManagement = () => {
         }
     };
 
+    // ------------------------------------------------------
+    // REDUCED FEE - click the amount to change it
+    // ------------------------------------------------------
+
+    const [amountEdit, setAmountEdit] = useState(null);   // { id, value }
+
+    const startAmountEdit = payment => {
+        setAmountEdit({ id: payment.id, value: String(payment.amount ?? "") });
+        setError("");
+    };
+
+    const saveAmount = async payment => {
+        const value = Number(String(amountEdit?.value || "").replace(/[^\d]/g, ""));
+        const name = payment.singer?.singer_name || "this singer";
+
+        if (!Number.isInteger(value) || value < 1) {
+            setError("Enter the amount in whole rupees (1 or more). For a free entry use the ₹0 buttons.");
+            return;
+        }
+
+        if (value === Number(payment.amount) && !payment.fee_waiver) {
+            setAmountEdit(null);
+            return;
+        }
+
+        setActionId(payment.id);
+        setError("");
+
+        try {
+            await updatePaymentAmount(payment.id, value);
+            updateLocalStatus(payment.id, payment.status, { amount: value, fee_waiver: null });
+            setAmountEdit(null);
+            setNotice(`${name}: amount changed to ${formatRupees(value)}`);
+            loadPayments({ silent: true });
+        }
+        catch (requestError) {
+            setError(requestError.message || "Unable to change the amount.");
+        }
+        finally {
+            setActionId(null);
+        }
+    };
+
+    const onAmountKey = (event, payment) => {
+        if (event.key === "Enter") saveAmount(payment);
+        if (event.key === "Escape") setAmountEdit(null);
+    };
+
     const handleWaive = async (
         payment,
         waiver
@@ -710,9 +759,54 @@ const AdminPaymentManagement = () => {
                                     </div>
 
                                     <div className={`payment-row-amount${payment.fee_waiver ? " free" : ""}`}>
-                                        {payment.fee_waiver
-                                            ? "Free"
-                                            : formatRupees(payment.amount)}
+                                        {amountEdit?.id === payment.id ? (
+                                            <span className="payment-amount-edit">
+                                                <span className="payment-amount-input">
+                                                    ₹
+                                                    <input
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        value={amountEdit.value}
+                                                        onChange={event => setAmountEdit({ id: payment.id, value: event.target.value.replace(/[^\d]/g, "").slice(0, 6) })}
+                                                        onKeyDown={event => onAmountKey(event, payment)}
+                                                        aria-label={`New amount for ${payment.singer?.singer_name || "singer"}`}
+                                                        autoFocus
+                                                    />
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    className="payment-amount-save"
+                                                    onClick={() => saveAmount(payment)}
+                                                    disabled={actionId === payment.id}
+                                                    aria-label="Save amount"
+                                                    title="Save (Enter)"
+                                                >
+                                                    ✓
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="payment-amount-cancel"
+                                                    onClick={() => setAmountEdit(null)}
+                                                    aria-label="Cancel"
+                                                    title="Cancel (Esc)"
+                                                >
+                                                    ×
+                                                </button>
+                                            </span>
+                                        ) : payment.status === "Rejected" ? (
+                                            payment.fee_waiver ? "Free" : formatRupees(payment.amount)
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="payment-amount-btn"
+                                                onClick={() => startAmountEdit(payment)}
+                                                title="Change the amount (reduced fee)"
+                                                aria-label={`Change amount for ${payment.singer?.singer_name || "singer"}`}
+                                            >
+                                                {payment.fee_waiver ? "Free" : formatRupees(payment.amount)}
+                                                <span className="payment-amount-pencil" aria-hidden="true">✎</span>
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="payment-row-actions">

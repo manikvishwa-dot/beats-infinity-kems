@@ -160,6 +160,23 @@ const rejectPayment = async (paymentId) => {
 // ADMIN - FREE ENTRY (Rs 0): "Guest Singer" | "Management Team"
 // ==========================================================
 
+// ADMIN - change the amount (reduced fee)
+const updatePaymentAmount = async (paymentId, amount) => {
+    const response = await fetch(
+        `${API_BASE_URL}/${paymentId}/amount`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ amount })
+        }
+    );
+
+    return handleResponse(response);
+};
+
 const waivePayment = async (paymentId, waiver) => {
     const response = await fetch(
         `${API_BASE_URL}/${paymentId}/waive`,
@@ -300,5 +317,6 @@ export {
     markPaymentAsPaid,
     rejectPayment,
     waivePayment,
+    updatePaymentAmount,
     bulkUpdatePaymentStatus
 };
