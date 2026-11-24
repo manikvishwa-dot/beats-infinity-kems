@@ -413,14 +413,8 @@ function Landing() {
                 <div className="bil-lineup">
                     {posters.map((poster, index) => (
                         <figure key={`${poster.title}-${index}`} className="bil-poster">
-                            {/* whole poster shown (no cropping); a blurred copy
-                                fills the frame so every card is the same size */}
+                            {/* tall frame (3:5, close to most posters), filled edge to edge */}
                             <div className="bil-poster-frame">
-                                <span
-                                    className="bil-poster-blur"
-                                    style={{ backgroundImage: `url("${poster.src}")` }}
-                                    aria-hidden="true"
-                                />
                                 <img src={poster.src} alt={poster.title} loading="lazy" />
                             </div>
                             <figcaption>
