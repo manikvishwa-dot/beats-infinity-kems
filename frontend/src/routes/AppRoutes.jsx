@@ -40,6 +40,7 @@ import RegistrationWizard from "../components/Auth/RegistrationWizard";
 ========================================================== */
 
 import AdminDashboard from "../pages/AdminDashboard";
+import AdminRegistrations from "../pages/AdminRegistrations";
 import AdminLogin from "../pages/AdminLogin";
 import SongManagement from "../pages/SongManagement";
 import SingerManagement from "../pages/SingerManagement";
@@ -250,6 +251,15 @@ function AppRoutes() {
                 element={
                     <RequireAdminAuth>
                         <AdminDashboard />
+                    </RequireAdminAuth>
+                }
+            />
+
+            <Route
+                path="/admin/registrations"
+                element={
+                    <RequireAdminAuth>
+                        <AdminRegistrations />
                     </RequireAdminAuth>
                 }
             />

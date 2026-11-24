@@ -345,6 +345,18 @@ const getSingersPerEvent = async () => {
 // SUPER ADMIN STATS - FINANCE BY EVENT (last 6 months)
 // ==========================================================
 
+// Admin Dashboard charts - no money, any admin
+const getDashboardOverview = async () => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/stats/overview`,
+        { headers: { ...getAuthHeader() } }
+    );
+
+    return handleResponse(response);
+
+};
+
 const getEventAnalytics = async () => {
 
     const response = await fetch(
@@ -436,6 +448,7 @@ export {
     getSingersPerEvent,
     getFinanceByEvent,
     getEventAnalytics,
+    getDashboardOverview,
     getMaggieAudit,
     getMaggieAuditAllEvents
 };

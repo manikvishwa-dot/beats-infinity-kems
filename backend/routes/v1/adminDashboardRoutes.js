@@ -28,6 +28,8 @@ const {
     getEventAnalytics
 } = require("../../controllers/v1/superAdminStatsController");
 
+const { getDashboardOverview } = require("../../controllers/v1/adminInsightsController");
+
 const {
     requireAdmin,
     requireSuperAdmin
@@ -156,6 +158,19 @@ router.post(
     "/pairings/bulk-decide",
     requireAdmin,
     bulkDecidePairings
+);
+
+
+// ==========================================================
+// ADMIN DASHBOARD INSIGHTS (no money - any admin)
+//
+// GET /api/v1/admin/stats/overview
+// ==========================================================
+
+router.get(
+    "/stats/overview",
+    requireAdmin,
+    getDashboardOverview
 );
 
 

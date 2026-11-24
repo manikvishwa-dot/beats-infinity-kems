@@ -43,6 +43,7 @@ const NAV_GROUPS = [
         title: "Event Day",
         items: [
             { label: "Events", path: "/events", icon: "📅" },
+            { label: "Registrations", path: "/admin/registrations", icon: "📝" },
             { label: "Pairing", path: "/admin/pairing", icon: "🎼" },
             { label: "Payments", path: "/admin/payments", icon: "💳" }
         ]
