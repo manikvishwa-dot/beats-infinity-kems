@@ -665,9 +665,7 @@ const AdminPaymentManagement = () => {
 
                         const statusLabel =
                             payment.fee_waiver ||
-                            (walkIn && payment.status === "Rejected"
-                                ? "Not received"
-                                : payment.status);
+                            payment.status;
 
                         const canWaive =
                             payment.status !== "Rejected" &&
@@ -754,9 +752,7 @@ const AdminPaymentManagement = () => {
                                                 >
                                                     {isActioning
                                                         ? "Saving…"
-                                                        : walkIn
-                                                            ? "✓ Received"
-                                                            : "✓ Approve"}
+                                                        : "✓ Approve"}
                                                 </button>
 
                                                 <button
@@ -766,10 +762,9 @@ const AdminPaymentManagement = () => {
                                                         handleReject(payment)
                                                     }
                                                     disabled={isActioning}
-                                                    title={walkIn ? "Not received" : "Reject"}
-                                                    aria-label={walkIn ? "Not received" : "Reject"}
+                                                    title={walkIn ? "Payment not received" : "Reject"}
                                                 >
-                                                    ✕
+                                                    ✕ Reject
                                                 </button>
                                             </>
                                         ) : (
@@ -795,7 +790,7 @@ const AdminPaymentManagement = () => {
                                                     aria-haspopup="menu"
                                                     aria-expanded={freeMenuId === payment.id}
                                                 >
-                                                    ₹0
+                                                    ₹0 Payment
                                                 </button>
 
                                                 {freeMenuId === payment.id && (

@@ -5,7 +5,7 @@ import EventSelector from "../components/admin/EventSelector";
 import PastDuesAlert from "../components/admin/PastDuesAlert";
 import { getSingersOverview } from "../services/adminDashboardService";
 import { getEvents } from "../services/eventService";
-import { markPaymentAsPaid, rejectPayment } from "../services/paymentService";
+import { markPaymentAsPaid, rejectPayment, waivePayment } from "../services/paymentService";
 import { updateSong } from "../services/songService";
 
 import "../styles/adminTheme.css";
@@ -29,6 +29,16 @@ const getStatusClass = status => {
     return "pending";
 };
 
+// Free entry (Rs 0) - guests and the management team; stored as
+// Paid at Rs 0
+const WAIVERS = [
+    { value: "Guest Singer", icon: "🎤" },
+    { value: "Management Team", icon: "⭐" }
+];
+
+const isFreeEntry = row =>
+    row.payment_status === "Paid" && Number(row.payment_amount) === 0;
+
 const normalizeGender = value =>
     String(value || "").trim().toLowerCase();
 
@@ -38,6 +48,7 @@ function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [actionId, setActionId] = useState(null);
+    const [freeMenuId, setFreeMenuId] = useState(null);
 
     const [events, setEvents] = useState([]);
     const [selectedEventIds, setSelectedEventIds] = useState([]);
@@ -109,9 +120,59 @@ function AdminDashboard() {
         loadOverview();
     }, [loadOverview]);
 
+    useEffect(() => {
+        if (!freeMenuId) {
+            return undefined;
+        }
+
+        const close = event => {
+            if (!event.target.closest?.(".dash-free-wrap")) {
+                setFreeMenuId(null);
+            }
+        };
+
+        document.addEventListener("mousedown", close);
+
+        return () => document.removeEventListener("mousedown", close);
+    }, [freeMenuId]);
+
+    const handleWaive = async (row, waiver) => {
+        setFreeMenuId(null);
+
+        const songsNote = row.payment_type === "Walk-in"
+            ? ""
+            : " Their duet songs will be submitted for pairing.";
+
+        const confirmed = window.confirm(
+            `Mark ${row.singer_name} as ${waiver}? They pay nothing (Rs 0) and won't count toward money collected.${songsNote}`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        setActionId(row.payment_id);
+        setError("");
+
+        try {
+            await waivePayment(row.payment_id, waiver);
+            await loadOverview();
+        }
+        catch (requestError) {
+            console.error("Free entry error:", requestError);
+            setError(
+                requestError.message ||
+                "Unable to mark this entry as free."
+            );
+        }
+        finally {
+            setActionId(null);
+        }
+    };
+
     const handleMarkPaid = async paymentId => {
         const confirmed = window.confirm(
-            "Confirm that this payment has been received? This will submit the singer's duet songs for pairing."
+            "Approve this payment as received? This will submit the singer's duet songs for pairing."
         );
 
         if (!confirmed) {
@@ -139,7 +200,7 @@ function AdminDashboard() {
 
     const handleMarkNotPaid = async paymentId => {
         const confirmed = window.confirm(
-            "Mark this payment as Not Paid?"
+            "Reject this payment (not received)?"
         );
 
         if (!confirmed) {
@@ -262,6 +323,9 @@ function AdminDashboard() {
 
                                         <td className="singer-name-cell">
                                             {row.singer_name}
+                                            {row.payment_type === "Walk-in" && (
+                                                <em className="dash-walkin-tag">Walk-in</em>
+                                            )}
                                         </td>
 
                                         {Array.from({ length: MAX_SONGS }).map((_, index) => {
@@ -316,9 +380,11 @@ function AdminDashboard() {
 
                                         <td>
                                             <span
-                                                className={`payment-status-pill ${getStatusClass(row.payment_status)}`}
+                                                className={`payment-status-pill ${isFreeEntry(row) ? "free" : getStatusClass(row.payment_status)}`}
                                             >
-                                                {STATUS_DISPLAY[row.payment_status] || row.payment_status}
+                                                {isFreeEntry(row)
+                                                    ? "Free entry · ₹0"
+                                                    : STATUS_DISPLAY[row.payment_status] || row.payment_status}
                                             </span>
 
                                             {row.payment_status === "Pending" && (
@@ -329,7 +395,7 @@ function AdminDashboard() {
                                                         disabled={isActioning}
                                                         onClick={() => handleMarkPaid(row.payment_id)}
                                                     >
-                                                        {isActioning ? "..." : "Mark Paid"}
+                                                        {isActioning ? "..." : "✓ Approve"}
                                                     </button>
 
                                                     <button
@@ -338,8 +404,42 @@ function AdminDashboard() {
                                                         disabled={isActioning}
                                                         onClick={() => handleMarkNotPaid(row.payment_id)}
                                                     >
-                                                        {isActioning ? "..." : "Mark Not Paid"}
+                                                        {isActioning ? "..." : "✕ Reject"}
                                                     </button>
+
+                                                    <div className="dash-free-wrap">
+                                                        <button
+                                                            type="button"
+                                                            className={`payment-action-btn mark-free${freeMenuId === row.payment_id ? " open" : ""}`}
+                                                            disabled={isActioning}
+                                                            aria-haspopup="menu"
+                                                            aria-expanded={freeMenuId === row.payment_id}
+                                                            onClick={() =>
+                                                                setFreeMenuId(
+                                                                    freeMenuId === row.payment_id
+                                                                        ? null
+                                                                        : row.payment_id
+                                                                )
+                                                            }
+                                                        >
+                                                            ₹0 Payment
+                                                        </button>
+
+                                                        {freeMenuId === row.payment_id && (
+                                                            <div className="dash-free-menu" role="menu">
+                                                                {WAIVERS.map(option => (
+                                                                    <button
+                                                                        type="button"
+                                                                        role="menuitem"
+                                                                        key={option.value}
+                                                                        onClick={() => handleWaive(row, option.value)}
+                                                                    >
+                                                                        {option.icon} {option.value}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </td>

@@ -199,7 +199,7 @@
 
 .payment-row-main {
     display: grid;
-    grid-template-columns: 38px minmax(0, 1.6fr) 150px minmax(120px, .8fr) 84px 218px;
+    grid-template-columns: 38px minmax(0, 1.6fr) 150px minmax(120px, .8fr) 84px 318px;
     align-items: center;
     gap: 14px;
     padding: 10px 16px;
@@ -338,7 +338,8 @@
 
 .payment-free-btn {
     height: 34px;
-    padding: 0 11px;
+    padding: 0 13px;
+    white-space: nowrap;
     border-radius: 999px;
     border: 1px solid rgba(95,200,255,0.3);
     background: rgba(95,200,255,0.08);
@@ -421,9 +422,10 @@
 }
 
 .payment-reject-btn {
-    width: 34px;
     height: 34px;
-    font-size: 13px;
+    padding: 0 13px;
+    font-size: 12.5px;
+    white-space: nowrap;
     color: #ff6b6b;
     background: rgba(255,107,107,0.1);
     border: 1px solid rgba(255,107,107,0.25);
@@ -441,7 +443,7 @@
     transform: none;
 }
 
-.payment-status-pill {
+.admin-payment-page .payment-status-pill {
     padding: 5px 12px;
     border-radius: 999px;
     font-size: 11.5px;
@@ -450,9 +452,9 @@
     text-transform: uppercase;
 }
 
-.payment-status-pill.paid { color: #39EF79; background: rgba(57,239,121,0.12); }
-.payment-status-pill.rejected { color: #ff6b6b; background: rgba(255,107,107,0.12); }
-.payment-status-pill.free { color: #5fc8ff; background: rgba(95,200,255,0.12); white-space: nowrap; }
+.admin-payment-page .payment-status-pill.paid { color: #39EF79; background: rgba(57,239,121,0.12); }
+.admin-payment-page .payment-status-pill.rejected { color: #ff6b6b; background: rgba(255,107,107,0.12); }
+.admin-payment-page .payment-status-pill.free { color: #5fc8ff; background: rgba(95,200,255,0.12); white-space: nowrap; }
 
 /* ---------- Expanded song list ---------- */
 
@@ -614,8 +616,8 @@
     .payment-row-actions { justify-content: stretch; margin-top: 4px; }
     .payment-row-actions .payment-approve-btn { flex: 1; padding: 10px 16px; }
     .payment-free-btn { height: 38px; padding: 0 14px; }
-    .payment-row-actions .payment-status-pill { margin-left: auto; }
-    .payment-reject-btn { width: 40px; height: 38px; }
+    .admin-payment-page .payment-row-actions .payment-status-pill { margin-left: auto; }
+    .payment-reject-btn { height: 38px; }
 
     .payment-row-songs { padding: 0 14px 14px 14px; }
     .payment-row-songs ol { grid-template-columns: 1fr; }
