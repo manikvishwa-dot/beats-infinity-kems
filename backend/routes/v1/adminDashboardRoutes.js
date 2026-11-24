@@ -16,6 +16,12 @@ const {
 } = require("../../controllers/v1/pairingController");
 
 const {
+    getFinalList,
+    saveFinalList,
+    getChangeLog
+} = require("../../controllers/v1/finalPairingController");
+
+const {
     getSingersPerEvent,
     getFinanceByEvent,
     getEventAnalytics
@@ -102,6 +108,33 @@ router.post(
     "/pairings/solo",
     requireAdmin,
     decideSolo
+);
+
+
+// ==========================================================
+// FINAL PAIRING LIST (event-day list, editable as a whole)
+//
+// GET /api/v1/admin/pairings/final?event_id=UUID
+// PUT /api/v1/admin/pairings/final
+// GET /api/v1/admin/pairings/change-log?event_id=UUID
+// ==========================================================
+
+router.get(
+    "/pairings/final",
+    requireAdmin,
+    getFinalList
+);
+
+router.put(
+    "/pairings/final",
+    requireAdmin,
+    saveFinalList
+);
+
+router.get(
+    "/pairings/change-log",
+    requireAdmin,
+    getChangeLog
 );
 
 

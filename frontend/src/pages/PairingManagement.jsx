@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminTopbar from "../components/admin/AdminTopbar";
 import EventSelector from "../components/admin/EventSelector";
 import ExcelToolbar from "../components/admin/ExcelToolbar";
+import FinalPairingList from "../components/admin/FinalPairingList";
+import PairingChangeLog from "../components/admin/PairingChangeLog";
 import {
     getPairingSuggestions,
     getSingersOverview,
@@ -59,6 +61,9 @@ function PairingManagement() {
     // Potential Matches ticked for a bulk Approve / Reject
     const [selectedMatchKeys, setSelectedMatchKeys] = useState(() => new Set());
     const [bulkSaving, setBulkSaving] = useState(false);
+
+    // final | review | open | report | log
+    const [activeTab, setActiveTab] = useState("final");
 
     useEffect(() => {
 
@@ -182,6 +187,19 @@ function PairingManagement() {
         () => suggestions.open_songs.filter(song => normalizeGender(song.gender) === "female"),
         [suggestions.open_songs]
     );
+
+    const pendingSoloCount = suggestions.solo_songs.filter(
+        solo => solo.solo_status !== "Approved" && solo.solo_status !== "Rejected"
+    ).length;
+
+    // Counts show what still needs the admin's attention
+    const tabs = [
+        { id: "final", label: "Final List" },
+        { id: "review", label: "To Review", count: suggestions.potential_matches.length + pendingSoloCount },
+        { id: "open", label: "Open Songs & Manual", count: openSongsMale.length },
+        { id: "report", label: "Report & Excel" },
+        { id: "log", label: "Change Log" }
+    ];
 
     // Songs either of the two selected singers picked. Only ONE of
     // them needs to own the song (the backend checks the same rule),
@@ -622,7 +640,7 @@ function PairingManagement() {
             <div className="admin-shell-content pairing-page">
                 <h1 className="admin-page-title">Pairing Management</h1>
                 <p className="admin-page-subtitle">
-                    Review potential matches, resolve open songs and manage pairings.
+                    Build the event's final pairing list, review new matches and track every change.
                 </p>
 
                 <div className="pairing-event-row">
@@ -633,26 +651,55 @@ function PairingManagement() {
                     />
                     {selectedEventIds.length > 1 && (
                         <span className="pairing-event-compare-hint">
-                            Comparing {selectedEventIds.length} events in the Pairing Report below. Potential Matches / Open Songs / Manual Pairing use only the first selected event.
+                            Comparing {selectedEventIds.length} events on the Report tab. The other tabs use only the first selected event.
                         </span>
                     )}
                 </div>
 
-                <ExcelToolbar
-                    columns={PAIRING_COLUMNS}
-                    rows={pairingReportRows}
-                    filename="beats-infinity-pairings"
-                    onImportRows={handleImportRows}
-                    hint="Fill in Decision (Approved/Rejected) for any row - including Open Songs, where you can also fill in the Female Singer - then re-upload. Rows left blank are skipped."
-                />
+                <div className="pairing-tabs" role="tablist" aria-label="Pairing sections">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === tab.id}
+                            className={`pairing-tab${activeTab === tab.id ? " is-active" : ""}`}
+                            onClick={() => {
+                                setActiveTab(tab.id);
+                                setError("");
+                                setSuccess("");
+                            }}
+                        >
+                            {tab.label}
+                            {tab.count > 0 && <span className="pairing-tab-count">{tab.count}</span>}
+                        </button>
+                    ))}
+                </div>
 
-                {error && <div className="pairing-error">⚠️ {error}</div>}
-                {success && <div className="pairing-success">✅ {success}</div>}
+                {activeTab !== "final" && error && <div className="pairing-error">⚠️ {error}</div>}
+                {activeTab !== "final" && success && <div className="pairing-success">✅ {success}</div>}
 
-                {loading ? (
+                {activeTab === "final" && (
+                    primaryEventId ? (
+                        <FinalPairingList
+                            key={primaryEventId}
+                            eventId={primaryEventId}
+                            onSaved={loadData}
+                        />
+                    ) : (
+                        <div className="pairing-empty">Select an event to see its final pairing list.</div>
+                    )
+                )}
+
+                {activeTab === "log" && (
+                    <PairingChangeLog eventId={primaryEventId} />
+                )}
+
+                {["review", "open", "report"].includes(activeTab) && (loading ? (
                     <div className="pairing-empty">Loading pairing data...</div>
                 ) : (
                     <>
+                    {activeTab === "review" && (<>
                     {/* ==================================================
                         POTENTIAL MATCHES
                     ================================================== */}
@@ -874,6 +921,9 @@ function PairingManagement() {
                         )}
                     </div>
 
+                    </>)}
+
+                    {activeTab === "open" && (<>
                     {/* ==================================================
                         OPEN SONGS
                         -----------------------------------------------
@@ -1093,6 +1143,17 @@ function PairingManagement() {
                         </form>
                     </div>
 
+                    </>)}
+
+                    {activeTab === "report" && (<>
+                    <ExcelToolbar
+                        columns={PAIRING_COLUMNS}
+                        rows={pairingReportRows}
+                        filename="beats-infinity-pairings"
+                        onImportRows={handleImportRows}
+                        hint="Fill in Decision (Approved/Rejected) for any row - including Open Songs, where you can also fill in the Female Singer - then re-upload. Rows left blank are skipped."
+                    />
+
                     {/* ==================================================
                         PAIRING REPORT
                         -----------------------------------------------
@@ -1154,8 +1215,9 @@ function PairingManagement() {
                             </div>
                         )}
                     </div>
+                    </>)}
                     </>
-                )}
+                ))}
             </div>
         </div>
     );

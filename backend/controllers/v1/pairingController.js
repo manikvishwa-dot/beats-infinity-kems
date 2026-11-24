@@ -42,16 +42,19 @@ const normalizeTitle = value =>
 // ==========================================================
 // SOLO SONGS
 //
-// A male singer may add ONE optional solo. It is never paired -
-// an admin approves (or rejects) it instead, and only approved
-// solos appear on the singer's Song List.
+// A solo is never paired - an admin approves (or rejects) it
+// instead, and only approved solos appear on the singer's Song
+// List.
 //
 // A song counts as a solo when it is:
 //   - in the payment's solo slot (payments.solo_song_id), or
 //   - marked song_type "Solo" AND picked on/after the day the
 //     solo option shipped. Older "Solo" labels came from the
 //     old YouTube search (it marked most picks is_duet=false)
-//     and are really duets - many already have pairings.
+//     and are really duets - many already have pairings, or
+//   - assigned to a singer by an admin on the Final List
+//     (songs.solo_singer_id) - that singer owns it, whether or
+//     not it was one of their own picks.
 // ==========================================================
 
 const SOLO_FEATURE_START = "2026-11-23";
@@ -65,35 +68,86 @@ const isSoloSong = (song, soloSlotIds) =>
         )
     );
 
-// songs.solo_status is added by a migration - until it has been
-// run, read songs without it (every solo counts as undecided).
+// songs.solo_status / songs.solo_singer_id are added by migrations -
+// until they have been run, read songs without them.
 const SONG_COLUMNS = "id,title,movie,event_id,song_type,created_at";
 
-const fetchSongRows = async ids => {
+const SONG_COLUMN_SETS = [
+    `${SONG_COLUMNS},solo_status,solo_singer_id`,
+    `${SONG_COLUMNS},solo_status`,
+    SONG_COLUMNS
+];
 
-    const withStatus = await supabase
-        .from("songs")
-        .select(`${SONG_COLUMNS},solo_status`)
-        .in("id", ids);
+const isMissingColumnError = error =>
+    /solo_status|solo_singer_id|column/i.test(error?.message || "");
 
-    if (!withStatus.error) {
-        return withStatus.data || [];
+// build(columns) -> supabase query. Tries the richest column set
+// first and falls back while a column doesn't exist yet.
+const selectSongsSafe = async build => {
+
+    let lastError = null;
+
+    for (const columns of SONG_COLUMN_SETS) {
+
+        const { data, error } = await build(columns);
+
+        if (!error) {
+            return data || [];
+        }
+
+        if (!isMissingColumnError(error)) {
+            throw error;
+        }
+
+        lastError = error;
+
     }
 
-    if (!/solo_status/i.test(withStatus.error.message || "")) {
-        throw withStatus.error;
+    throw lastError;
+
+};
+
+const fetchSongRows = ids =>
+    selectSongsSafe(columns =>
+        supabase.from("songs").select(columns).in("id", ids)
+    );
+
+// Admin-assigned solos (songs.solo_singer_id) - [] until the
+// column exists.
+const fetchAssignedSolos = async eventId => {
+
+    try {
+
+        let query = supabase
+            .from("songs")
+            .select(`${SONG_COLUMNS},solo_status,solo_singer_id`)
+            .not("solo_singer_id", "is", null);
+
+        if (eventId) {
+            query = query.eq("event_id", eventId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            if (isMissingColumnError(error)) {
+                return [];
+            }
+            throw error;
+        }
+
+        return data || [];
+
     }
+    catch (error) {
 
-    const without = await supabase
-        .from("songs")
-        .select(SONG_COLUMNS)
-        .in("id", ids);
+        if (isMissingColumnError(error)) {
+            return [];
+        }
 
-    if (without.error) {
-        throw without.error;
+        throw error;
+
     }
-
-    return without.data || [];
 
 };
 
@@ -140,29 +194,6 @@ const loadSingerSongMap = async (eventId = null) => {
         }
     });
 
-    const singerIds = [...latestBySinger.keys()];
-
-    if (singerIds.length === 0) {
-        return {
-            singers: [],
-            songMap: new Map(),
-            selectionsBySinger: new Map(),
-            solosBySinger: new Map()
-        };
-    }
-
-    const {
-        data: singers,
-        error: singersError
-    } = await supabase
-        .from("singers")
-        .select("id,singer_name,gender")
-        .in("id", singerIds);
-
-    if (singersError) {
-        throw singersError;
-    }
-
     const soloSlotIds = new Set(
         [...latestBySinger.values()]
             .map(entry => entry.soloSongId)
@@ -177,14 +208,26 @@ const loadSingerSongMap = async (eventId = null) => {
         )
     ];
 
-    const songs = allSongIds.length > 0
-        ? await fetchSongRows(allSongIds)
-        : [];
+    const [songs, assignedSolos] = await Promise.all([
+        allSongIds.length > 0 ? fetchSongRows(allSongIds) : [],
+        fetchAssignedSolos(eventId)
+    ]);
 
     const songMap = new Map(songs.map(song => [song.id, song]));
 
+    assignedSolos.forEach(song => songMap.set(song.id, song));
+
+    const assignedIds = new Set(assignedSolos.map(song => song.id));
+
     const selectionsBySinger = new Map();
     const solosBySinger = new Map();
+
+    const soloEntry = song => ({
+        song_id: song.id,
+        title: song.title || null,
+        movie: song.movie || null,
+        solo_status: song.solo_status || null
+    });
 
     latestBySinger.forEach(({ songIds, soloSongId }, singerId) => {
 
@@ -197,13 +240,13 @@ const loadSingerSongMap = async (eventId = null) => {
 
             const song = songMap.get(songId);
 
+            // Assigned solos are attached to their assigned singer below.
+            if (assignedIds.has(songId)) {
+                return;
+            }
+
             if (isSoloSong(song, soloSlotIds)) {
-                solos.push({
-                    song_id: songId,
-                    title: song?.title || null,
-                    movie: song?.movie || null,
-                    solo_status: song?.solo_status || null
-                });
+                solos.push(soloEntry(song));
             }
             else if (songIds.includes(songId)) {
                 duets.push({
@@ -219,8 +262,39 @@ const loadSingerSongMap = async (eventId = null) => {
 
     });
 
+    assignedSolos.forEach(song => {
+        if (!solosBySinger.has(song.solo_singer_id)) {
+            solosBySinger.set(song.solo_singer_id, []);
+        }
+        solosBySinger.get(song.solo_singer_id).push(soloEntry(song));
+    });
+
+    const singerIds = [
+        ...new Set([...latestBySinger.keys(), ...solosBySinger.keys()])
+    ];
+
+    let singers = [];
+
+    if (singerIds.length > 0) {
+
+        const {
+            data: singerRows,
+            error: singersError
+        } = await supabase
+            .from("singers")
+            .select("id,singer_name,gender")
+            .in("id", singerIds);
+
+        if (singersError) {
+            throw singersError;
+        }
+
+        singers = singerRows || [];
+
+    }
+
     return {
-        singers: singers || [],
+        singers,
         songMap,
         selectionsBySinger,
         solosBySinger
@@ -1535,9 +1609,14 @@ const getMyPairing = async (req, res) => {
             });
         });
 
+        const soloTitles = new Set(
+            myApprovedSolos.map(solo => normalizeTitle(solo.title))
+        );
+
         mySelections
             .filter(({ title }) => Boolean(title))
             .filter(({ title }) => !pairedTitles.has(normalizeTitle(title)))
+            .filter(({ title }) => !soloTitles.has(normalizeTitle(title)))
             .forEach(({ song_id, title }) => {
 
                 const key = normalizeTitle(title);
@@ -1901,5 +1980,8 @@ module.exports = {
     decidePairing,
     getMyPairing,
     bulkDecidePairings,
-    decideSolo
+    decideSolo,
+    loadSingerSongMap,
+    normalizeTitle,
+    isValidUuid
 };

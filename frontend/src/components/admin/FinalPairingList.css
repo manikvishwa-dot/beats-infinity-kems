@@ -1,0 +1,439 @@
+/* ==========================================================
+   FINAL PAIRING LIST - editable event-day list
+   ========================================================== */
+
+.final-list h2 {
+
+    margin: 0 0 6px;
+
+}
+
+.final-table-wrap {
+
+    overflow-x: auto;
+
+    margin-top: 14px;
+
+    border-radius: var(--admin-radius, 16px);
+
+    border: 1px solid var(--admin-border, rgba(255, 255, 255, 0.09));
+
+    background: var(--admin-glass, rgba(255, 255, 255, 0.04));
+
+}
+
+.final-table {
+
+    width: 100%;
+
+    min-width: 820px;
+
+    border-collapse: collapse;
+
+}
+
+.final-table th {
+
+    padding: 14px 10px;
+
+    color: #9a9aa8;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.08em;
+
+    text-align: left;
+
+    text-transform: uppercase;
+
+    border-bottom: 1px solid var(--admin-border, rgba(255, 255, 255, 0.09));
+
+}
+
+.final-table td {
+
+    padding: 9px 10px;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+    vertical-align: middle;
+
+}
+
+.final-table tbody tr:last-child td {
+
+    border-bottom: 0;
+
+}
+
+.final-table tr.is-new td {
+
+    background: rgba(255, 213, 74, 0.04);
+
+}
+
+.final-col-num {
+
+    width: 54px;
+
+    color: #cfcfd8;
+
+    font-weight: 600;
+
+    text-align: center !important;
+
+}
+
+.final-solo-tag {
+
+    display: block;
+
+    margin-top: 3px;
+
+    color: var(--admin-gold, #FFD54A);
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.06em;
+
+    text-transform: uppercase;
+
+}
+
+.final-input {
+
+    box-sizing: border-box;
+
+    width: 100%;
+
+    min-width: 150px;
+
+    padding: 10px 12px;
+
+    border-radius: var(--admin-radius-sm, 10px);
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+
+    background: #121218;
+
+    color: #FFFFFF;
+
+    font: inherit;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+}
+
+select.final-input {
+
+    cursor: pointer;
+
+}
+
+.final-input.is-empty {
+
+    color: #8a8a98;
+
+    font-weight: 500;
+
+}
+
+.final-input::placeholder {
+
+    color: #6f6f7c;
+
+    font-weight: 400;
+
+}
+
+.final-input:focus {
+
+    outline: none;
+
+    border-color: var(--admin-green-bright, #39EF79);
+
+    box-shadow: 0 0 0 3px rgba(57, 239, 121, 0.15);
+
+}
+
+.final-input option,
+.final-input optgroup {
+
+    background: #121218;
+
+    color: #FFFFFF;
+
+}
+
+.final-remove {
+
+    width: 34px;
+
+    height: 34px;
+
+    border-radius: 8px;
+
+    border: 1px solid rgba(255, 255, 255, 0.14);
+
+    background: transparent;
+
+    color: #cfcfd8;
+
+    font-size: 18px;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+}
+
+.final-remove:hover {
+
+    background: rgba(255, 107, 107, 0.15);
+
+    border-color: rgba(255, 107, 107, 0.5);
+
+    color: #ff6b6b;
+
+}
+
+.final-empty {
+
+    padding: 28px 12px !important;
+
+    color: #9a9aa8;
+
+    text-align: center;
+
+}
+
+.final-actions {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-top: 16px;
+
+}
+
+.final-actions-left,
+.final-actions-right {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+.final-unsaved {
+
+    color: var(--admin-gold, #FFD54A);
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+}
+
+.final-summary {
+
+    margin: 14px 0 0;
+
+    color: #9a9aa8;
+
+    font-size: 13px;
+
+}
+
+
+/* ----------------------------------------------------------
+   TABS (Pairing Management)
+   ---------------------------------------------------------- */
+
+.pairing-tabs {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+    margin: 18px 0 22px;
+
+    padding: 6px;
+
+    border-radius: 14px;
+
+    border: 1px solid var(--admin-border, rgba(255, 255, 255, 0.09));
+
+    background: var(--admin-glass, rgba(255, 255, 255, 0.04));
+
+}
+
+.pairing-tab {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 10px 16px;
+
+    border: 0;
+
+    border-radius: 10px;
+
+    background: transparent;
+
+    color: #b8b8c4;
+
+    font: inherit;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: background 0.15s ease, color 0.15s ease;
+
+}
+
+.pairing-tab:hover {
+
+    background: rgba(255, 255, 255, 0.06);
+
+    color: #FFFFFF;
+
+}
+
+.pairing-tab.is-active {
+
+    background: linear-gradient(135deg, var(--admin-green, #1DB954), var(--admin-green-bright, #39EF79));
+
+    color: #06140b;
+
+}
+
+.pairing-tab-count {
+
+    min-width: 22px;
+
+    padding: 1px 7px;
+
+    border-radius: 999px;
+
+    background: rgba(255, 213, 74, 0.18);
+
+    color: var(--admin-gold, #FFD54A);
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-align: center;
+
+}
+
+.pairing-tab.is-active .pairing-tab-count {
+
+    background: rgba(0, 0, 0, 0.2);
+
+    color: #06140b;
+
+}
+
+
+/* ----------------------------------------------------------
+   CHANGE LOG
+   ---------------------------------------------------------- */
+
+.change-log-table td {
+
+    font-size: 14px;
+
+}
+
+.change-log-action {
+
+    display: inline-block;
+
+    padding: 3px 10px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: capitalize;
+
+}
+
+.change-log-action.added {
+
+    background: rgba(57, 239, 121, 0.12);
+
+    color: #39EF79;
+
+}
+
+.change-log-action.changed {
+
+    background: rgba(255, 213, 74, 0.12);
+
+    color: #FFD54A;
+
+}
+
+.change-log-action.removed {
+
+    background: rgba(255, 107, 107, 0.12);
+
+    color: #ff6b6b;
+
+}
+
+.change-log-before {
+
+    color: #8a8a98;
+
+    text-decoration: line-through;
+
+}
+
+@media (max-width: 640px) {
+
+    .pairing-tab {
+
+        flex: 1 1 calc(50% - 6px);
+
+        justify-content: center;
+
+        padding: 10px 8px;
+
+        font-size: 13px;
+
+    }
+
+}

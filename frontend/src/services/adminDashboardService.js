@@ -250,6 +250,54 @@ const decideSolo = async (songId, decision) => {
 
 
 // ==========================================================
+// FINAL PAIRING LIST (event-day list) + CHANGE LOG
+// ==========================================================
+
+const eventQuery = eventId =>
+    eventId ? `?event_id=${encodeURIComponent(eventId)}` : "";
+
+const getFinalPairingList = async eventId => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/final${eventQuery(eventId)}`,
+        { headers: { ...getAuthHeader() } }
+    );
+
+    return handleResponse(response);
+
+};
+
+const saveFinalPairingList = async (eventId, rows) => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/final`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ event_id: eventId, rows })
+        }
+    );
+
+    return handleResponse(response);
+
+};
+
+const getPairingChangeLog = async eventId => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/change-log${eventQuery(eventId)}`,
+        { headers: { ...getAuthHeader() } }
+    );
+
+    return handleResponse(response);
+
+};
+
+
+// ==========================================================
 // SUPER ADMIN STATS - SINGERS PER EVENT (last 6 months)
 // ==========================================================
 
@@ -361,6 +409,9 @@ export {
     bulkUpdateSingers,
     bulkDecidePairings,
     decideSolo,
+    getFinalPairingList,
+    saveFinalPairingList,
+    getPairingChangeLog,
     getSingersPerEvent,
     getFinanceByEvent,
     getEventAnalytics,
