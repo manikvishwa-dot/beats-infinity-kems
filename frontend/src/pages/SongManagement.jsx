@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminTopbar from "../components/admin/AdminTopbar";
 import EventSelector from "../components/admin/EventSelector";
+import EventSongList from "../components/admin/EventSongList";
 import {
     getSongById,
     createSong,
@@ -645,6 +646,10 @@ function SongManagement() {
                         ＋ Add New Song
                     </button>
                 </div>
+
+                <EventSongList eventIds={selectedEventIds} />
+
+                <h3 className="song-picks-heading">🎤 Songs picked by singers</h3>
 
                 {selectedError && (
                     <div className="empty-table" style={{ color: "#ff6b6b", marginBottom: "20px" }}>

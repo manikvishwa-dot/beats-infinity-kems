@@ -568,6 +568,29 @@ const ALLOWED_BULK_SINGER_FIELDS = [
     "mobile_number"
 ];
 
+// Phone: digits only, last 10 (drops a +91 / 0 prefix)
+const cleanMobile = value => String(value || "").replace(/\D/g, "").slice(-10);
+
+// Date of birth: "YYYY-MM-DD", a date in the past
+const cleanDob = value => {
+    const text = String(value || "").trim();
+    let date = null;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text.slice(0, 10))) {
+        date = new Date(`${text.slice(0, 10)}T00:00:00Z`);
+    }
+    else if (text) {
+        // e.g. a date cell from Excel
+        const parsed = new Date(text);
+        if (!Number.isNaN(parsed.getTime())) date = parsed;
+    }
+
+    if (!date || Number.isNaN(date.getTime())) return null;
+    if (date.getTime() > Date.now() || date.getUTCFullYear() < 1900) return null;
+
+    return date.toISOString().slice(0, 10);
+};
+
 const bulkUpdateSingers = async (req, res) => {
 
     try {
@@ -627,6 +650,35 @@ const bulkUpdateSingers = async (req, res) => {
 
             }
 
+            if (updateData.mobile_number !== undefined) {
+                const mobile = cleanMobile(updateData.mobile_number);
+                if (!/^\d{10}$/.test(mobile)) {
+                    results.push({ id, status: "error", message: "Mobile number must have 10 digits." });
+                    continue;
+                }
+                updateData.mobile_number = mobile;
+            }
+
+            if (updateData.date_of_birth !== undefined) {
+                const dob = cleanDob(updateData.date_of_birth);
+                if (!dob) {
+                    results.push({ id, status: "error", message: "Date of birth must be a past date (YYYY-MM-DD)." });
+                    continue;
+                }
+                updateData.date_of_birth = dob;
+            }
+
+            if (updateData.gender !== undefined) {
+                const g = updateData.gender.toLowerCase();
+                if (g !== "male" && g !== "female") {
+                    results.push({ id, status: "error", message: "Gender must be Male or Female." });
+                    continue;
+                }
+                updateData.gender = g === "male" ? "Male" : "Female";
+            }
+
+            updateData.updated_at = new Date().toISOString();
+
             const { data, error } = await supabase
                 .from("singers")
                 .update(updateData)
@@ -639,7 +691,9 @@ const bulkUpdateSingers = async (req, res) => {
                 results.push({
                     id,
                     status: "error",
-                    message: error.message
+                    message: error.code === "23505"
+                        ? "That mobile number is already used by another singer."
+                        : error.message
                 });
 
                 continue;

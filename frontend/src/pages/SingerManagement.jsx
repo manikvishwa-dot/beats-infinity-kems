@@ -202,6 +202,75 @@ function SingerManagement() {
         });
     }, [singers, search, enrolledIds]);
 
+    // ------------------------------------------------------
+    // INLINE EDIT - mobile number and date of birth
+    // ------------------------------------------------------
+
+    const [editing, setEditing] = useState(null);   // { id, mobile, dob }
+    const [editSaving, setEditSaving] = useState(false);
+    const [editError, setEditError] = useState("");
+    const [editNotice, setEditNotice] = useState("");
+
+    const startEdit = singer => {
+        setEditError("");
+        setEditNotice("");
+        setEditing({
+            id: singer.id,
+            mobile: singer.mobile_number || "",
+            dob: String(singer.date_of_birth || "").slice(0, 10)
+        });
+    };
+
+    const saveEdit = async () => {
+
+        const mobile = editing.mobile.replace(/\D/g, "").slice(-10);
+
+        if (!/^\d{10}$/.test(mobile)) {
+            setEditError("Mobile number must have 10 digits.");
+            return;
+        }
+
+        if (!editing.dob) {
+            setEditError("Pick a date of birth.");
+            return;
+        }
+
+        setEditSaving(true);
+        setEditError("");
+
+        try {
+            const response = await bulkUpdateSingers([
+                { id: editing.id, mobile_number: mobile, date_of_birth: editing.dob }
+            ]);
+            const result = (response.results || [])[0];
+
+            if (!result || result.status !== "updated") {
+                setEditError(result?.message || "Couldn't save the changes.");
+                return;
+            }
+
+            setSingers(current => current.map(singer =>
+                singer.id === editing.id
+                    ? { ...singer, mobile_number: mobile, date_of_birth: editing.dob }
+                    : singer
+            ));
+            setEditNotice(result.message);
+            setEditing(null);
+        }
+        catch (requestError) {
+            setEditError(requestError.message || "Couldn't save the changes.");
+        }
+        finally {
+            setEditSaving(false);
+        }
+
+    };
+
+    const onEditKey = event => {
+        if (event.key === "Enter") saveEdit();
+        if (event.key === "Escape") setEditing(null);
+    };
+
     const handleImportRows = async parsedRows => {
 
         const rows = parsedRows.map(row => ({
@@ -250,6 +319,7 @@ function SingerManagement() {
                 />
 
                 {error && <div className="singer-mgmt-error">⚠️ {error}</div>}
+                {editNotice && <div className="singer-mgmt-notice">✅ {editNotice}</div>}
 
                 <div className="singer-mgmt-toolbar">
                     <span className="singer-mgmt-count">
@@ -289,6 +359,7 @@ function SingerManagement() {
                                     <th>Date of Birth</th>
                                     <th>Mobile Number</th>
                                     {enrolledIds && <th>Songs</th>}
+                                    <th aria-label="Edit" />
                                 </tr>
                             </thead>
 
@@ -301,8 +372,48 @@ function SingerManagement() {
                                                 {singer.gender || "—"}
                                             </span>
                                         </td>
-                                        <td>{formatDate(singer.date_of_birth)}</td>
-                                        <td>{singer.mobile_number || "—"}</td>
+                                        {editing?.id === singer.id ? (
+                                            <>
+                                                <td>
+                                                    <input
+                                                        type="date"
+                                                        className="singer-edit-input"
+                                                        value={editing.dob}
+                                                        max={new Date().toISOString().slice(0, 10)}
+                                                        onChange={event => setEditing(current => ({ ...current, dob: event.target.value }))}
+                                                        onKeyDown={onEditKey}
+                                                        aria-label={`${singer.singer_name} date of birth`}
+                                                        disabled={editSaving}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="tel"
+                                                        inputMode="numeric"
+                                                        className="singer-edit-input"
+                                                        value={editing.mobile}
+                                                        placeholder="10-digit mobile"
+                                                        maxLength={14}
+                                                        onChange={event => setEditing(current => ({ ...current, mobile: event.target.value }))}
+                                                        onKeyDown={onEditKey}
+                                                        aria-label={`${singer.singer_name} mobile number`}
+                                                        disabled={editSaving}
+                                                        autoFocus
+                                                    />
+                                                    {editError && <div className="singer-edit-error">{editError}</div>}
+                                                </td>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <td>{formatDate(singer.date_of_birth)}</td>
+                                                <td>
+                                                    {singer.mobile_number || "—"}
+                                                    {String(singer.mobile_number || "").startsWith("00000") && (
+                                                        <span className="singer-temp-tag" title="Temporary number - replace with the real one">temporary</span>
+                                                    )}
+                                                </td>
+                                            </>
+                                        )}
                                         {enrolledIds && (
                                             <td className="songs-cell">
                                                 {(songsBySinger.get(singer.id) || []).length === 0 ? (
@@ -319,6 +430,29 @@ function SingerManagement() {
                                                 )}
                                             </td>
                                         )}
+                                        <td className="singer-edit-cell">
+                                            {editing?.id === singer.id ? (
+                                                <div className="singer-edit-actions">
+                                                    <button type="button" className="admin-btn admin-btn-primary admin-btn-sm" onClick={saveEdit} disabled={editSaving}>
+                                                        {editSaving ? "Saving…" : "Save"}
+                                                    </button>
+                                                    <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setEditing(null)} disabled={editSaving}>
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="singer-edit-btn"
+                                                    onClick={() => startEdit(singer)}
+                                                    title="Edit mobile number and date of birth"
+                                                    aria-label={`Edit ${singer.singer_name}`}
+                                                    disabled={Boolean(editing)}
+                                                >
+                                                    ✏️
+                                                </button>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -1,0 +1,164 @@
+/* ==========================================================
+   EVENT SONG LIST (EventSongList.jsx) - on the Songs page
+   ========================================================== */
+
+.event-songs {
+    margin: 0 0 32px;
+    text-align: left;
+}
+
+.event-songs-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.event-songs-head h2 {
+    margin: 4px 0 4px;
+    font-family: "Poppins", sans-serif;
+    font-size: 22px;
+    color: #ffffff;
+}
+
+.event-songs-head p {
+    margin: 0;
+    color: #9a9a9a;
+    font-size: 13px;
+}
+
+.event-songs-head a {
+    color: #39EF79;
+}
+
+.event-songs-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.event-songs-filter {
+    display: inline-flex;
+    flex-wrap: wrap;
+    padding: 3px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.event-songs-filter button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: #9a9a9a;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.event-songs-filter button.active {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.event-songs-search {
+    flex: 0 1 300px;
+    padding: 9px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: #ffffff;
+    font: inherit;
+    font-size: 13.5px;
+}
+
+.event-songs-search:focus {
+    outline: none;
+    border-color: rgba(57, 239, 121, 0.5);
+}
+
+.event-songs-error {
+    margin-bottom: 12px;
+    color: #ff7a7a;
+}
+
+.event-songs-table-wrap {
+    overflow-x: auto;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #141414;
+}
+
+.event-songs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+}
+
+.event-songs-table th {
+    padding: 12px 14px;
+    text-align: left;
+    color: #8a8a8a;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+}
+
+.event-songs-table td {
+    padding: 10px 14px;
+    color: #e0e0e0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.event-songs-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.event-songs-table .num {
+    width: 36px;
+    color: #777;
+}
+
+.event-songs-table .song {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.event-songs-table .movie {
+    color: #9a9a9a;
+}
+
+.event-songs-empty {
+    padding: 28px 14px !important;
+    text-align: center;
+    color: #9a9a9a !important;
+}
+
+.event-songs-type {
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.07);
+    color: #c9c9c9;
+}
+
+.event-songs-type.solo {
+    background: rgba(255, 213, 74, 0.13);
+    color: #e8c64a;
+}
+
+.event-songs-type.together {
+    background: rgba(57, 135, 229, 0.16);
+    color: #8fbaf3;
+}

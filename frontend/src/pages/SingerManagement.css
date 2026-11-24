@@ -238,3 +238,84 @@
     font-size: 12px;
     color: #fab219;
 }
+
+
+/* ---------- Inline edit: mobile + date of birth ---------- */
+
+.singer-edit-input {
+    width: 100%;
+    min-width: 130px;
+    box-sizing: border-box;
+    padding: 7px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(57, 239, 121, 0.45);
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    font: inherit;
+    font-size: 13.5px;
+    color-scheme: dark;
+}
+
+.singer-edit-input:focus {
+    outline: none;
+    border-color: #39EF79;
+    box-shadow: 0 0 0 3px rgba(57, 239, 121, 0.15);
+}
+
+.singer-edit-error {
+    margin-top: 4px;
+    color: #ff7a7a;
+    font-size: 12px;
+}
+
+.singer-edit-cell {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.singer-edit-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.singer-edit-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+
+.singer-edit-btn:hover:not(:disabled) {
+    background: rgba(57, 239, 121, 0.12);
+    border-color: rgba(57, 239, 121, 0.45);
+}
+
+.singer-edit-btn:disabled {
+    opacity: .35;
+    cursor: default;
+}
+
+.singer-temp-tag {
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(250, 178, 25, 0.14);
+    color: #fab219;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+}
+
+.singer-mgmt-notice {
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(57, 239, 121, 0.1);
+    border: 1px solid rgba(57, 239, 121, 0.3);
+    color: #7cf0a6;
+    font-size: 13.5px;
+}
