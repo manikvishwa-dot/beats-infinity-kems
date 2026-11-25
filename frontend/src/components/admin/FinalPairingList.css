@@ -958,3 +958,23 @@ select.final-input {
     font-size: 13px;
     cursor: pointer;
 }
+
+/* Change Log - "Roll back last save" bar */
+.change-log-rollback {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255, 213, 74, 0.06);
+    border: 1px solid rgba(255, 213, 74, 0.28);
+    color: #b0b0b0;
+    font-size: 13.5px;
+}
+
+.change-log-rollback b {
+    color: #ffd54a;
+}

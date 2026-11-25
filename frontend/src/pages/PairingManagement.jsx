@@ -712,7 +712,7 @@ function PairingManagement() {
                 )}
 
                 {activeTab === "log" && (
-                    <PairingChangeLog eventId={primaryEventId} />
+                    <PairingChangeLog key={primaryEventId} eventId={primaryEventId} onRolledBack={loadData} />
                 )}
 
                 {["review", "open", "report"].includes(activeTab) && (loading ? (

@@ -947,18 +947,81 @@ const registerEventSingers = async (req, res) => {
 //                             female_singer_id, song_title, movie }] }
 // ==========================================================
 
-const saveFinalList = async (req, res) => {
+// ----------------------------------------------------------
+// ROLLBACK COPY - one per event: the list as it was just before
+// the most recent save. Kept in pairing_change_log (action
+// 'snapshot') so no new table is needed; the Change Log hides it.
+// ----------------------------------------------------------
 
-    try {
+const SNAPSHOT_ACTION = "snapshot";
 
-        const eventId = await resolveEventId(req.body?.event_id);
-        await loadEvent(eventId);
+const loadSnapshot = async eventId => {
 
-        const inputRows = Array.isArray(req.body?.rows) ? req.body.rows : null;
+    const { data, error } = await supabase
+        .from("pairing_change_log")
+        .select("id,before_value,changed_by_name,created_at")
+        .eq("event_id", eventId)
+        .eq("action", SNAPSHOT_ACTION)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-        if (!inputRows) {
-            throw httpError(400, "rows must be a list.");
-        }
+    if (error) {
+        if (/pairing_change_log/i.test(error.message || "")) return null;
+        throw error;
+    }
+
+    return data && Array.isArray(data.before_value?.rows) ? data : null;
+
+};
+
+const deleteSnapshots = async eventId => {
+
+    const { error } = await supabase
+        .from("pairing_change_log")
+        .delete()
+        .eq("event_id", eventId)
+        .eq("action", SNAPSHOT_ACTION);
+
+    if (error) throw error;
+
+};
+
+// Replace the event's rollback copy with `rows` (the list before a save)
+const writeSnapshot = async ({ eventId, rows, singerById, adminId, adminName }) => {
+
+    const genderOf = id => String(singerById.get(id)?.gender || "").toLowerCase();
+
+    await deleteSnapshots(eventId);
+
+    const { error } = await supabase
+        .from("pairing_change_log")
+        .insert({
+            event_id: eventId,
+            action: SNAPSHOT_ACTION,
+            kind: "list",
+            before_value: {
+                rows: rows.map(row => ({
+                    male_singer_id: row.male_singer_id || "",
+                    female_singer_id: row.female_singer_id || "",
+                    song_title: row.song_title,
+                    movie: row.movie || "",
+                    same_gender: Boolean(row.male_singer_id && row.female_singer_id) &&
+                        genderOf(row.male_singer_id) === genderOf(row.female_singer_id)
+                }))
+            },
+            after_value: null,
+            changed_by: adminId,
+            changed_by_name: adminName
+        });
+
+    if (error) throw error;
+
+};
+
+// Validates and saves a whole list. Throws httpError(400) with
+// .problems when any row is wrong (nothing written then).
+const applyFinalList = async ({ eventId, inputRows, admin, takeSnapshot = true }) => {
 
         const current = await loadFinalList(eventId);
         const { singerById } = current;
@@ -1047,19 +1110,15 @@ const saveFinalList = async (req, res) => {
         }
 
         if (problems.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: problems.slice(0, 8).join(" "),
-                problems
-            });
+            throw Object.assign(httpError(400, problems.slice(0, 8).join(" ")), { problems });
         }
 
         // --------------------------------------------------
         // APPLY
         // --------------------------------------------------
 
-        const adminId = req.admin?.id || null;
-        const adminName = req.admin?.full_name || req.admin?.username || null;
+        const adminId = admin?.id || null;
+        const adminName = admin?.full_name || admin?.username || null;
 
         const describe = ({ maleId, femaleId, title, movie }) => ({
             male_singer: nameOf(maleId) || null,
@@ -1218,6 +1277,19 @@ const saveFinalList = async (req, res) => {
         // Walk-ins: Pending payment + songs in step with the list
         const walkInWarnings = await syncWalkInsSafely(eventId);
 
+        // Keep the list as it was before this save, for "Roll back"
+        let snapshotWarning = "";
+
+        if (takeSnapshot && log.length > 0) {
+            try {
+                await writeSnapshot({ eventId, rows: current.rows, singerById, adminId, adminName });
+            }
+            catch (snapshotError) {
+                console.error("FINAL LIST SNAPSHOT:", snapshotError);
+                snapshotWarning = " (The rollback copy couldn't be kept this time.)";
+            }
+        }
+
         // --------------------------------------------------
         // CHANGE LOG (for reports)
         // --------------------------------------------------
@@ -1258,27 +1330,153 @@ const saveFinalList = async (req, res) => {
             ? ` ${walkInWarnings.join(" ")}`
             : "";
 
+        return {
+            summary,
+            changes: log.length,
+            warnings: walkInWarnings,
+            warningText: `${logWarning}${snapshotWarning}${warningText}`
+        };
+
+};
+
+const sendListError = (res, error, label, fallback) => {
+
+    console.error(label, error);
+
+    return res.status(error.status || 500).json({
+        success: false,
+        message: error.status ? error.message : fallback,
+        problems: error.problems,
+        error: error.message
+    });
+
+};
+
+const saveFinalList = async (req, res) => {
+
+    try {
+
+        const eventId = await resolveEventId(req.body?.event_id);
+        await loadEvent(eventId);
+
+        const inputRows = Array.isArray(req.body?.rows) ? req.body.rows : null;
+
+        if (!inputRows) {
+            throw httpError(400, "rows must be a list.");
+        }
+
+        const result = await applyFinalList({ eventId, inputRows, admin: req.admin });
+
         return res.status(200).json({
             success: true,
-            message: summary
-                ? `Final list saved - ${summary}.${logWarning}${warningText}`
-                : `No changes to save.${warningText}`,
-            changes: log.length,
-            warnings: walkInWarnings
+            message: result.summary
+                ? `Final list saved - ${result.summary}.${result.warningText}`
+                : `No changes to save.${result.warningText}`,
+            changes: result.changes,
+            warnings: result.warnings
         });
 
     }
 
     catch (error) {
+        return sendListError(res, error, "SAVE FINAL LIST:", "Unable to save the final pairing list.");
+    }
 
-        console.error("SAVE FINAL LIST:", error);
+};
 
-        return res.status(error.status || 500).json({
-            success: false,
-            message: error.status ? error.message : "Unable to save the final pairing list.",
-            error: error.message
+
+// ==========================================================
+// ROLL BACK THE LAST SAVE
+//
+// GET  /api/v1/admin/pairings/final/rollback?event_id=UUID
+//      -> { available, rows, saved_at, saved_by }
+// POST /api/v1/admin/pairings/final/rollback   { event_id }
+//      -> puts back the list as it was before the last save.
+//
+// One level only: the copy is used up by the rollback (the next
+// save makes a new one).
+// ==========================================================
+
+const getRollbackInfo = async (req, res) => {
+
+    try {
+
+        const eventId = await resolveEventId(req.query.event_id);
+        const snapshot = await loadSnapshot(eventId);
+
+        return res.status(200).json({
+            success: true,
+            available: Boolean(snapshot),
+            rows: snapshot ? snapshot.before_value.rows.length : 0,
+            saved_at: snapshot?.created_at || null,
+            saved_by: snapshot?.changed_by_name || null
         });
 
+    }
+
+    catch (error) {
+        return sendListError(res, error, "GET ROLLBACK INFO:", "Unable to check the rollback copy.");
+    }
+
+};
+
+const rollbackFinalList = async (req, res) => {
+
+    try {
+
+        const eventId = await resolveEventId(req.body?.event_id);
+        await loadEvent(eventId);
+
+        const snapshot = await loadSnapshot(eventId);
+
+        if (!snapshot) {
+            throw httpError(404, "There's no earlier version to roll back to.");
+        }
+
+        // Rows that are still on the list keep their place (and
+        // their Completed tick); the rest come back as new rows.
+        const { rows: currentRows } = await loadFinalList(eventId);
+        const unused = [...currentRows];
+        const pairOf = (a, b) => [a, b].filter(Boolean).sort().join("|");
+
+        const inputRows = snapshot.before_value.rows.map(row => {
+
+            const index = unused.findIndex(existing =>
+                pairOf(existing.male_singer_id, existing.female_singer_id) ===
+                    pairOf(row.male_singer_id, row.female_singer_id) &&
+                normalizeTitle(existing.song_title) === normalizeTitle(row.song_title)
+            );
+
+            const ref = index >= 0 ? unused.splice(index, 1)[0].ref : null;
+
+            return { ...row, ref };
+
+        });
+
+        const result = await applyFinalList({
+            eventId,
+            inputRows,
+            admin: req.admin,
+            takeSnapshot: false
+        });
+
+        await deleteSnapshots(eventId);
+
+        console.log(`↩️ Final list rolled back (${result.summary || "no changes"}) by`,
+            req.admin?.full_name || req.admin?.username);
+
+        return res.status(200).json({
+            success: true,
+            message: result.summary
+                ? `Rolled back to the earlier list - ${result.summary}.${result.warningText}`
+                : `The list already matches the earlier version.${result.warningText}`,
+            changes: result.changes
+        });
+
+    }
+
+    catch (error) {
+        return sendListError(res, error, "ROLLBACK FINAL LIST:", "Unable to roll back the final pairing list.");
     }
 
 };
@@ -1366,6 +1564,7 @@ const getChangeLog = async (req, res) => {
             .from("pairing_change_log")
             .select("id,action,kind,before_value,after_value,changed_by_name,created_at")
             .eq("event_id", eventId)
+            .neq("action", SNAPSHOT_ACTION)
             .order("created_at", { ascending: false })
             .limit(500);
 
@@ -1401,6 +1600,8 @@ const getChangeLog = async (req, res) => {
 module.exports = {
     getFinalList,
     saveFinalList,
+    getRollbackInfo,
+    rollbackFinalList,
     getChangeLog,
     setRowCompleted,
     addEventSinger,

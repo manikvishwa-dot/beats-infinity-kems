@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import ExcelToolbar from "./ExcelToolbar";
-import { getPairingChangeLog } from "../../services/adminDashboardService";
+import {
+    getFinalListRollback,
+    getPairingChangeLog,
+    rollbackFinalPairingList
+} from "../../services/adminDashboardService";
 
 import "./FinalPairingList.css";
 
@@ -36,22 +40,36 @@ const EXCEL_COLUMNS = [
     { key: "by", header: "Changed By", width: 20 }
 ];
 
-function PairingChangeLog({ eventId }) {
+function PairingChangeLog({ eventId, onRolledBack }) {
 
     const [entries, setEntries] = useState([]);
     const [notSetUp, setNotSetUp] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
+
+    // "Roll back last save" - { available, rows, saved_at, saved_by }
+    const [rollback, setRollback] = useState(null);
+    const [rollingBack, setRollingBack] = useState(false);
+
+    const loadAll = useCallback(() => Promise.all([
+        getPairingChangeLog(eventId),
+        eventId ? getFinalListRollback(eventId).catch(() => null) : Promise.resolve(null)
+    ]), [eventId]);
+
+    const applyLoaded = ([result, rollbackInfo]) => {
+        setEntries(result.entries || []);
+        setNotSetUp(Boolean(result.not_set_up));
+        setRollback(rollbackInfo);
+    };
 
     useEffect(() => {
 
         let cancelled = false;
 
-        getPairingChangeLog(eventId)
-            .then(result => {
-                if (cancelled) return;
-                setEntries(result.entries || []);
-                setNotSetUp(Boolean(result.not_set_up));
+        loadAll()
+            .then(loaded => {
+                if (!cancelled) applyLoaded(loaded);
             })
             .catch(requestError => {
                 if (!cancelled) setError(requestError.message || "Unable to load the change log.");
@@ -62,7 +80,39 @@ function PairingChangeLog({ eventId }) {
 
         return () => { cancelled = true; };
 
-    }, [eventId]);
+    }, [loadAll]);
+
+    const handleRollback = async () => {
+
+        if (!rollback?.available) return;
+
+        const ok = window.confirm(
+            "Roll back the Final List to how it was before the last save?\n\n" +
+            `It had ${rollback.rows} song${rollback.rows === 1 ? "" : "s"}.` +
+            (rollback.saved_at ? ` Last save: ${formatWhen(rollback.saved_at)}${rollback.saved_by ? ` by ${rollback.saved_by}` : ""}.` : "") +
+            "\n\nThe list saved now will be replaced. Only one rollback is kept, so this can't be undone with the button again."
+        );
+
+        if (!ok) return;
+
+        setRollingBack(true);
+        setError("");
+        setSuccess("");
+
+        try {
+            const result = await rollbackFinalPairingList(eventId);
+            applyLoaded(await loadAll());
+            setSuccess(result.message || "Rolled back.");
+            onRolledBack?.();
+        }
+        catch (requestError) {
+            setError(requestError.message || "Unable to roll back.");
+        }
+        finally {
+            setRollingBack(false);
+        }
+
+    };
 
     if (loading) {
         return <div className="pairing-empty">Loading the change log...</div>;
@@ -85,6 +135,28 @@ function PairingChangeLog({ eventId }) {
             </p>
 
             {error && <div className="pairing-error">⚠️ {error}</div>}
+            {success && <div className="pairing-success">✅ {success}</div>}
+
+            {!notSetUp && (
+                <div className="change-log-rollback">
+                    <div>
+                        <b>Roll back last save</b>
+                        <span>
+                            {rollback?.available
+                                ? ` Puts the Final List back to how it was before the last save (${rollback.rows} songs${rollback.saved_at ? `, saved ${formatWhen(rollback.saved_at)}` : ""}).`
+                                : " Nothing to roll back - a copy is kept each time the Final List is saved."}
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        className="admin-btn admin-btn-outline admin-btn-sm"
+                        onClick={handleRollback}
+                        disabled={!rollback?.available || rollingBack}
+                    >
+                        {rollingBack ? "Rolling back..." : "↶ Roll back last save"}
+                    </button>
+                </div>
+            )}
 
             {notSetUp ? (
                 <div className="pairing-empty">

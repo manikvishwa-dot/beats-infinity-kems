@@ -286,6 +286,36 @@ const setFinalRowCompleted = async (eventId, ref, completed) => {
 
 };
 
+// Roll back the last save (one level)
+const getFinalListRollback = async eventId => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/final/rollback?event_id=${encodeURIComponent(eventId)}`,
+        { headers: getAuthHeader() }
+    );
+
+    return handleResponse(response);
+
+};
+
+const rollbackFinalPairingList = async eventId => {
+
+    const response = await fetch(
+        `${API_BASE_URL}/pairings/final/rollback`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ event_id: eventId })
+        }
+    );
+
+    return handleResponse(response);
+
+};
+
 const saveFinalPairingList = async (eventId, rows) => {
 
     const response = await fetch(
@@ -481,6 +511,8 @@ export {
     decideSolo,
     getFinalPairingList,
     saveFinalPairingList,
+    getFinalListRollback,
+    rollbackFinalPairingList,
     setFinalRowCompleted,
     getPairingChangeLog,
     addEventSinger,

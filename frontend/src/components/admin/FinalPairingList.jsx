@@ -223,7 +223,29 @@ function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
         setSuccess(`${message} Remember to Save the final list.`);
     };
 
+    // Asks first - except for a brand-new row with nothing typed in it
     const removeRow = key => {
+        const row = rows.find(item => item.key === key);
+        if (!row) return;
+
+        const isBlank = !row.ref && !row.male_singer_id && !row.female_singer_id &&
+            !row.song_title.trim() && !row.movie.trim();
+
+        if (!isBlank) {
+            const singersText = [row.male_singer_id, row.female_singer_id]
+                .filter(Boolean)
+                .map(id => nameById.get(id) || "a singer")
+                .join(" + ");
+            const what = [singersText, row.song_title.trim()].filter(Boolean).join(" - ") || "this row";
+
+            if (!window.confirm(
+                `Remove ${what} from the list?\n\n` +
+                (row.ref
+                    ? "It comes off the list when you click Save final list."
+                    : "This row hasn't been saved yet.")
+            )) return;
+        }
+
         setSuccess("");
         setRows(current => current.filter(row => row.key !== key));
     };
@@ -493,7 +515,7 @@ function FinalPairingList({ eventId, onSaved, onDirtyChange }) {
                 rows={excelRows}
                 filename={`final-pairing-list${eventName ? `-${eventName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}` : ""}`}
                 onImportRows={handleImportRows}
-                hint="Export, edit in Excel and upload to replace the list on screen - nothing is saved until you click Save final list."
+                hint="Export, edit in Excel and upload to replace the whole list on screen - nothing is saved until you click Save final list. Saved a wrong list? Use Roll back last save on the Change Log tab."
             />
 
             {error && <div className="pairing-error">⚠️ {error}</div>}

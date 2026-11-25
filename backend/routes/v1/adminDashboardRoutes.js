@@ -18,6 +18,8 @@ const {
 const {
     getFinalList,
     saveFinalList,
+    getRollbackInfo,
+    rollbackFinalList,
     getChangeLog,
     addEventSinger,
     setRowCompleted,
@@ -141,6 +143,19 @@ router.post(
     "/pairings/final/singers",
     requireAdmin,
     addEventSinger
+);
+
+// Roll back the last save (one level)
+router.get(
+    "/pairings/final/rollback",
+    requireAdmin,
+    getRollbackInfo
+);
+
+router.post(
+    "/pairings/final/rollback",
+    requireAdmin,
+    rollbackFinalList
 );
 
 // Event day: tick a song as completed (saved at once)
